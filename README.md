@@ -1,4 +1,5 @@
 # Clock
+*A Material 3 Expressive clock app*
 
 ![Alarms, the timer keypad, Stopwatch, World Clock, a running timer and the alarm editor, across several themes](docs/screenshots.png)
 
