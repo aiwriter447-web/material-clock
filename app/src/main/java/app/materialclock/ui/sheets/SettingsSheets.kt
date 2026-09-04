@@ -286,6 +286,12 @@ fun StopwatchSettingsSheet(
                 checked = settings.theme.amoledBlack,
                 onChange = { v -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
             )
+            SwitchRow(
+                title = "One-hand mode",
+                subtitle = "Long-press the dock to pull the screen down into thumb reach",
+                checked = settings.theme.oneHandMode,
+                onChange = { v -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
+            )
 
             // Always on show, with the wallpaper as the first swatch rather than as a switch
             // somewhere above them. Hiding the palettes behind "wallpaper colours: off" meant that
