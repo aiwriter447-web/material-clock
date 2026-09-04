@@ -5,9 +5,13 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -43,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
@@ -111,6 +116,19 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
 
+        // Reachability curtain: long-press the dock to pull the whole screen down into thumb
+        // range, the same gesture Samsung's One UI and iOS use. Gated by its own setting rather
+        // than always-on, since a screen that suddenly shrinks under a long-press is a surprise
+        // to anyone who didn't turn it on.
+        var curtainDown by remember { mutableStateOf(false) }
+        LaunchedEffect(settings.theme.oneHandMode) {
+            if (!settings.theme.oneHandMode) curtainDown = false
+        }
+        val curtainScale by animateFloatAsState(
+            targetValue = if (curtainDown) 0.7f else 1f,
+            label = "curtainScale",
+        )
+
         // Asked once, on first composition. Denying it costs the notifications and nothing else.
         // The alarm still rings, because the ringer is a foreground service and audio, not a post.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -168,6 +186,15 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 targetState = tab,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "tab",
+                // Anchored at the bottom centre: the dial, the keypad, the day toggles are already
+                // near the thumb, so shrinking toward them (rather than toward the screen's centre)
+                // is what actually pulls the top of the screen down instead of just shrinking it
+                // in place.
+                modifier = Modifier.graphicsLayer {
+                    scaleX = curtainScale
+                    scaleY = curtainScale
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                },
             ) { current ->
                 when (current) {
                     Tab.ALARMS -> {
@@ -259,7 +286,16 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = DOCK_CLEARANCE),
+                    .padding(bottom = DOCK_CLEARANCE)
+                    .let { base ->
+                        if (settings.theme.oneHandMode) {
+                            base.pointerInput(Unit) {
+                                detectTapGestures(onLongPress = { curtainDown = !curtainDown })
+                            }
+                        } else {
+                            base
+                        }
+                    },
             )
           }
         }
