@@ -168,6 +168,7 @@ class ClockStore(private val context: Context) {
         val KEY_PALETTE = stringPreferencesKey("palette")
         val KEY_DARK = stringPreferencesKey("darkMode")
         val KEY_AMOLED = booleanPreferencesKey("amoled")
+        val KEY_ONE_HAND = booleanPreferencesKey("oneHand")
 
         val SEED_ALARMS = listOf(
             Alarm(1, LocalTime.of(6, 40), "Gym", setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)),
@@ -204,6 +205,7 @@ private fun Preferences.toSettings() = ClockSettings(
         palette = enumOr(this[stringPreferencesKey("palette")], Palette.CONCEPT),
         darkMode = enumOr(this[stringPreferencesKey("darkMode")], DarkMode.SYSTEM),
         amoledBlack = this[booleanPreferencesKey("amoled")] ?: false,
+        oneHandMode = this[booleanPreferencesKey("oneHand")] ?: false,
     ),
 )
 
@@ -221,6 +223,7 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     this[stringPreferencesKey("palette")] = s.theme.palette.name
     this[stringPreferencesKey("darkMode")] = s.theme.darkMode.name
     this[booleanPreferencesKey("amoled")] = s.theme.amoledBlack
+    this[booleanPreferencesKey("oneHand")] = s.theme.oneHandMode
 }
 
 /** Falls back rather than throwing: a preference file written by a newer build must not crash. */
