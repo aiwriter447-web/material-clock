@@ -46,6 +46,12 @@ data class ThemeSettings(
     val palette: Palette = Palette.CONCEPT,
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val amoledBlack: Boolean = false,
+    /**
+     * Long-pressing the dock pulls the whole screen down into thumb reach, scaled toward
+     * whichever corner the dock was pressed nearer to. Off by default: it is a deliberate,
+     * discoverable gesture rather than something that should surprise a two-handed user.
+     */
+    val oneHandMode: Boolean = false,
 )
 
 enum class DarkMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
