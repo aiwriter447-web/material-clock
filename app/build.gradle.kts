@@ -35,6 +35,24 @@ android {
         }
     }
 
+    /**
+     * A fixed debug key, checked into the repo, instead of AGP's implicit one.
+     *
+     * Without this, every fresh checkout — and every GitHub Actions run, since the runner is a
+     * new machine each time — gets its own auto-generated `~/.android/debug.keystore` with a
+     * different key. Android refuses to install an APK over an existing app unless the two are
+     * signed with the same certificate, so a debug APK built on CI cannot update the previous
+     * one: it fails with "App not installed", and the only way past that is uninstalling first,
+     * which erases the app's alarms, cities and settings. Pinning the debug key here means every
+     * CI build is signed the same way, so a new APK always updates in place over the old one.
+     */
+    signingConfigs.getByName("debug") {
+        storeFile = file("debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
