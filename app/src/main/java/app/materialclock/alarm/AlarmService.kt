@@ -82,7 +82,12 @@ class AlarmService : Service() {
             val label = alarm?.label?.ifBlank { null } ?: "Alarm"
 
             foreground(ringingNotification(this@AlarmService, id, label))
-            play(alarm?.soundUri?.let(Uri::parse) ?: defaultAlarmUri())
+            play(
+                uri = alarm?.soundUri?.let(Uri::parse)
+                    ?: settings.alarms.defaultSoundUri?.let(Uri::parse)
+                    ?: defaultAlarmUri(),
+                volume = settings.alarms.volume,
+            )
             if (alarm?.vibrate != false) vibrate(ALARM_PATTERN)
 
             silenceJob = launch {
@@ -100,7 +105,7 @@ class AlarmService : Service() {
         scope.launch {
             val settings = ClockStore(this@AlarmService).settingsNow()
             foreground(timerNotification(this@AlarmService))
-            play(settings.timers.soundUri?.let(Uri::parse) ?: defaultAlarmUri())
+            play(settings.timers.soundUri?.let(Uri::parse) ?: defaultAlarmUri(), settings.alarms.volume)
             if (settings.timers.vibrate) vibrate(TIMER_PATTERN)
             silenceJob = launch {
                 val minutes = settings.alarms.silenceAfterMinutes
@@ -119,7 +124,8 @@ class AlarmService : Service() {
         }
     }
 
-    private fun play(uri: Uri) {
+    private fun play(uri: Uri, volume: Float = 1f) {
+        val v = volume.coerceIn(0f, 1f)
         runCatching {
             player = MediaPlayer().apply {
                 setAudioAttributes(
@@ -130,6 +136,7 @@ class AlarmService : Service() {
                 )
                 setDataSource(this@AlarmService, uri)
                 isLooping = true
+                setVolume(v, v)
                 prepare()
                 start()
             }
@@ -138,7 +145,7 @@ class AlarmService : Service() {
             // is not an acceptable alarm, so fall back rather than let the exception kill it.
             runCatching {
                 player = MediaPlayer.create(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
-                    ?.apply { isLooping = true; start() }
+                    ?.apply { isLooping = true; setVolume(v, v); start() }
             }
         }
     }
