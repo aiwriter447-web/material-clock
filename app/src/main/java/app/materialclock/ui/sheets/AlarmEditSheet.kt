@@ -118,7 +118,11 @@ fun AlarmEditSheet(
                     time = LocalTime.of(timeState.hour, timeState.minute),
                     label = label.trim(),
                     days = days,
-                    enabled = true,
+                    // Not a hardcoded `true`. Dismissing the sheet by scrim-tap, drag-down or back
+                    // still commits (see the class doc), so this has to be the alarm's *own* state
+                    // or opening an off alarm just to look at it, then closing it any way but
+                    // Cancel, silently switches it on.
+                    enabled = initial.enabled,
                     vibrate = vibrate,
                     soundUri = soundUri,
                 )
