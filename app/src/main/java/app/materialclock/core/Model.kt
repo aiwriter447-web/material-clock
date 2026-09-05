@@ -130,6 +130,14 @@ data class WorldCity(
 enum class TimerState { IDLE, RUNNING, PAUSED, FINISHED }
 
 /**
+ * A named, reusable timer length — "Study", "Deep Work", "Break" — for one-tap starts instead of
+ * re-entering the same duration on the keypad every time. Deliberately just a name and a length:
+ * work/break cycling and session stats are a different, bigger feature than what was asked for
+ * here, which is fast access to durations you use often.
+ */
+data class TimerPreset(val id: Long, val name: String, val totalSeconds: Int)
+
+/**
  * A countdown.
  *
  * Stored as a *deadline* rather than a remaining count, so it stays correct while the process is
