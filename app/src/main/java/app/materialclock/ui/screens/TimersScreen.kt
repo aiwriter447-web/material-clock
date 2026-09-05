@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
@@ -41,6 +43,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import app.materialclock.core.ClockTimer
+import app.materialclock.core.TimerPreset
 import app.materialclock.core.TimerState
 import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
@@ -68,6 +71,7 @@ fun TimersScreen(
     timer: ClockTimer?,
     draft: Duration,
     nowElapsedMillis: Long,
+    presets: List<TimerPreset>,
     onDigit: (Char) -> Unit,
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
@@ -75,6 +79,9 @@ fun TimersScreen(
     onPauseResume: () -> Unit,
     onAddTen: () -> Unit,
     onCancel: () -> Unit,
+    onStartPreset: (TimerPreset) -> Unit,
+    onEditPreset: (TimerPreset) -> Unit,
+    onAddPreset: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -91,7 +98,7 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onWind, onStart)
+            SetTimer(draft, onDigit, onBackspace, onWind, onStart, presets, onStartPreset, onEditPreset, onAddPreset)
         }
     }
 }
@@ -105,6 +112,10 @@ private fun SetTimer(
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
     onStart: () -> Unit,
+    presets: List<TimerPreset>,
+    onStartPreset: (TimerPreset) -> Unit,
+    onEditPreset: (TimerPreset) -> Unit,
+    onAddPreset: () -> Unit,
 ) {
     val total = draft.seconds
     val hh = "%02d".format(total / 3600)
@@ -145,7 +156,62 @@ private fun SetTimer(
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
         )
+        Spacer(Modifier.height(14.dp))
+        // Named one-tap lengths — "Study", "Deep work" — for whoever starts the same duration
+        // often enough that re-typing it every time is the annoying part. Tap starts it straight
+        // away; long-press opens the same length for renaming or a new duration, since a chip has
+        // no room for a separate pencil icon without it fighting the label for space.
+        PresetRow(presets, onStartPreset, onEditPreset, onAddPreset)
         Spacer(Modifier.height(10.dp))
+    }
+}
+
+@Composable
+private fun PresetRow(
+    presets: List<TimerPreset>,
+    onStart: (TimerPreset) -> Unit,
+    onEdit: (TimerPreset) -> Unit,
+    onAdd: () -> Unit,
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        items(presets, key = { it.id }) { preset ->
+            PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
+        }
+        item {
+            androidx.compose.material3.AssistChip(
+                onClick = onAdd,
+                label = { Text("+ Add") },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val minutes = preset.totalSeconds / 60
+    androidx.compose.material3.Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                preset.name,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Text(
+                "${minutes} min",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
     }
 }
 
