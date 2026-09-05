@@ -290,4 +290,3 @@ private fun isInnerRing(at: Offset, w: Float, h: Float): Boolean {
     val dInner = hypot(at.x - inner.x, at.y - inner.y)
     return dInner < dOuter
 }
-
