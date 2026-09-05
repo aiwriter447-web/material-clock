@@ -1,6 +1,7 @@
 package app.materialclock.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -79,7 +80,11 @@ fun TimersScreen(
 ) {
     AnimatedContent(
         targetState = timer != null,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        // `clip = false`: SetTimer's keypad view and RunningTimer's dial are different heights, and
+        // the default SizeTransform clips content to the smaller of the two mid-transition — which
+        // reads as a visible pop/blink right as the crossfade peaks. Letting content overflow its
+        // bounds for the few frames of the transition is the trade that avoids that.
+        transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
         label = "timer-state",
         modifier = modifier.fillMaxSize().padding(contentPadding),
     ) { running ->
