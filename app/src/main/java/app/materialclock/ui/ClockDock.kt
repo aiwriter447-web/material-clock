@@ -71,9 +71,6 @@ fun ClockDock(
     destinations: List<Tab>,
     selected: Tab,
     onSelect: (Tab) -> Unit,
-    showAdd: Boolean,
-    addLabel: String,
-    onAdd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Read off the *resolved* scheme rather than `isSystemInDarkTheme()`: the app has its own
@@ -122,7 +119,6 @@ fun ClockDock(
                 DockItem(tab = d, selected = d == selected, dark = dark, onClick = { onSelect(d) })
             }
         }
-        PlusButton(visible = showAdd, label = addLabel, onClick = onAdd)
     }
 }
 
@@ -188,64 +184,45 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
 }
 
 /**
- * The add button, which is only meaningful on two of the four tabs.
+ * The add button, now detached from the dock and floated at the top-right of the screen instead.
  *
- * ## Two speeds, on purpose
+ * It used to sit inline beside the nav pill at the bottom, sliding the pill toward centre as it
+ * grew or shrank (see git history for that version). Moved because that position sat directly over
+ * the last row of a full list — the alarm grid's last tile, the world-clock list's last card — so
+ * the one control for adding something could end up partly hidden behind the very content it adds
+ * to. Top-right is clear of every list's last row and still exactly where Material's own FAB
+ * guidance expects a primary add action to float.
  *
- * The glyph goes first and goes fast on a hard 110 ms tween, so the button is empty before it has
- * finished leaving. The container then shrinks on the expressive spatial spring while its corner
- * radius travels from the 22 dp squircle to a full circle, so the last thing on screen is a
- * vanishing dot rather than a shrinking rounded square. Reversed on the way in. Running both on one
- * curve reads as a screenshot being scaled; splitting them is what makes it read as the icon being
- * put away and the container closing after it.
- *
- * ## Why this is not `AnimatedVisibility`
- *
- * A transform does not change a measured size, and neither `scaleOut` nor `shrinkHorizontally`
- * alone gives a container that is simultaneously shrinking, re-cornering, and surrendering layout
- * width at the same rate. The `Layout` here reports `(button + gap) × progress`, which is what lets
- * the pill beside it glide to centre in lockstep instead of jumping when the animation ends.
+ * A plain scale-and-fade rather than the old width-reporting `Layout`: there is nothing beside it
+ * to make room for any more, so there is nothing for the width to choreograph.
  */
 @Composable
-private fun PlusButton(visible: Boolean, label: String, onClick: () -> Unit) {
+fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
-    val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "plusGrow")
+    val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "addGrow")
     val glyph by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = tween(durationMillis = 110),
-        label = "plusGlyph",
+        label = "addGlyph",
     )
     if (grow <= 0.001f) return
 
-    Layout(
-        content = {
-            FloatingActionButton(
-                onClick = onClick,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                // 32 dp on a 64 dp button is a circle; 22 dp is the resting squircle.
-                shape = RoundedCornerShape(lerp(FAB_SIZE / 2, FAB_CORNER, grow)),
-                modifier = Modifier
-                    .size(FAB_SIZE)
-                    .graphicsLayer { scaleX = grow; scaleY = grow },
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = label,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .graphicsLayer { scaleX = glyph; scaleY = glyph; alpha = glyph },
-                )
-            }
-        },
-    ) { measurables, constraints ->
-        val placeable = measurables.first().measure(constraints.copy(minWidth = 0, minHeight = 0))
-        val gap = FAB_GAP.toPx()
-        // The gap is inside the animated width, so the pill's slide has no step at either end.
-        val width = ((placeable.width + gap) * grow).roundToInt()
-        layout(width, placeable.height) {
-            placeable.place(width - placeable.width, 0)
-        }
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = RoundedCornerShape(lerp(FAB_SIZE / 2, FAB_CORNER, grow)),
+        modifier = modifier
+            .size(FAB_SIZE)
+            .graphicsLayer { scaleX = grow; scaleY = grow },
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Add,
+            contentDescription = label,
+            modifier = Modifier
+                .size(28.dp)
+                .graphicsLayer { scaleX = glyph; scaleY = glyph; alpha = glyph },
+        )
     }
 }
 
@@ -266,4 +243,3 @@ private val ICON_SIZE = 25.dp
 
 private val FAB_SIZE = DOCK_HEIGHT
 private val FAB_CORNER = 24.dp
-private val FAB_GAP = 10.dp
