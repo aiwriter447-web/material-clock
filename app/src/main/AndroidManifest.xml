@@ -23,6 +23,15 @@
     <!-- Runtime-requested from API 33. Refusing it costs the notifications, not the alarm. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!--
+      Android 16's Live Updates / Now Bar. Separate from POST_NOTIFICATIONS above and install-time
+      rather than runtime — a promoted timer/stopwatch notification is refused without this even
+      when POST_NOTIFICATIONS is already granted, and refused silently, so it is easy to add the
+      promotion flags in code, test on a 16 device with nothing changing, and conclude the feature
+      does not work when the actual cause is this one line being missing.
+    -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+
     <!-- The ringer: looping audio and a repeating waveform with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
