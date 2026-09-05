@@ -19,6 +19,7 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.ClockTimer
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
+import app.materialclock.core.TimerPreset
 import app.materialclock.core.TimerState
 import app.materialclock.core.WorldCity
 import app.materialclock.data.ClockSettings
@@ -95,6 +96,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.timer.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val stopwatch: StateFlow<Stopwatch> =
         store.stopwatch.stateIn(viewModelScope, SharingStarted.Eagerly, Stopwatch())
+    val presets: StateFlow<List<TimerPreset>> =
+        store.presets.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val homeZone: ZoneId = ZoneId.systemDefault()
 
@@ -207,6 +210,35 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         timerDigits = ""
         store.putTimer(t)
         TimerScheduler.sync(ctx, t)
+    }
+
+    /** One-tap start from a saved preset — skips the keypad and [draftDuration] entirely. */
+    fun startPreset(preset: TimerPreset) = viewModelScope.launch {
+        if (preset.totalSeconds <= 0) return@launch
+        val t = ClockTimer(
+            id = store.nextId(),
+            label = preset.name,
+            total = Duration.ofSeconds(preset.totalSeconds.toLong()),
+            state = TimerState.RUNNING,
+            deadlineElapsedMillis = SystemClock.elapsedRealtime() + preset.totalSeconds * 1000L,
+        )
+        store.putTimer(t)
+        TimerScheduler.sync(ctx, t)
+    }
+
+    /** `id == 0` is a new preset (mirrors how a new [Alarm] arrives); anything else edits in place. */
+    fun savePreset(preset: TimerPreset) = viewModelScope.launch {
+        val current = presets.value
+        val next = if (preset.id == 0L) {
+            current + preset.copy(id = store.nextId())
+        } else {
+            current.map { if (it.id == preset.id) preset else it }
+        }
+        store.putPresets(next)
+    }
+
+    fun deletePreset(id: Long) = viewModelScope.launch {
+        store.putPresets(presets.value.filterNot { it.id == id })
     }
 
     fun pauseOrResumeTimer() = viewModelScope.launch {
