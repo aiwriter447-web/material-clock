@@ -11,13 +11,7 @@
       USE_EXACT_ALARM existed; above that the capped one is inert and the app never asks for
       anything.
     -->
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
@@ -58,12 +52,6 @@
             android:theme="@style/Theme.MaterialClock">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
-<service
-    android:name=".alarm.TimerService"
-    android:exported="false"
-    android:foregroundServiceType="specialUse" />
-
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
