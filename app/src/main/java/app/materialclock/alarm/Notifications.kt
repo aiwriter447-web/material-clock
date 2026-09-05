@@ -35,6 +35,18 @@ import app.materialclock.core.clockFormat
  *
  * The ringer is the one thing that does take a foreground service, because looping audio is real
  * ongoing work (see [AlarmService]).
+ *
+ * ## Promoted ongoing (Android 16 Now Bar / Live Updates)
+ *
+ * `setRequestPromotedOngoing` and `POST_PROMOTED_NOTIFICATIONS` in the manifest are what let the
+ * timer and stopwatch reach the Now Bar / status-bar chip on API 36+; `androidx.core` 1.17 makes
+ * both calls safe no-ops below that, so there is no version check here to get wrong.
+ *
+ * The timer's progress bar is still a single snapshot taken when the notification is posted or an
+ * action changes it — not a live tween — for the same reason there is no service: animating it
+ * continuously would mean the app waking on a timer of its own to repost, which is exactly the
+ * cost the chronometer design above avoids. The chronometer digits keep ticking regardless, since
+ * the platform renders those; only the filled portion of the bar is a snapshot.
  */
 object Notifications {
 
@@ -79,6 +91,8 @@ object Notifications {
 
     fun showTimer(context: Context, timer: ClockTimer) {
         val running = timer.state == TimerState.RUNNING
+        val now = SystemClock.elapsedRealtime()
+        val remaining = timer.remaining(now)
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentTitle(timer.label.ifBlank { "Timer" })
@@ -87,6 +101,10 @@ object Notifications {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_TIMERS))
+            // A no-op below API 36 (androidx.core 1.17+ handles the version split), and what
+            // actually reaches the Now Bar / status-bar chip on it — see the class doc.
+            .setRequestPromotedOngoing(true)
+            .setShortCriticalText(remaining.clockFormat())
             .addAction(
                 0,
                 if (running) "Pause" else "Resume",
@@ -94,12 +112,20 @@ object Notifications {
             )
             .addAction(0, "+1 min", broadcast(context, ClockActionReceiver.ACTION_TIMER_ADD, 21))
             .addAction(0, "Cancel", broadcast(context, ClockActionReceiver.ACTION_TIMER_CANCEL, 22))
+            .setStyle(
+                // One segment the length of the whole timer; the filled point is how much of it
+                // has elapsed. A snapshot at post time — see the class doc on why this does not
+                // tween on its own.
+                NotificationCompat.ProgressStyle()
+                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100)))
+                    .setProgress(timer.fractionLeft(now).let { (100 - (it * 100)).toInt() }.coerceIn(0, 100)),
+            )
 
         if (running) {
             // The platform ticks this. `when` is the moment it reaches zero.
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
-                .setWhen(System.currentTimeMillis() + timer.remaining(SystemClock.elapsedRealtime()).toMillis())
+                .setWhen(System.currentTimeMillis() + remaining.toMillis())
                 .setShowWhen(true)
         } else {
             b.setUsesChronometer(false)
@@ -116,6 +142,7 @@ object Notifications {
     /* ── Stopwatch ──────────────────────────────────────────────────────────────────────────── */
 
     fun showStopwatch(context: Context, sw: Stopwatch) {
+        val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
             .setContentTitle("Stopwatch")
@@ -123,6 +150,11 @@ object Notifications {
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_STOPWATCH))
+            // See showTimer for why this is safe pre-36. No ProgressStyle here: a stopwatch has no
+            // total to be a fraction of, so "Standard" style (the compat default) is the one of
+            // the five promotable styles that actually fits an open-ended count.
+            .setRequestPromotedOngoing(true)
+            .setShortCriticalText(elapsed.clockFormat(withHours = true))
             .addAction(
                 0,
                 if (sw.running) "Stop" else "Start",
@@ -141,7 +173,7 @@ object Notifications {
         if (sw.running) {
             // Counting up: `when` is the instant it started, which the platform subtracts from now.
             b.setUsesChronometer(true)
-                .setWhen(System.currentTimeMillis() - sw.elapsed(SystemClock.elapsedRealtime()).toMillis())
+                .setWhen(System.currentTimeMillis() - elapsed.toMillis())
                 .setShowWhen(true)
         } else {
             b.setUsesChronometer(false)
