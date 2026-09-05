@@ -134,4 +134,3 @@ fun clockTypography(): Typography = Typography().copy(
     labelMediumEmphasized = style(12, 16, BOLD, tracking = 0.1),
     labelSmallEmphasized = style(11, 16, BOLD, tracking = 0.1),
 )
-
