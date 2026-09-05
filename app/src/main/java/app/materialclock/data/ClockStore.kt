@@ -14,6 +14,7 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.ClockTimer
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
+import app.materialclock.core.TimerPreset
 import app.materialclock.core.TimerState
 import app.materialclock.core.WorldCity
 import app.materialclock.ui.theme.Palette
@@ -58,6 +59,9 @@ class ClockStore(private val context: Context) {
     val stopwatch: Flow<Stopwatch> = context.prefs.data.map { p ->
         p[KEY_STOPWATCH]?.let(::parseStopwatch) ?: Stopwatch()
     }
+    val presets: Flow<List<TimerPreset>> = context.prefs.data.map { p ->
+        p[KEY_PRESETS]?.let(::parsePresets) ?: SEED_PRESETS
+    }
 
     /** A one-shot read, for the receivers and services that have no scope to collect in. */
     suspend fun settingsNow(): ClockSettings = settings.first()
@@ -70,6 +74,10 @@ class ClockStore(private val context: Context) {
 
     suspend fun putCities(list: List<WorldCity>) {
         context.prefs.edit { it[KEY_CITIES] = encodeCities(list) }
+    }
+
+    suspend fun putPresets(list: List<TimerPreset>) {
+        context.prefs.edit { it[KEY_PRESETS] = encodePresets(list) }
     }
 
     suspend fun putTimer(t: ClockTimer?) {
@@ -156,6 +164,7 @@ class ClockStore(private val context: Context) {
         val KEY_CITIES = stringPreferencesKey("cities")
         val KEY_TIMER = stringPreferencesKey("timer")
         val KEY_STOPWATCH = stringPreferencesKey("stopwatch")
+        val KEY_PRESETS = stringPreferencesKey("timerPresets")
         val KEY_NEXT_ID = longPreferencesKey("nextId")
 
         val KEY_SILENCE = intPreferencesKey("silenceAfter")
@@ -402,3 +411,24 @@ private fun parseStopwatch(s: String): Stopwatch = runCatching {
         },
     )
 }.getOrDefault(Stopwatch())
+
+private fun encodePresets(list: List<TimerPreset>) = JSONArray().apply {
+    list.forEach { p ->
+        put(JSONObject().put("id", p.id).put("name", p.name).put("seconds", p.totalSeconds))
+    }
+}.toString()
+
+private fun parsePresets(s: String): List<TimerPreset> = runCatching {
+    val arr = JSONArray(s)
+    (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i)
+        TimerPreset(id = o.getLong("id"), name = o.optString("name", ""), totalSeconds = o.getInt("seconds"))
+    }
+}.getOrDefault(SEED_PRESETS)
+
+// Ids below 100: [nextId] starts new ones at 100, so these can never collide with a user-made one.
+private val SEED_PRESETS = listOf(
+    TimerPreset(id = 1L, name = "Study", totalSeconds = 25 * 60),
+    TimerPreset(id = 2L, name = "Deep work", totalSeconds = 50 * 60),
+    TimerPreset(id = 3L, name = "Break", totalSeconds = 5 * 60),
+)
