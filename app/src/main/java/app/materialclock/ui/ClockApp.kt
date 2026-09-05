@@ -13,7 +13,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.HourglassEmpty
@@ -61,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.materialclock.alarm.Notifications
 import app.materialclock.core.Alarm
+import app.materialclock.core.TimerPreset
 import app.materialclock.ui.screens.AlarmsScreen
 import app.materialclock.ui.screens.StopwatchScreen
 import app.materialclock.ui.screens.TimersScreen
@@ -68,6 +67,7 @@ import app.materialclock.ui.screens.WorldClockScreen
 import app.materialclock.ui.sheets.AddCitySheet
 import app.materialclock.ui.sheets.AlarmEditSheet
 import app.materialclock.ui.sheets.AlarmSettingsSheet
+import app.materialclock.ui.sheets.PresetEditSheet
 import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
@@ -117,6 +117,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     ClockTheme(settings.theme) {
         var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
         var editing by remember { mutableStateOf<Alarm?>(null) }
+        var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
@@ -158,22 +159,12 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            tab.label,
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClickLabel = "Open ${tab.label.lowercase()} settings",
-                            ) { showSettings = true },
-                        )
+                        Text(tab.label, style = MaterialTheme.typography.headlineSmall)
                     },
                     actions = {
-                        // The title used to be the only way in — a deliberate, wholly unmarked
-                        // tap target (see the class doc on the settings sheets). It tested badly:
-                        // a control nobody can see is a control nobody finds. A visible gear costs
-                        // one icon's worth of attention in exchange for actually being found; the
-                        // title tap still works underneath it for anyone who already learned it.
+                        // Used to be title-tap-only, then title-tap-plus-icon for anyone who'd
+                        // already learned the old gesture. The icon alone tested fine on its own,
+                        // so the invisible fallback is gone — one clear entry point instead of two.
                         IconButton(onClick = { showSettings = true }) {
                             Icon(Icons.Outlined.Settings, contentDescription = "${tab.label} settings")
                         }
@@ -192,23 +183,24 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             // has to be reserved here by hand; otherwise the last alarm tile sits under the pill.
             val ld = LocalLayoutDirection.current
             val underDock = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
-            // The add button now floats top-right instead of living inside the dock, so it is the
-            // top edge of the content — not the bottom — that has to leave it room, and only on
-            // the two tabs it appears on.
-            val underFab = padding.calculateTopPadding() + DOCK_HEIGHT + 24.dp
+            // The add button floats bottom-right, just above the dock, rather than top-right: top
+            // put it further from the thumb than the dock itself, which defeats the point of a
+            // one-hand-reachable layout. Stacking it above the dock instead means the two tabs
+            // that have it need extra bottom clearance, not top.
+            val underDockAndFab = underDock + DOCK_HEIGHT + 12.dp
             val body = PaddingValues(
                 start = padding.calculateStartPadding(ld) + 16.dp,
                 end = padding.calculateEndPadding(ld) + 16.dp,
-                top = underFab, // Alarms always shows the add button
-                bottom = underDock,
+                top = padding.calculateTopPadding(),
+                bottom = underDockAndFab, // Alarms always shows the add button
             )
             val edgeToEdge = PaddingValues(
                 top = padding.calculateTopPadding(),
                 bottom = underDock,
             )
             val edgeToEdgeWithFab = PaddingValues(
-                top = underFab,
-                bottom = underDock,
+                top = padding.calculateTopPadding(),
+                bottom = underDockAndFab,
             )
 
           Box(Modifier.fillMaxSize()) {
@@ -276,12 +268,14 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
                     Tab.TIMERS -> {
                         val timer by vm.timer.collectAsStateWithLifecycle()
+                        val presets by vm.presets.collectAsStateWithLifecycle()
                         // Only tick while a timer exists; the setting screen has nothing moving.
                         val now by rememberElapsedTicker(active = timer != null)
                         TimersScreen(
                             timer = timer,
                             draft = vm.draftDuration,
                             nowElapsedMillis = now,
+                            presets = presets,
                             onDigit = vm::pressDigit,
                             onBackspace = vm::backspace,
                             onWind = vm::windToMinutes,
@@ -289,6 +283,9 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             onPauseResume = { vm.pauseOrResumeTimer() },
                             onAddTen = { vm.addTenSeconds() },
                             onCancel = { vm.cancelTimer() },
+                            onStartPreset = { vm.startPreset(it) },
+                            onEditPreset = { editingPreset = it },
+                            onAddPreset = { editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60) },
                             contentPadding = edgeToEdge,
                         )
                     }
@@ -330,14 +327,18 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     },
             )
 
-            // Floating top-right rather than beside the dock: see FloatingAddButton's doc for why.
+            // Floating bottom-right, just above the dock — see FloatingAddButton's doc for why
+            // that beats both the old inline-with-the-dock spot and top-right.
             FloatingAddButton(
                 visible = tab == Tab.ALARMS || tab == Tab.WORLD,
                 label = if (tab == Tab.WORLD) "Add city" else "Add alarm",
                 onClick = { if (tab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = padding.calculateTopPadding() + 12.dp, end = 16.dp),
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp,
+                    ),
             )
           }
         }
@@ -349,6 +350,15 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 onDismiss = { editing = null },
                 onSave = { vm.saveAlarm(it) },
                 onDelete = if (draft.id == 0L) null else ({ id -> vm.deleteAlarm(id) }),
+            )
+        }
+
+        editingPreset?.let { draft ->
+            PresetEditSheet(
+                initial = draft,
+                onDismiss = { editingPreset = null },
+                onSave = { vm.savePreset(it) },
+                onDelete = if (draft.id == 0L) null else ({ id -> vm.deletePreset(id) }),
             )
         }
 
