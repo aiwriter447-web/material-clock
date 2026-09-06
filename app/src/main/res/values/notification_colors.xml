@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The live-notification card's own background is OS/OEM chrome — Samsung draws that rounded rect,
+  not this app — so this is the one thing about its look that actually is ours to set: the accent
+  Android tints the small icon and the app-name chip with. Split light/dark so that accent still
+  reads clearly against whichever the system is currently rendering, rather than one blue picked
+  for one mode and left slightly wrong-looking in the other.
+-->
+<resources>
+    <color name="notification_accent">#3186FF</color>
+</resources>
