@@ -101,6 +101,9 @@ object Notifications {
         val remaining = timer.remaining(now)
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
+            // The card's own background is OS chrome; this is what actually is ours to set — see
+            // notification_colors.xml for why it's split light/dark.
+            .setColor(context.getColor(R.color.notification_accent))
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
@@ -161,6 +164,7 @@ object Notifications {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
+            .setColor(context.getColor(R.color.notification_accent))
             .setContentTitle("Stopwatch")
             .setOngoing(true)
             .setSilent(true)
