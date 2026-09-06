@@ -124,15 +124,16 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         val scope = rememberCoroutineScope()
 
         // Reachability curtain: long-press the dock to pull the whole screen down into thumb
-        // range, the same gesture Samsung's One UI and iOS use. Gated by its own setting rather
-        // than always-on, since a screen that suddenly shrinks under a long-press is a surprise
-        // to anyone who didn't turn it on.
+        // range, on demand — the same gesture Samsung's own One UI one-handed mode uses, and
+        // Samsung's is invoked the same way, not left permanently shrunk the moment it's turned
+        // on. The setting only gates whether the gesture exists at all (see the pointerInput
+        // below); `curtainDown` is what actually drives the scale, toggled by that gesture.
         var curtainDown by remember { mutableStateOf(false) }
         LaunchedEffect(settings.theme.oneHandMode) {
             if (!settings.theme.oneHandMode) curtainDown = false
         }
         val curtainScale by animateFloatAsState(
-            targetValue = if (curtainDown) 0.7f else 1f,
+            targetValue = if (curtainDown) 0.5f else 1f,
             label = "curtainScale",
         )
 
