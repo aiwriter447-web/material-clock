@@ -133,7 +133,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             if (!settings.theme.oneHandMode) curtainDown = false
         }
         val curtainScale by animateFloatAsState(
-            targetValue = if (curtainDown) 0.5f else 1f,
+            targetValue = if (curtainDown) 0.4f else 1f,
             label = "curtainScale",
         )
 
