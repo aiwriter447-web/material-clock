@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Preview-only: just the AnalogClock, none of widget_clock.xml's other layers.
+
+  The face ImageView and the date TextClock in the real layout are both blank canvases until this
+  app's own code runs — the face bitmap is drawn at runtime, and the date's format string and
+  position are set with setViewPadding at runtime too. The widget picker only ever statically
+  inflates whatever previewLayout points to; no app code runs for it. Pointing it at the real
+  layout meant the date showed up as whatever a completely unconfigured TextClock defaults to,
+  clipped by padding that was never applied — the cut-off, half-rendered "_:30 pm" from testing.
+  AnalogClock alone has no such runtime dependency: uninitialised, it just draws the platform's
+  default analog face and hands, which is a perfectly honest preview of "this widget is a clock".
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <AnalogClock
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</FrameLayout>
