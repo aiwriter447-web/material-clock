@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.materialclock.alarm.AlarmScheduler
 import app.materialclock.alarm.AlarmService
+import app.materialclock.alarm.LiveUpdateService
 import app.materialclock.alarm.Notifications
 import app.materialclock.alarm.TimerScheduler
 import app.materialclock.core.Alarm
@@ -210,6 +211,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         timerDigits = ""
         store.putTimer(t)
         TimerScheduler.sync(ctx, t)
+        LiveUpdateService.ensureRunning(ctx)
     }
 
     /** One-tap start from a saved preset — skips the keypad and [draftDuration] entirely. */
@@ -224,6 +226,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         )
         store.putTimer(t)
         TimerScheduler.sync(ctx, t)
+        LiveUpdateService.ensureRunning(ctx)
     }
 
     /** `id == 0` is a new preset (mirrors how a new [Alarm] arrives); anything else edits in place. */
@@ -250,6 +253,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putTimer(next)
         TimerScheduler.sync(ctx, next)
+        if (next.state == TimerState.RUNNING) LiveUpdateService.ensureRunning(ctx)
     }
 
     /** +10 s, the one adjustment a running timer needs. Extends the deadline, not a counter. */
@@ -284,9 +288,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putStopwatch(next)
         Notifications.showStopwatch(ctx, next)
+        if (next.running) LiveUpdateService.ensureRunning(ctx)
     }
-
-    fun lap() = viewModelScope.launch {
         val sw = store.stopwatch.first()
         if (!sw.running) return@launch
         val total = sw.elapsed(SystemClock.elapsedRealtime())
