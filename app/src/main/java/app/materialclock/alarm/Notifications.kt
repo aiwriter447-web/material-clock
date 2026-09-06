@@ -42,11 +42,12 @@ import app.materialclock.core.clockFormat
  * timer and stopwatch reach the Now Bar / status-bar chip on API 36+; `androidx.core` 1.17 makes
  * both calls safe no-ops below that, so there is no version check here to get wrong.
  *
- * The timer's progress bar is still a single snapshot taken when the notification is posted or an
- * action changes it — not a live tween — for the same reason there is no service: animating it
- * continuously would mean the app waking on a timer of its own to repost, which is exactly the
- * cost the chronometer design above avoids. The chronometer digits keep ticking regardless, since
- * the platform renders those; only the filled portion of the bar is a snapshot.
+ * Unlike the chronometer digits, the progress bar and the status-bar chip's `shortCriticalText` do
+ * not animate on their own — there is no platform-side tween for either, so making them move live
+ * needs something reposting the notification every second while a timer or stopwatch is actually
+ * running. That something is [LiveUpdateService], the one deliberate exception to "no service"
+ * above: a real, if small, battery cost, taken on purpose and only while something is actually
+ * counting, in exchange for the chip and bar being genuinely live rather than a frozen snapshot.
  */
 object Notifications {
 
@@ -90,6 +91,11 @@ object Notifications {
     /* ── Timer ──────────────────────────────────────────────────────────────────────────────── */
 
     fun showTimer(context: Context, timer: ClockTimer) {
+        post(context, ID_TIMER, buildTimer(context, timer))
+    }
+
+    /** Split out of [showTimer] so [LiveUpdateService] can hand the same notification to `startForeground`. */
+    fun buildTimer(context: Context, timer: ClockTimer): android.app.Notification {
         val running = timer.state == TimerState.RUNNING
         val now = SystemClock.elapsedRealtime()
         val remaining = timer.remaining(now)
@@ -114,15 +120,16 @@ object Notifications {
             .addAction(0, "Cancel", broadcast(context, ClockActionReceiver.ACTION_TIMER_CANCEL, 22))
             .setStyle(
                 // One segment the length of the whole timer; the filled point is how much of it
-                // has elapsed. A snapshot at post time — see the class doc on why this does not
-                // tween on its own.
+                // has elapsed. [LiveUpdateService] is what keeps this moving every second instead
+                // of it being a snapshot — see that class's doc.
                 NotificationCompat.ProgressStyle()
                     .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100)))
                     .setProgress(timer.fractionLeft(now).let { (100 - (it * 100)).toInt() }.coerceIn(0, 100)),
             )
 
         if (running) {
-            // The platform ticks this. `when` is the moment it reaches zero.
+            // The platform ticks this on its own between our once-a-second reposts, so it never
+            // looks stale even at the edges of that cadence.
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(System.currentTimeMillis() + remaining.toMillis())
@@ -132,7 +139,7 @@ object Notifications {
                 .setShowWhen(false)
                 .setContentText("Paused · ${timer.pausedRemaining.clockFormat()}")
         }
-        post(context, ID_TIMER, b.build())
+        return b.build()
     }
 
     fun hideTimer(context: Context) {
@@ -142,6 +149,11 @@ object Notifications {
     /* ── Stopwatch ──────────────────────────────────────────────────────────────────────────── */
 
     fun showStopwatch(context: Context, sw: Stopwatch) {
+        post(context, ID_STOPWATCH, buildStopwatch(context, sw))
+    }
+
+    /** Split out of [showStopwatch] so [LiveUpdateService] can hand the same notification to `startForeground`. */
+    fun buildStopwatch(context: Context, sw: Stopwatch): android.app.Notification {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
@@ -150,7 +162,7 @@ object Notifications {
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_STOPWATCH))
-            // See showTimer for why this is safe pre-36. No ProgressStyle here: a stopwatch has no
+            // See buildTimer for why this is safe pre-36. No ProgressStyle here: a stopwatch has no
             // total to be a fraction of, so "Standard" style (the compat default) is the one of
             // the five promotable styles that actually fits an open-ended count.
             .setRequestPromotedOngoing(true)
@@ -180,7 +192,7 @@ object Notifications {
                 .setShowWhen(false)
                 .setContentText(sw.accumulated.clockFormat(withHours = true))
         }
-        post(context, ID_STOPWATCH, b.build())
+        return b.build()
     }
 
     fun hideStopwatch(context: Context) {
