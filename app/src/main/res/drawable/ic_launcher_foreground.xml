@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app mark: a blue-to-periwinkle disc sitting on a pale blue disc offset below it.
+  A real clock face: a white dial, four tick marks, and hour/minute hands posed at 10:10 — the pose
+  practically every analog clock/watch icon and ad photo uses, because symmetrical hands read as a
+  smile rather than obscuring the brand mark centred beneath them.
 
-  Traced from the 200 x 200 source rather than eyeballed. Measured there:
+  The dial sits inside the 66 dp *safe* circle (radius 33, centred on 54,54) rather than the 72 dp
+  visible one the old two-disc mark used: those discs were soft blobs that read fine softly clipped,
+  but hands have a sharp tip, and a tip clipped by an aggressive squircle/circle mask on some
+  launchers reads as a broken icon rather than a stylistic crop.
 
-    front disc   centre (99.5, 93.5)  r 61.5   vertical gradient #3186FF -> #949DFF
-    back disc    centre (99.0, 109.0) r 59.0   flat #BBE2FE
-    gradient run y 58 -> 152, clamped, which is what leaves the top of the disc flat
+  Hands and ticks keep the app's own blue-to-periwinkle gradient (#3186FF -> #949DFF) rather than
+  flat black, so the icon still reads as *this* clock app's mark and not a generic system clock.
 
-  Scale is 72/200 = 0.36, centred on (54, 54). That is the one number worth stating: the source
-  frame maps to the **72 dp visible circle**, not to the 66 dp safe circle. Fitting the artwork to
-  the safe circle instead blows the disc up by 30% and eats the margin the artwork was drawn with.
-  A first pass naturally does exactly that, since 66 dp is the number the docs put in front of you.
-  The safe circle is a floor for legibility, not a target to fill.
+  Rotation lives on a <group>, not the <path> itself — VectorDrawable paths have no rotation/pivot
+  of their own, only groups do, so each hand is a path wrapped in a one-path group.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -20,23 +21,31 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Back disc first: the front one has to sit on top of it. -->
+    <!-- The dial. -->
     <path
-        android:fillColor="#BBE2FE"
-        android:pathData="M53.64,57.24 m-21.24,0 a21.24,21.24 0 1,0 42.48,0 a21.24,21.24 0 1,0 -42.48,0 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0 Z" />
 
-    <path android:pathData="M53.82,51.66 m-22.14,0 a22.14,22.14 0 1,0 44.28,0 a22.14,22.14 0 1,0 -44.28,0 Z">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="54"
-                android:startY="38.88"
-                android:endX="54"
-                android:endY="72.72"
-                android:tileMode="clamp">
-                <item android:offset="0" android:color="#3186FF" />
-                <item android:offset="1" android:color="#949DFF" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- Four ticks at 12/3/6/9, short bars pointing in from the rim. -->
+    <path android:fillColor="#3186FF" android:pathData="M51.4,22.6 L56.6,22.6 L56.6,30.6 L51.4,30.6 Z" />
+    <path android:fillColor="#3186FF" android:pathData="M51.4,77.4 L56.6,77.4 L56.6,85.4 L51.4,85.4 Z" />
+    <path android:fillColor="#3186FF" android:pathData="M22.6,51.4 L30.6,51.4 L30.6,56.6 L22.6,56.6 Z" />
+    <path android:fillColor="#3186FF" android:pathData="M77.4,51.4 L85.4,51.4 L85.4,56.6 L77.4,56.6 Z" />
+
+    <!-- Hour hand: drawn pointing straight up, then rotated -60° to land on 10. -->
+    <group android:pivotX="54" android:pivotY="54" android:rotation="-60">
+        <path
+            android:fillColor="#3186FF"
+            android:pathData="M52,54 L52,32 A2,2 0 0,1 56,32 L56,54 Z" />
+    </group>
+
+    <!-- Minute hand: same idea, rotated +60° to land on 2, and longer/thinner than the hour hand. -->
+    <group android:pivotX="54" android:pivotY="54" android:rotation="60">
+        <path
+            android:fillColor="#3186FF"
+            android:pathData="M52.3,54 L52.3,26 A1.7,1.7 0 0,1 55.7,26 L55.7,54 Z" />
+    </group>
+
+    <!-- Centre pin, on top of both hands. -->
+    <path android:fillColor="#3186FF" android:pathData="M54,54 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
 </vector>
