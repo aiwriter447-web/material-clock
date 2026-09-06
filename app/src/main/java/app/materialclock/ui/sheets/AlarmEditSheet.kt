@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -110,9 +112,17 @@ fun AlarmEditSheet(
         is24Hour = android.text.format.DateFormat.is24HourFormat(context),
     )
 
-    /** Every exit but Cancel runs this. */
-    fun commitAndClose() {
-        if (!discard) {
+    /**
+     * Every exit but Cancel runs this — `explicit` is true only for the Save button itself.
+     *
+     * For an alarm that already exists, any dismissal commits (see the class doc) — that is the
+     * whole point of "live editing". But a brand-new alarm (`onDelete == null`, the same signal
+     * the caller uses to decide whether to offer Delete) has nothing on disk yet, so there is no
+     * "current state" for an accidental scrim-tap or a stray touch on the + button to preserve —
+     * only an explicit Save should bring it into being.
+     */
+    fun commitAndClose(explicit: Boolean = false) {
+        if (!discard && (explicit || onDelete != null)) {
             onSave(
                 initial.copy(
                     time = LocalTime.of(timeState.hour, timeState.minute),
@@ -147,7 +157,18 @@ fun AlarmEditSheet(
         }
     }
 
-    ModalBottomSheet(onDismissRequest = { commitAndClose() }, sheetState = sheetState) {
+    // Handled explicitly rather than left to the sheet's own back-dismiss: on this alpha build of
+    // material3 (1.5.0-alpha25), a gesture back was reported to leave the sheet's dismissal
+    // untraceable through the normal onDismissRequest path. Owning it here — same commitAndClose
+    // logic scrim-tap uses, so a new alarm still cannot be saved by leaving rather than choosing
+    // Save — means the outcome does not depend on that library internal at all.
+    BackHandler { commitAndClose() }
+
+    ModalBottomSheet(
+        onDismissRequest = { commitAndClose() },
+        sheetState = sheetState,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
+    ) {
         Column(Modifier.padding(bottom = 20.dp)) {
 
             // The field and the dial are composed separately, rather than letting `TimePicker`
@@ -275,7 +296,7 @@ fun AlarmEditSheet(
                     Text("Cancel", style = MaterialTheme.typography.labelLargeEmphasized)
                 }
                 Button(
-                    onClick = { commitAndClose() },
+                    onClick = { commitAndClose(explicit = true) },
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     modifier = Modifier.weight(if (onDelete != null) 1.8f else 2.4f).height(ROW_H),
                 ) {
