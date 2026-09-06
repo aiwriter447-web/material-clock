@@ -290,6 +290,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         Notifications.showStopwatch(ctx, next)
         if (next.running) LiveUpdateService.ensureRunning(ctx)
     }
+
+    fun lap() = viewModelScope.launch {
         val sw = store.stopwatch.first()
         if (!sw.running) return@launch
         val total = sw.elapsed(SystemClock.elapsedRealtime())
