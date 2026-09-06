@@ -35,6 +35,10 @@
     <!-- The ringer: looping audio and a repeating waveform with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- LiveUpdateService: reposting a timer/stopwatch notification once a second is not one of
+         the platform's named foreground-service categories, so it is specialUse with the
+         justification property below rather than any of the other typed permissions. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -92,6 +96,15 @@
             android:name=".alarm.AlarmService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".alarm.LiveUpdateService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the running timer/stopwatch notification's live progress and status-bar chip ticking every second while one is active." />
+        </service>
 
         <receiver
             android:name=".alarm.AlarmReceiver"
