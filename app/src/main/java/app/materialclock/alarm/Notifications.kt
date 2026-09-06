@@ -129,11 +129,15 @@ object Notifications {
 
         if (running) {
             // The platform ticks this on its own between our once-a-second reposts, so it never
-            // looks stale even at the edges of that cadence.
+            // looks stale even at the edges of that cadence. `setContentText` is set too, even
+            // though it duplicates the chronometer: testing showed the tap-to-expand Now Bar
+            // popup renders contentText but not the chronometer field, so leaving it unset there
+            // was why that surface showed the title and actions but no time at all.
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(System.currentTimeMillis() + remaining.toMillis())
                 .setShowWhen(true)
+                .setContentText("${remaining.clockFormat()} left")
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
@@ -184,9 +188,14 @@ object Notifications {
 
         if (sw.running) {
             // Counting up: `when` is the instant it started, which the platform subtracts from now.
+            // `setContentText`: see buildTimer's comment on why this duplicates the chronometer.
+            // The latest lap, since a lap is the one thing about a running stopwatch worth a line
+            // of its own; before this, laps were tracked in-app but never surfaced here at all.
+            val lapText = sw.laps.firstOrNull()?.let { "Lap ${it.index} · ${it.split.clockFormat(withHours = true)}" }
             b.setUsesChronometer(true)
                 .setWhen(System.currentTimeMillis() - elapsed.toMillis())
                 .setShowWhen(true)
+                .setContentText(lapText ?: elapsed.clockFormat(withHours = true))
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
