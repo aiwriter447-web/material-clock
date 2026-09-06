@@ -101,9 +101,14 @@ object Notifications {
         val remaining = timer.remaining(now)
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
-            // The card's own background is OS chrome; this is what actually is ours to set — see
-            // notification_colors.xml for why it's split light/dark.
+            // Colorized, not just tinted: per Google's own ProgressStyle reference sample, which
+            // pairs setColor with setColorized(true), not setColor alone. A colorized notification
+            // carries its own background, and the system computes real text contrast against that
+            // colour — it does not depend on Samsung's own light/dark template switching, which is
+            // the thing that was actually broken (a Now Bar dark-mode bug independent of this app;
+            // see the class doc's testing note).
             .setColor(context.getColor(R.color.notification_accent))
+            .setColorized(true)
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
@@ -164,7 +169,9 @@ object Notifications {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
+            // See buildTimer for why colorized, not just a color.
             .setColor(context.getColor(R.color.notification_accent))
+            .setColorized(true)
             .setContentTitle("Stopwatch")
             .setOngoing(true)
             .setSilent(true)
