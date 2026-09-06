@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A real clock face: a white dial, four tick marks, and hour/minute hands posed at 10:10 — the pose
-  practically every analog clock/watch icon and ad photo uses, because symmetrical hands read as a
-  smile rather than obscuring the brand mark centred beneath them.
+  A second pass at the mark, inspired by — deliberately not copying — the direction the Google
+  Clock icon has moved in: a glowing gradient sphere with a single dynamic hand-sweep across it,
+  rather than a literal two-hand dial with tick marks. What's different on purpose, so this reads
+  as its own mark rather than a recolor of theirs:
 
-  The dial sits inside the 66 dp *safe* circle (radius 33, centred on 54,54) rather than the 72 dp
-  visible one the old two-disc mark used: those discs were soft blobs that read fine softly clipped,
-  but hands have a sharp tip, and a tip clipped by an aggressive squircle/circle mask on some
-  launchers reads as a broken icon rather than a stylistic crop.
+    - A radial glow (off-centre highlight, deep rim) instead of their vertical gradient.
+    - One hand drawn as two strokes of a single sweep — a short, heavy dark base and a longer,
+      thin bright tip — rather than their single continuous stroke.
+    - The tip resolves to cyan, not pink/white.
+    - The accent dot sits upper-right, not bottom-centre, and is warm (coral) against the sphere's
+      cool blue rather than another blue.
 
-  Hands and ticks keep the app's own blue-to-periwinkle gradient (#3186FF -> #949DFF) rather than
-  flat black, so the icon still reads as *this* clock app's mark and not a generic system clock.
+  Both the sphere gradient and the hand's own base colour are the app's existing brand blue
+  (#3186FF) and periwinkle (#949DFF) — the same pair used across the rest of the UI — so the icon
+  still reads as *this* app's colour identity, just applied to a more premium composition.
 
-  Rotation lives on a <group>, not the <path> itself — VectorDrawable paths have no rotation/pivot
-  of their own, only groups do, so each hand is a path wrapped in a one-path group.
+  Geometry stays inside the 66 dp safe circle (radius 33, centred 54,54), same reasoning as the
+  first pass: a sharp hand-tip clipped by an aggressive launcher mask reads as broken, not stylised.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -21,31 +25,43 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- The dial. -->
+    <!-- The glowing sphere: radial gradient, highlight offset up-left, deep rim. -->
+    <path android:pathData="M54,54 m-32,0 a32,32 0 1,0 64,0 a32,32 0 1,0 -64,0 Z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="45"
+                android:centerY="43"
+                android:gradientRadius="46"
+                android:tileMode="clamp">
+                <item android:offset="0" android:color="#949DFF" />
+                <item android:offset="0.55" android:color="#3186FF" />
+                <item android:offset="1" android:color="#1B4FBD" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Hand, base half: short, heavy, dark — the "weight" the sweep pivots from. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0 Z" />
+        android:pathData="M38,68 L54,54"
+        android:strokeColor="#0F1F3D"
+        android:strokeWidth="13"
+        android:strokeLineCap="round" />
 
-    <!-- Four ticks at 12/3/6/9, short bars pointing in from the rim. -->
-    <path android:fillColor="#3186FF" android:pathData="M51.4,22.6 L56.6,22.6 L56.6,30.6 L51.4,30.6 Z" />
-    <path android:fillColor="#3186FF" android:pathData="M51.4,77.4 L56.6,77.4 L56.6,85.4 L51.4,85.4 Z" />
-    <path android:fillColor="#3186FF" android:pathData="M22.6,51.4 L30.6,51.4 L30.6,56.6 L22.6,56.6 Z" />
-    <path android:fillColor="#3186FF" android:pathData="M77.4,51.4 L85.4,51.4 L85.4,56.6 L77.4,56.6 Z" />
+    <!-- Hand, sweep half: long, thin, brightening toward the tip. -->
+    <path android:pathData="M54,54 L77,31" android:strokeWidth="8" android:strokeLineCap="round">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="54"
+                android:endX="77" android:endY="31">
+                <item android:offset="0" android:color="#FFFFFF" />
+                <item android:offset="1" android:color="#5EE0D0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Hour hand: drawn pointing straight up, then rotated -60° to land on 10. -->
-    <group android:pivotX="54" android:pivotY="54" android:rotation="-60">
-        <path
-            android:fillColor="#3186FF"
-            android:pathData="M52,54 L52,32 A2,2 0 0,1 56,32 L56,54 Z" />
-    </group>
-
-    <!-- Minute hand: same idea, rotated +60° to land on 2, and longer/thinner than the hour hand. -->
-    <group android:pivotX="54" android:pivotY="54" android:rotation="60">
-        <path
-            android:fillColor="#3186FF"
-            android:pathData="M52.3,54 L52.3,26 A1.7,1.7 0 0,1 55.7,26 L55.7,54 Z" />
-    </group>
-
-    <!-- Centre pin, on top of both hands. -->
-    <path android:fillColor="#3186FF" android:pathData="M54,54 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+    <!-- Accent dot: warm coral against the sphere's cool blue, upper-right rather than under the
+         hand, so it reads as a separate mark and not a shadow. -->
+    <path android:fillColor="#FF8A65" android:pathData="M75,35 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
 </vector>
