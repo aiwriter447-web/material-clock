@@ -1,23 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A second pass at the mark, inspired by — deliberately not copying — the direction the Google
-  Clock icon has moved in: a glowing gradient sphere with a single dynamic hand-sweep across it,
-  rather than a literal two-hand dial with tick marks. What's different on purpose, so this reads
-  as its own mark rather than a recolor of theirs:
+  Third pass, matching the reference supplied directly: two hands meeting at a pink-purple pivot,
+  four tick marks, on transparent (the glow is now ic_launcher_background, not drawn here).
 
-    - A radial glow (off-centre highlight, deep rim) instead of their vertical gradient.
-    - One hand drawn as two strokes of a single sweep — a short, heavy dark base and a longer,
-      thin bright tip — rather than their single continuous stroke.
-    - The tip resolves to cyan, not pink/white.
-    - The accent dot sits upper-right, not bottom-centre, and is warm (coral) against the sphere's
-      cool blue rather than another blue.
+    - Hour hand: short, thick, dark navy, pointing lower-left.
+    - Minute hand: long, thin, white-to-pink gradient, pointing upper-right.
+    - Pivot: its own small radial pink-to-purple gradient circle, drawn last so it sits on top of
+      both hands' bases, matching the reference's glowing-joint look.
+    - Four tick marks at 12/3/6/9, pale lavender, short rounded bars near the rim.
 
-  Both the sphere gradient and the hand's own base colour are the app's existing brand blue
-  (#3186FF) and periwinkle (#949DFF) — the same pair used across the rest of the UI — so the icon
-  still reads as *this* app's colour identity, just applied to a more premium composition.
-
-  Geometry stays inside the 66 dp safe circle (radius 33, centred 54,54), same reasoning as the
-  first pass: a sharp hand-tip clipped by an aggressive launcher mask reads as broken, not stylised.
+  Geometry stays inside the 66 dp safe circle (radius 33, centred 54,54) — same reasoning as both
+  earlier passes: a hand-tip or tick clipped by an aggressive launcher mask reads as broken.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -25,43 +18,44 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- The glowing sphere: radial gradient, highlight offset up-left, deep rim. -->
-    <path android:pathData="M54,54 m-32,0 a32,32 0 1,0 64,0 a32,32 0 1,0 -64,0 Z">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="45"
-                android:centerY="43"
-                android:gradientRadius="46"
-                android:tileMode="clamp">
-                <item android:offset="0" android:color="#949DFF" />
-                <item android:offset="0.55" android:color="#3186FF" />
-                <item android:offset="1" android:color="#1B4FBD" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- Ticks: 12, 6, 3, 9 — short pale-lavender rounded bars just inside the safe rim. -->
+    <path android:fillColor="#E4E8FF" android:pathData="M51.5,23 h5 a2.5,2.5 0 0,1 2.5,2.5 v8 a2.5,2.5 0 0,1 -2.5,2.5 h-5 a2.5,2.5 0 0,1 -2.5,-2.5 v-8 a2.5,2.5 0 0,1 2.5,-2.5 Z" />
+    <path android:fillColor="#E4E8FF" android:pathData="M51.5,72 h5 a2.5,2.5 0 0,1 2.5,2.5 v8 a2.5,2.5 0 0,1 -2.5,2.5 h-5 a2.5,2.5 0 0,1 -2.5,-2.5 v-8 a2.5,2.5 0 0,1 2.5,-2.5 Z" />
+    <path android:fillColor="#E4E8FF" android:pathData="M23,51.5 v5 a2.5,2.5 0 0,0 2.5,2.5 h8 a2.5,2.5 0 0,0 2.5,-2.5 v-5 a2.5,2.5 0 0,0 -2.5,-2.5 h-8 a2.5,2.5 0 0,0 -2.5,2.5 Z" />
+    <path android:fillColor="#E4E8FF" android:pathData="M72,51.5 v5 a2.5,2.5 0 0,0 2.5,2.5 h8 a2.5,2.5 0 0,0 2.5,-2.5 v-5 a2.5,2.5 0 0,0 -2.5,-2.5 h-8 a2.5,2.5 0 0,0 -2.5,2.5 Z" />
 
-    <!-- Hand, base half: short, heavy, dark — the "weight" the sweep pivots from. -->
+    <!-- Hour hand: short, heavy, dark navy — pointing lower-left. -->
     <path
-        android:pathData="M38,68 L54,54"
-        android:strokeColor="#0F1F3D"
-        android:strokeWidth="13"
+        android:pathData="M33,71 L54,54"
+        android:strokeColor="#16213D"
+        android:strokeWidth="15"
         android:strokeLineCap="round" />
 
-    <!-- Hand, sweep half: long, thin, brightening toward the tip. -->
-    <path android:pathData="M54,54 L77,31" android:strokeWidth="8" android:strokeLineCap="round">
+    <!-- Minute hand: long, thin, brightening from white toward a pink tip — pointing upper-right. -->
+    <path android:pathData="M54,54 L85,27" android:strokeWidth="11" android:strokeLineCap="round">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:strokeColor">
             <gradient
                 android:type="linear"
                 android:startX="54" android:startY="54"
-                android:endX="77" android:endY="31">
-                <item android:offset="0" android:color="#FFFFFF" />
-                <item android:offset="1" android:color="#5EE0D0" />
+                android:endX="85" android:endY="27">
+                <item android:offset="0" android:color="#F4B6E6" />
+                <item android:offset="0.35" android:color="#FFFFFF" />
+                <item android:offset="1" android:color="#FFFFFF" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Accent dot: warm coral against the sphere's cool blue, upper-right rather than under the
-         hand, so it reads as a separate mark and not a shadow. -->
-    <path android:fillColor="#FF8A65" android:pathData="M75,35 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
+    <!-- Pivot: drawn last, on top of both hand bases — its own pink-to-purple glow. -->
+    <path android:pathData="M54,54 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="9">
+                <item android:offset="0" android:color="#F0A8E0" />
+                <item android:offset="1" android:color="#7B5FE0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>
