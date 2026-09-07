@@ -177,11 +177,21 @@ object Notifications {
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_STOPWATCH))
-            // See buildTimer for why this is safe pre-36. No ProgressStyle here: a stopwatch has no
-            // total to be a fraction of, so "Standard" style (the compat default) is the one of
-            // the five promotable styles that actually fits an open-ended count.
+            // See buildTimer for why this is safe pre-36. Standard style alone (the compat
+            // default, with no .setStyle call) is a documented promotable style, so this was left
+            // without a ProgressStyle at first — a stopwatch has no total to be a fraction of.
+            // Testing showed otherwise: Timer (which has ProgressStyle) reached the Now Bar and
+            // Stopwatch (identical colorized/promoted flags, no ProgressStyle) did not. So this is
+            // a segment representing the *current minute* rather than the open-ended total — an
+            // indicator that fills and resets every 60 s, not a "percent complete" that doesn't
+            // exist for a stopwatch — purely so the style itself matches Timer's.
             .setRequestPromotedOngoing(true)
             .setShortCriticalText(elapsed.clockFormat(withHours = true))
+            .setStyle(
+                NotificationCompat.ProgressStyle()
+                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(60)))
+                    .setProgress((elapsed.seconds % 60).toInt()),
+            )
             .addAction(
                 0,
                 if (sw.running) "Stop" else "Start",
