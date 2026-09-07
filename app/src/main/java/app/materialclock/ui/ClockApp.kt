@@ -1,7 +1,10 @@
 package app.materialclock.ui
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -13,11 +16,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import app.materialclock.alarm.AlarmScheduler
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -122,6 +127,30 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         var addingCity by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
+        val ctx = LocalContext.current
+
+        // Proactive, not buried: `ExactAlarmPermissionRow` in AlarmSettingsSheet covers the same
+        // ground, but a row inside a sheet inside a gear icon is easy to never see, and this is
+        // the one permission this app cannot silently do without — missing it means alarms fire
+        // without the status-bar glyph and can drift by up to a minute. This nudge is what a
+        // person who never opens Settings still sees on the one tab where it matters.
+        LaunchedEffect(tab) {
+            if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
+                val result = snackbar.showSnackbar(
+                    message = "Alarms need the \"Alarms & reminders\" permission to fire exactly on time",
+                    actionLabel = "Enable",
+                    duration = SnackbarDuration.Long,
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                                .setData(Uri.parse("package:${ctx.packageName}")),
+                        )
+                    }
+                }
+            }
+        }
 
         // Reachability curtain: long-press the dock to pull the whole screen down into thumb
         // range, on demand — the same gesture Samsung's own One UI one-handed mode uses, and
