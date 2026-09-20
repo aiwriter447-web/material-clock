@@ -14,3 +14,4 @@ keystore.properties
 *.jks
 *.p12
 .superpowers/
+app/debug.keystore
