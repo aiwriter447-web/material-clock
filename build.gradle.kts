@@ -1,4 +1,9 @@
-plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.compose) apply false
-}
+org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC
+org.gradle.parallel=false
+org.gradle.caching=true
+org.gradle.configuration-cache=false
+
+android.useAndroidX=true
+android.nonTransitiveRClass=true
+
+kotlin.code.style=official
