@@ -187,9 +187,9 @@ class ClockStore(private val context: Context) {
         )
 
         val SEED_CITIES = listOf(
-            WorldCity(ZoneId.of("America/Los_Angeles"), "San Francisco", "United States"),
-            WorldCity(ZoneId.of("Europe/London"), "London", "United Kingdom"),
-            WorldCity(ZoneId.of("Asia/Tokyo"), "Tokyo", "Japan"),
+            WorldCity(ZoneId.of("America/Los_Angeles"), "San Francisco", "America", "United States"),
+            WorldCity(ZoneId.of("Europe/London"), "London", "Europe", "United Kingdom"),
+            WorldCity(ZoneId.of("Asia/Tokyo"), "Tokyo", "Asia", "Japan"),
         )
     }
 }
@@ -345,7 +345,13 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
 
 private fun encodeCities(list: List<WorldCity>) = JSONArray().apply {
     list.forEach {
-        put(JSONObject().put("zone", it.zone.id).put("city", it.city).put("region", it.region))
+        put(
+            JSONObject()
+                .put("zone", it.zone.id)
+                .put("city", it.city)
+                .put("region", it.region)
+                .put("country", it.country),
+        )
     }
 }.toString()
 
@@ -354,8 +360,16 @@ private fun parseCities(s: String): List<WorldCity> = runCatching {
     (0 until arr.length()).mapNotNull { i ->
         val o = arr.getJSONObject(i)
         // A zone id can vanish between tzdb releases; drop the row rather than the whole list.
-        runCatching { WorldCity(ZoneId.of(o.getString("zone")), o.getString("city"), o.getString("region")) }
-            .getOrNull()
+        // `country` is `optString`, not `getString`: a row saved before this field existed has no
+        // key for it at all, and that is a missing value to fall back on, not a corrupt row to drop.
+        runCatching {
+            WorldCity(
+                ZoneId.of(o.getString("zone")),
+                o.getString("city"),
+                o.getString("region"),
+                o.optString("country", ""),
+            )
+        }.getOrNull()
     }
 }.getOrDefault(emptyList())
 
