@@ -13,6 +13,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - name: Show icon file content
+        run: cat app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
       - name: Build with Gradle
         run: ./gradlew assembleDebug
       - name: Upload APK
@@ -20,4 +22,3 @@ jobs:
         with:
           name: Material-Clock-APK
           path: app/build/outputs/apk/debug/*.apk
-
