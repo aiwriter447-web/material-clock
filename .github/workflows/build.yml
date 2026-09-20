@@ -13,12 +13,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Show icon files
-        run: |
-          echo "--- mipmap-anydpi-v26 folder ---"
-          ls -la app/src/main/res/mipmap-anydpi-v26/ || echo "folder not found"
-          echo "--- searching everywhere for ic_launcher ---"
-          find app/src/main/res -iname "*ic_launcher*"
       - name: Build with Gradle
         run: ./gradlew assembleDebug
       - name: Upload APK
