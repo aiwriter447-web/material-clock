@@ -84,11 +84,20 @@ fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
     }
 }
 
-/** A city on the world clock. [zone] is a real IANA id, so DST is the platform's problem. */
+/**
+ * A city on the world clock. [zone] is a real IANA id, so DST is the platform's problem.
+ *
+ * [region] is the continent — the literal mid-segment of the zone id, no lookup needed — kept
+ * mainly so old rows and [prettify] agree on what a "region" is. [country] is the actual country
+ * name, resolved once via ICU (see [prettify]'s doc for why the zone id alone can't give you
+ * this), and is what search and the row's subtitle should prefer; empty only for the rare zone ICU
+ * can't attribute to one country, which falls back to [region] rather than showing nothing.
+ */
 data class WorldCity(
     val zone: ZoneId,
     val city: String,
     val region: String,
+    val country: String = "",
 ) {
     fun timeAt(nowUtcMillis: Long): ZonedDateTime =
         java.time.Instant.ofEpochMilli(nowUtcMillis).atZone(zone)
