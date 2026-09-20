@@ -67,7 +67,12 @@ fun AddCitySheet(
     val results = remember(query, taken) {
         val q = query.trim().lowercase()
         all.filter { it.zone.id !in taken }
-            .filter { q.isEmpty() || it.city.lowercase().contains(q) || it.region.lowercase().contains(q) }
+            .filter {
+                q.isEmpty() ||
+                    it.city.lowercase().contains(q) ||
+                    it.region.lowercase().contains(q) ||
+                    it.country.lowercase().contains(q)
+            }
             .take(200)
     }
 
@@ -95,7 +100,7 @@ fun AddCitySheet(
                 items(results, key = { it.zone.id }) { city ->
                     ListItem(
                         headlineContent = { Text(city.city) },
-                        supportingContent = { Text(city.region) },
+                        supportingContent = { Text(city.country.ifBlank { city.region }) },
                         trailingContent = {
                             Text(
                                 localTime(city.zone, nowUtcMillis),
@@ -122,6 +127,14 @@ private fun localTime(zone: ZoneId, nowUtcMillis: Long): String =
 /**
  * `Europe/Paris` → city "Paris", region "Europe". Three-segment ids keep the middle as the region,
  * which is the useful half: `America/Argentina/Buenos_Aires` is in Argentina, not in America.
+ *
+ * `region` stays the continent/mid-segment for display — it is the useful half of the zone id
+ * itself, no lookup needed, and matches how the row's subtitle has always read. `country` is a
+ * separate field purely for search: a two-segment id like `America/New_York` carries no country
+ * anywhere in the id, so someone searching "United States" or "Japan" got zero results even though
+ * New York and Tokyo were both in the list the whole time — the id just never said which country
+ * they were in. `android.icu.util.TimeZone.getRegion` is what actually knows: given the zone id it
+ * returns the ISO 3166 country code, which `Locale("", code).displayCountry` turns into a name.
  */
 internal fun prettify(id: String): WorldCity {
     val parts = id.split("/")
@@ -130,5 +143,12 @@ internal fun prettify(id: String): WorldCity {
         3 -> parts[1].replace('_', ' ')
         else -> parts.first().replace('_', ' ')
     }
-    return WorldCity(ZoneId.of(id), city, region)
+    val country = runCatching {
+        val isoCode = android.icu.util.TimeZone.getRegion(id)
+        // getRegion falls back to "001" (UN M49 "World") for zones with no single owning country
+        // (the ocean/Etc zones already filtered out, plus a handful of others) — not a real country,
+        // so it is treated the same as a lookup failure rather than shown as a search term.
+        isoCode.takeIf { it != "001" }?.let { java.util.Locale("", it).displayCountry }
+    }.getOrNull().orEmpty()
+    return WorldCity(ZoneId.of(id), city, region, country)
 }
