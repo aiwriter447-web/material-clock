@@ -13,13 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.materialclock.data.Alarm
+import app.materialclock.data.WeekStart
 import app.materialclock.util.TimeUtils
-import java.time.DayOfWeek
 
 @Composable
 fun AlarmsScreen(
     alarms: List<Alarm>,
-    weekStart: DayOfWeek = DayOfWeek.MONDAY,
+    weekStart: WeekStart = WeekStart.MONDAY,
     onToggle: (Alarm) -> Unit,
     onEdit: (Alarm) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp),
