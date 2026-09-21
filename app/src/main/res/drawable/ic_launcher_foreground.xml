@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+ <vector xmlns:android="http://schemas.android.com/apk/res/android"
+     android:width="108dp"
+     android:height="108dp"
+     android:viewportWidth="108"
+     android:viewportHeight="108">
+
+     <!-- White Dial -->
+     <path
+         android:fillColor="#FFFFFF"
+         android:pathData="M54,54m-33,0a33,33 0 1,1 66,0a33,33 0 1,1 -66,0" />
+
+     <!-- Pink Needle (Vertical Pink Hand) -->
+     <path
+         android:strokeColor="#F4A4C8"
+         android:strokeWidth="6"
+         android:strokeLineCap="round"
+         android:pathData="M54,32 L54,54" />
+
+     <!-- Dark Blue Needle (Diagonal Blue Hand) -->
+     <path
+         android:strokeColor="#1B2350"
+         android:strokeWidth="6"
+         android:strokeLineCap="round"
+         android:pathData="M54,54 L72,72" />
+ </vector>
