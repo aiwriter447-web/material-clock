@@ -1,6 +1,10 @@
 package app.materialclock.util
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -16,10 +20,10 @@ object TimeUtils {
 
 @Composable
 fun rememberWallTicker(): State<Long> {
-    val millis = remember { mutableStateOf(System.currentTimeMillis()) }
+    val millis = remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
-            millis.value = System.currentTimeMillis()
+            millis.longValue = System.currentTimeMillis()
             delay(1000)
         }
     }
@@ -27,11 +31,11 @@ fun rememberWallTicker(): State<Long> {
 }
 
 @Composable
-fun rememberElapsedTicker(isRunning: Boolean): State<Long> {
-    val millis = remember { mutableStateOf(System.currentTimeMillis()) }
+fun rememberElapsedTicker(isRunning: Boolean = true): State<Long> {
+    val millis = remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(isRunning) {
         while (isRunning) {
-            millis.value = System.currentTimeMillis()
+            millis.longValue = System.currentTimeMillis()
             delay(10)
         }
     }
