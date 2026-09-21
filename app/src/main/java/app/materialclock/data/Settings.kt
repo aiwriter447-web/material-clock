@@ -31,17 +31,33 @@ data class AlarmSettings(
     val defaultSoundUri: String? = null,
     /** 0f (silent) to 1f (full alarm-stream volume). Applied to every ringing alarm and timer. */
     val volume: Float = 1f,
+    /**
+     * Whether the hardware volume keys adjust the ringing alarm's own volume live while it rings.
+     * Off leaves them doing nothing special, which is the plain system default.
+     */
+    val volumeButtonsControlVolume: Boolean = true,
+    /** How a ringing alarm's own controls are worked: [DismissMethod]. */
+    val dismissMethod: DismissMethod = DismissMethod.TAP,
 )
+
+enum class DismissMethod(val label: String) {
+    TAP("Tap"),
+    SWIPE("Swipe"),
+}
 
 data class WorldClockSettings(
     val showSeconds: Boolean = false,
     val hourFormat: HourFormat = HourFormat.SYSTEM,
+    /** An IANA zone id, or null to follow the device's own time zone automatically. */
+    val homeZoneOverride: String? = null,
 )
 
 data class TimerSettings(
     /** A `content://` ringtone URI, or null for the system default alarm sound. */
     val soundUri: String? = null,
     val vibrate: Boolean = true,
+    /** Starts near-silent and ramps up to the set alarm volume over the first ~20 seconds. */
+    val gradualVolume: Boolean = false,
 )
 
 data class ThemeSettings(
