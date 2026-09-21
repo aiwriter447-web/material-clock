@@ -1,20 +1,19 @@
 package app.materialclock.data
 
 import java.time.DayOfWeek
-import java.util.UUID
 
 data class Alarm(
-    val id: String = UUID.randomUUID().toString(),
+    val id: Long = 0L,
     val hour: Int = 7,
     val minute: Int = 0,
     val isEnabled: Boolean = true,
     val days: Set<DayOfWeek> = emptySet(),
-    val label: String = "Alarm",
+    val label: String = "",
     val category: String = "Routine"
 ) {
     companion object {
-        val blankAlarm = Alarm(
-            id = "",
+        fun blankAlarm() = Alarm(
+            id = 0L,
             hour = 8,
             minute = 0,
             isEnabled = true,
