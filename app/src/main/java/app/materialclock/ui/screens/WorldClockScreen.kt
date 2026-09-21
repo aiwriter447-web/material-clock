@@ -336,10 +336,10 @@ private fun CityRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "${city.country.ifBlank { city.region }} · ${city.offsetLabel(home, nowUtcMillis)} · ${city.utcCode(nowUtcMillis)}",
+                    "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} | ${city.utcCode(nowUtcMillis)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
