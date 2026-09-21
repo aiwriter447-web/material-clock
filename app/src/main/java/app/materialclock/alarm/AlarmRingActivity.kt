@@ -15,10 +15,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -121,6 +123,24 @@ class AlarmRingActivity : ComponentActivity() {
     }
 }
 
+/**
+ * The ringing face itself.
+ *
+ * ## Live time, not a snapshot
+ *
+ * [rememberWallTicker] is what makes the clock on this screen actually tick — a `LocalTime.now()`
+ * read once at composition would freeze the instant the alarm fired, which is wrong for anyone who
+ * takes more than a few seconds to reach for Snooze.
+ *
+ * ## Portrait vs. landscape
+ *
+ * [androidx.compose.foundation.layout.BoxWithConstraints] decides the split by comparing the
+ * available width and height rather than reading device orientation directly, so a foldable or a
+ * split-screen window gets the layout that actually fits it. Portrait keeps everything stacked and
+ * centred, the way a phone held up to a groggy face wants. Landscape — nightstand orientation —
+ * puts the time on the left where a half-open eye lands first, and the two actions in a stack on
+ * the right, sized for a thumb rather than a full swipe across the width of the screen.
+ */
 @androidx.compose.runtime.Composable
 private fun Ringing(
     label: String,
@@ -128,8 +148,33 @@ private fun Ringing(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val now by rememberWallTicker()
-    val time = LocalTime.now()
+    val nowMillis by rememberWallTicker()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Matches the format the alarm's own edit sheet already keys off, so what you set is what
+    // rings: system default, unless the device itself is in 24-hour mode.
+    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+    val time = remember(nowMillis) {
+        java.time.Instant.ofEpochMilli(nowMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+    }
+
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (maxWidth > maxHeight) {
+            RingingLandscape(label, time, is24Hour, snoozeMinutes, onSnooze, onDismiss)
+        } else {
+            RingingPortrait(label, time, is24Hour, snoozeMinutes, onSnooze, onDismiss)
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun RingingPortrait(
+    label: String,
+    time: LocalTime,
+    is24Hour: Boolean,
+    snoozeMinutes: Int,
+    onSnooze: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -141,18 +186,7 @@ private fun Ringing(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(28.dp))
-        // The same ultra-condensed face the grid uses, at the size a room-across glance needs.
-        Numerals(
-            text = "%02d:%02d".format(
-                (time.hour % 12).takeIf { it != 0 } ?: 12,
-                time.minute,
-            ),
-            capHeight = 132.dp,
-            color = MaterialTheme.colorScheme.primary,
-            width = app.materialclock.ui.theme.ClockFace.CONDENSED,
-            weight = app.materialclock.ui.theme.ClockFace.WEIGHT_ON,
-            tracking = app.materialclock.ui.theme.ClockFace.CONDENSED_TRACKING,
-        )
+        RingTime(time, is24Hour, capHeight = 132.dp)
         Spacer(Modifier.height(56.dp))
         WidePill(
             text = "Dismiss",
@@ -171,5 +205,84 @@ private fun Ringing(
             height = 72.dp,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun RingingLandscape(
+    label: String,
+    time: LocalTime,
+    is24Hour: Boolean,
+    snoozeMinutes: Int,
+    onSnooze: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                label.ifBlank { "Alarm" },
+                style = MaterialTheme.typography.headlineSmallEmphasized,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            RingTime(time, is24Hour, capHeight = 88.dp)
+        }
+        Spacer(Modifier.width(24.dp))
+        Column(
+            modifier = Modifier.weight(0.62f),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            WidePill(
+                text = "Dismiss",
+                onClick = onDismiss,
+                container = MaterialTheme.colorScheme.tertiaryContainer,
+                content = MaterialTheme.colorScheme.onTertiaryContainer,
+                height = 76.dp,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            WidePill(
+                text = "Snooze $snoozeMinutes min",
+                onClick = onSnooze,
+                outlined = true,
+                content = MaterialTheme.colorScheme.onSurface,
+                height = 60.dp,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** The ultra-condensed clock face the grid uses, plus an AM/PM tag when not in 24-hour mode. */
+@androidx.compose.runtime.Composable
+private fun RingTime(
+    time: LocalTime,
+    is24Hour: Boolean,
+    capHeight: androidx.compose.ui.unit.Dp,
+) {
+    val hour = if (is24Hour) time.hour else ((time.hour % 12).takeIf { it != 0 } ?: 12)
+    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.Bottom) {
+        Numerals(
+            text = "%02d:%02d".format(hour, time.minute),
+            capHeight = capHeight,
+            color = MaterialTheme.colorScheme.primary,
+            width = app.materialclock.ui.theme.ClockFace.CONDENSED,
+            weight = app.materialclock.ui.theme.ClockFace.WEIGHT_ON,
+            tracking = app.materialclock.ui.theme.ClockFace.CONDENSED_TRACKING,
+        )
+        if (!is24Hour) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (time.hour < 12) "AM" else "PM",
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = capHeight * 0.14f),
+            )
+        }
     }
 }
