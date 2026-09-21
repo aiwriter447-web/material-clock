@@ -1,26 +1,27 @@
+
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    
-    <!-- Solid White Clock Face -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0" />
+android:width="108dp"
+android:height="108dp"
+android:viewportWidth="108"
+android:viewportHeight="108">
 
-    <!-- Top Pink Hand -->
-    <path
-        android:pathData="M54,54 L54,32"
-        android:strokeColor="#F4B8D5"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
+<!-- Solid White Clock Face (Rescaled to fill safe area) -->
+<path
+android:fillColor="#FFFFFF"
+android:pathData="M54,54m-34,0a34,34 0 1,0 68,0a34,34 0 1,0 -68,0" />
 
-    <!-- Bottom Dark Blue Hand -->
-    <path
-        android:pathData="M54,54 L69,69"
-        android:strokeColor="#161D3B"
-        android:strokeWidth="7"
-        android:strokeLineCap="round" />
+<!-- Top Pink Hand -->
+<path
+android:pathData="M54,54 L54,26"
+android:strokeColor="#F4B8D5"
+android:strokeWidth="8"
+android:strokeLineCap="round" />
+
+<!-- Bottom-Right Dark Blue Hand -->
+<path
+android:pathData="M54,54 L73,73"
+android:strokeColor="#161D3B"
+android:strokeWidth="8"
+android:strokeLineCap="round" />
 </vector>
