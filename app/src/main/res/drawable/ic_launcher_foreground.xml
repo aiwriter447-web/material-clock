@@ -5,22 +5,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Solid White Clock Face (Rescaled to fill safe area) -->
+    <!-- Solid White Clock Face (Resized for original padding) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-34,0a34,34 0 1,0 68,0a34,34 0 1,0 -68,0" />
+        android:pathData="M54,54m-25,0a25,25 0 1,0 50,0a25,25 0 1,0 -50,0" />
 
     <!-- Top Pink Hand -->
     <path
-        android:pathData="M54,54 L54,26"
+        android:pathData="M54,54 L54,34"
         android:strokeColor="#F4B8D5"
-        android:strokeWidth="8"
+        android:strokeWidth="7"
         android:strokeLineCap="round" />
 
     <!-- Bottom-Right Dark Blue Hand -->
     <path
-        android:pathData="M54,54 L73,73"
+        android:pathData="M54,54 L67,67"
         android:strokeColor="#161D3B"
-        android:strokeWidth="8"
+        android:strokeWidth="7"
         android:strokeLineCap="round" />
 </vector>
