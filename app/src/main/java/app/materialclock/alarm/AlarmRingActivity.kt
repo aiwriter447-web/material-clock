@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.materialclock.data.ClockStore
 import app.materialclock.ui.rememberWallTicker
+import app.materialclock.ui.rememberElapsedTicker
 import app.materialclock.ui.screens.WidePill
 import app.materialclock.ui.theme.ClockTheme
 import app.materialclock.ui.theme.Numerals
@@ -35,24 +37,6 @@ import app.materialclock.data.ClockSettings
 import kotlinx.coroutines.flow.map
 import java.time.LocalTime
 
-/**
- * The screen a ringing alarm puts in front of you.
- *
- * ## Getting onto a locked phone
- *
- * `setShowWhenLocked` and `setTurnScreenOn` are the modern replacements for the deprecated window
- * flags, and they are the reason this appears over the keyguard with the display off. They are set
- * before `setContent` because the window attributes have to be right before the first frame, and
- * `requestDismissKeyguard` is what lets an insecure lock screen fall away so the buttons are
- * reachable without unlocking. A secure lock screen correctly stays up, because dismissing an
- * alarm is allowed and walking into someone's phone is not.
- *
- * ## No back button
- *
- * Backing out of a ringing alarm would leave it ringing with no way to reach the controls except
- * the shade. The only exits are Snooze and Dismiss, which is the same contract every alarm clock
- * has had since they had a bell on top.
- */
 class AlarmRingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,24 +107,6 @@ class AlarmRingActivity : ComponentActivity() {
     }
 }
 
-/**
- * The ringing face itself.
- *
- * ## Live time, not a snapshot
- *
- * [rememberWallTicker] is what makes the clock on this screen actually tick — a `LocalTime.now()`
- * read once at composition would freeze the instant the alarm fired, which is wrong for anyone who
- * takes more than a few seconds to reach for Snooze.
- *
- * ## Portrait vs. landscape
- *
- * [androidx.compose.foundation.layout.BoxWithConstraints] decides the split by comparing the
- * available width and height rather than reading device orientation directly, so a foldable or a
- * split-screen window gets the layout that actually fits it. Portrait keeps everything stacked and
- * centred, the way a phone held up to a groggy face wants. Landscape — nightstand orientation —
- * puts the time on the left where a half-open eye lands first, and the two actions in a stack on
- * the right, sized for a thumb rather than a full swipe across the width of the screen.
- */
 @androidx.compose.runtime.Composable
 private fun Ringing(
     label: String,
@@ -150,8 +116,6 @@ private fun Ringing(
 ) {
     val nowMillis by rememberWallTicker()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // Matches the format the alarm's own edit sheet already keys off, so what you set is what
-    // rings: system default, unless the device itself is in 24-hour mode.
     val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
     val time = remember(nowMillis) {
         java.time.Instant.ofEpochMilli(nowMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
@@ -258,7 +222,6 @@ private fun RingingLandscape(
     }
 }
 
-/** The ultra-condensed clock face the grid uses, plus an AM/PM tag when not in 24-hour mode. */
 @androidx.compose.runtime.Composable
 private fun RingTime(
     time: LocalTime,
