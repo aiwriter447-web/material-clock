@@ -12,7 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.materialclock.data.Alarm
+import app.materialclock.core.Alarm
 import app.materialclock.data.WeekStart
 import app.materialclock.util.TimeUtils
 
@@ -56,9 +56,9 @@ fun AlarmsScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Switch(
                                     checked = isGroupOn,
-                                    onCheckedChange = { enabled ->
+                                    onCheckedChange = { _ ->
                                         alarmList.forEach { alarm ->
-                                            if (alarm.isEnabled != enabled) onToggle(alarm)
+                                            onToggle(alarm)
                                         }
                                     }
                                 )
