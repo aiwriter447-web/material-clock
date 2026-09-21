@@ -1,4 +1,4 @@
-package app.materialclock.data
+package app.materialclock.core
 
 import java.time.DayOfWeek
 
