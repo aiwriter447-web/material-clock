@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
- <vector xmlns:android="http://schemas.android.com/apk/res/android"
-     android:width="108dp"
-     android:height="108dp"
-     android:viewportWidth="108"
-     android:viewportHeight="108">
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+android:width="108dp"
+android:height="108dp"
+android:viewportWidth="108"
+android:viewportHeight="108">
 
-     <!-- White Dial -->
-     <path
-         android:fillColor="#FFFFFF"
-         android:pathData="M54,54m-33,0a33,33 0 1,1 66,0a33,33 0 1,1 -66,0" />
+<!-- White Clock Face -->
+<path
+android:fillColor="#FFFFFF"
+android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0" />
 
-     <!-- Pink Needle (Vertical Pink Hand) -->
-     <path
-         android:strokeColor="#F4A4C8"
-         android:strokeWidth="6"
-         android:strokeLineCap="round"
-         android:pathData="M54,32 L54,54" />
+<!-- Top Pink Hand (12 o'clock) -->
+<path
+android:pathData="M54,54 L54,34"
+android:strokeColor="#F4B8D5"
+android:strokeWidth="6"
+android:strokeLineCap="round" />
 
-     <!-- Dark Blue Needle (Diagonal Blue Hand) -->
-     <path
-         android:strokeColor="#1B2350"
-         android:strokeWidth="6"
-         android:strokeLineCap="round"
-         android:pathData="M54,54 L72,72" />
- </vector>
+<!-- Bottom Dark Blue Hand (4 o'clock direction) -->
+<path
+android:pathData="M54,52 L66,64"
+android:strokeColor="#161D3B"
+android:strokeWidth="6"
+android:strokeLineCap="round" />
+</vector>
