@@ -9,7 +9,10 @@ data class Alarm(
     val isEnabled: Boolean = true,
     val days: Set<DayOfWeek> = emptySet(),
     val label: String = "",
-    val category: String = "Routine"
+    val category: String = "Routine",
+    val soundUri: String? = null,
+    val vibrate: Boolean = true,
+    val snoozedUntilEpochMillis: Long? = null
 ) {
     companion object {
         fun blankAlarm() = Alarm(
