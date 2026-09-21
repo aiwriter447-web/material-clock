@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-android:width="108dp"
-android:height="108dp"
-android:viewportWidth="108"
-android:viewportHeight="108">
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
 
-<!-- Solid Disk with Cutout Clock Needles for Material You Theme -->
-<path
-android:fillColor="#000000"
-android:fillType="evenOdd"
-android:pathData="
-M 54,20
-A 34,34 0 1,0 54,88
-A 34,34 0 1,0 54,20 Z
-M 50,54 L 50,26 A 4,4 0 0,1 58,26 L 58,54 A 4,4 0 0,1 50,54 Z
-M 51.17,56.83 L 69.17,74.83 A 4,4 0 0,1 74.83,69.17 L 56.83,51.17 A 4,4 0 0,1 51.17,56.83 Z" />
+    <!-- Solid Disk with Cutout Clock Needles for Material You Theme -->
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="
+            M 54,20 
+            A 34,34 0 1,0 54,88 
+            A 34,34 0 1,0 54,20 Z
+            M 50,54 L 50,26 A 4,4 0 0,1 58,26 L 58,54 A 4,4 0 0,1 50,54 Z
+            M 51.17,56.83 L 69.17,74.83 A 4,4 0 0,1 74.83,69.17 L 56.83,51.17 A 4,4 0 0,1 51.17,56.83 Z" />
 </vector>
