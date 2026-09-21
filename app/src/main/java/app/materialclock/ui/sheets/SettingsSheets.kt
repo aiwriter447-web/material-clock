@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.DarkMode
+import app.materialclock.data.DismissMethod
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WeekStart
 import app.materialclock.ui.theme.Palette
@@ -71,6 +72,7 @@ fun AlarmSettingsSheet(
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 32.dp)) {
             SheetTitle("Alarm settings")
 
+            SectionLabel("Ringing")
             ChoiceRow(
                 title = "Silence after",
                 value = settings.alarms.silenceAfterMinutes,
@@ -96,9 +98,28 @@ fun AlarmSettingsSheet(
                 volume = settings.alarms.volume,
                 onChange = { v -> onChange { it.copy(alarms = it.alarms.copy(volume = v)) } },
             )
+            SwitchRow(
+                title = "Volume buttons during alarm",
+                subtitle = "Control volume",
+                checked = settings.alarms.volumeButtonsControlVolume,
+                onChange = { v ->
+                    onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
+                },
+            )
+            ChoiceRow(
+                title = "Dismiss alarm with",
+                value = settings.alarms.dismissMethod,
+                options = DismissMethod.entries,
+                label = { it.label },
+                onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
+            )
+
+            SectionLabel("Permissions")
             NotificationPermissionRow()
             ExactAlarmPermissionRow()
             FullScreenIntentRow()
+
+            SectionLabel("Schedule")
             ChoiceRow(
                 title = "Start week on",
                 value = settings.alarms.weekStart,
@@ -188,6 +209,21 @@ private fun NotificationPermissionRow() {
                     Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
                 )
+            }
+        },
+    )
+}
+
+/** Opens the system's own Date & time settings — this app has no clock to set, only ones to read. */
+@Composable
+private fun ChangeDateTimeRow() {
+    val context = LocalContext.current
+    NavigateRow(
+        title = "Change date & time",
+        subtitle = "Opens your device's date & time settings",
+        onClick = {
+            runCatching {
+                context.startActivity(Intent(android.provider.Settings.ACTION_DATE_SETTINGS))
             }
         },
     )
@@ -438,12 +474,26 @@ fun WorldSettingsSheet(
     onChange: ((ClockSettings) -> ClockSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Reusing AddCitySheet's own search rather than building a second one: a home zone is picked
+    // from the exact same six-hundred-entry `ZoneId` list a world city is, so it would be the same
+    // sheet with a different button label if it were rebuilt here.
+    var pickingHome by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val now by app.materialclock.ui.rememberWallTicker()
+    val homeCityName = remember(settings.world.homeZoneOverride) {
+        settings.world.homeZoneOverride?.let { id ->
+            runCatching { java.time.ZoneId.of(id) }.getOrNull()?.let { zone ->
+                zone.id.substringAfterLast('/').replace('_', ' ')
+            }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(Modifier.padding(bottom = 32.dp)) {
             SheetTitle("World clock settings")
+            SectionLabel("Display")
             SwitchRow(
                 title = "Display time with seconds",
                 checked = settings.world.showSeconds,
@@ -456,7 +506,46 @@ fun WorldSettingsSheet(
                 label = { it.label },
                 onSelect = { v -> onChange { it.copy(world = it.world.copy(hourFormat = v)) } },
             )
+
+            SectionLabel("Home clock")
+            SwitchRow(
+                title = "Automatic home clock",
+                subtitle = "While travelling in an area where the time is different, " +
+                    "add a clock for home",
+                // Automatic *is* "no override" — see the same call in ClockApp's WORLD tab. Two
+                // fields that could disagree (an "automatic" flag plus a zone) is how a home clock
+                // ends up stuck on a city nobody asked for; one nullable field can't do that.
+                checked = settings.world.homeZoneOverride == null,
+                onChange = { v ->
+                    if (v) {
+                        onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
+                    } else {
+                        pickingHome = true
+                    }
+                },
+            )
+            if (settings.world.homeZoneOverride != null) {
+                NavigateRow(
+                    title = "Home time zone",
+                    subtitle = homeCityName ?: "Not set",
+                    onClick = { pickingHome = true },
+                )
+            }
+
+            SectionLabel("Date & time")
+            ChangeDateTimeRow()
         }
+    }
+
+    if (pickingHome) {
+        AddCitySheet(
+            existing = emptyList(),
+            nowUtcMillis = now,
+            onAdd = { city ->
+                onChange { it.copy(world = it.world.copy(homeZoneOverride = city.zone.id)) }
+            },
+            onDismiss = { pickingHome = false },
+        )
     }
 }
 
@@ -511,6 +600,12 @@ fun TimerSettingsSheet(
                 title = "Timer vibrate",
                 checked = settings.timers.vibrate,
                 onChange = { v -> onChange { it.copy(timers = it.timers.copy(vibrate = v)) } },
+            )
+            SwitchRow(
+                title = "Gradually increase volume",
+                subtitle = "Starts quiet and builds up over the first 20 seconds",
+                checked = settings.timers.gradualVolume,
+                onChange = { v -> onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) } },
             )
         }
     }
