@@ -32,6 +32,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,16 +49,9 @@ import app.materialclock.data.WeekStart
 import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.ClockWidgetProvider
 import app.materialclock.widget.WidgetEntryPoints
+import app.materialclock.ui.rememberWallTicker
+import app.materialclock.ui.rememberElapsedTicker
 
-/**
- * One sheet per tab, opened from that tab's own gear icon.
- *
- * Each tab shows only the four or so preferences that are actually its own; there is still no
- * single all-in-one settings screen, because a flat list would bury a snooze length beside a
- * palette swatch with no relation between them. The gear used to be an unmarked tap on the title
- * instead — better restraint on paper, worse in practice: nobody found it. The title still
- * responds to a tap for muscle memory, but the icon is the one that is actually discoverable.
- */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSettingsSheet(
@@ -75,9 +70,6 @@ fun AlarmSettingsSheet(
             ChoiceRow(
                 title = "Silence after",
                 value = settings.alarms.silenceAfterMinutes,
-                // 0 is "Never" (it rings until it is dismissed). Worth offering and worth putting
-                // last rather than first: it is the answer for someone the default fails, not the
-                // one to fall into by scrolling.
                 options = listOf(1, 5, 10, 15, 20, 25, 30, 0),
                 label = ::minutesLabel,
                 onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) } },
@@ -131,13 +123,6 @@ fun AlarmSettingsSheet(
     }
 }
 
-/**
- * The sound every alarm rings with until it has one of its own.
- *
- * Same system ringtone picker [AlarmEditSheet] uses per-alarm, because it is the one picker on the
- * phone that already knows how to browse, preview and return a `content://` URI — building a
- * second one here would be a worse copy of what Android ships.
- */
 @Composable
 private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
     val context = LocalContext.current
@@ -181,7 +166,6 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
     )
 }
 
-/** Every ringing alarm and timer plays at this fraction of the alarm stream's own volume. */
 @Composable
 private fun VolumeRow(volume: Float, onChange: (Float) -> Unit) {
     Column(Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) {
@@ -190,10 +174,6 @@ private fun VolumeRow(volume: Float, onChange: (Float) -> Unit) {
     }
 }
 
-/**
- * Notifications, requested once at launch (see [app.materialclock.ui.ClockApp]) and easy to deny
- * without noticing. This is the way back for someone who did.
- */
 @Composable
 private fun NotificationPermissionRow() {
     val context = LocalContext.current
@@ -213,7 +193,6 @@ private fun NotificationPermissionRow() {
     )
 }
 
-/** Opens the system's own Date & time settings — this app has no clock to set, only ones to read. */
 @Composable
 private fun ChangeDateTimeRow() {
     val context = LocalContext.current
@@ -228,10 +207,6 @@ private fun ChangeDateTimeRow() {
     )
 }
 
-/**
- * `SCHEDULE_EXACT_ALARM` only ever needs asking for on API 31–32; see
- * [app.materialclock.alarm.AlarmScheduler]'s own doc for why every other version needs nothing.
- */
 @Composable
 private fun ExactAlarmPermissionRow() {
     val context = LocalContext.current
@@ -250,14 +225,6 @@ private fun ExactAlarmPermissionRow() {
     )
 }
 
-/**
- * Add a clock widget, and edit any already placed.
- *
- * This exists because `widgetFeatures="reconfigurable"` is explicitly only a *hint* to the host.
- * Several launchers have never offered a reconfigure affordance, and on those a placed widget would
- * otherwise be uneditable forever. Listing the live ids from `AppWidgetManager` means the app can
- * always get back to one.
- */
 @Composable
 private fun WidgetRows() {
     val context = LocalContext.current
@@ -276,26 +243,11 @@ private fun WidgetRows() {
     }
 }
 
-/**
- * Offers the full-screen-intent grant, and only when it is missing.
- *
- * From Android 14 `USE_FULL_SCREEN_INTENT` is no longer install-granted to anything but calling
- * apps; for everyone else the declared permission is downgraded to a heads-up banner, which is
- * how a ringing alarm ends up as a notification you have to find rather than a screen you cannot
- * miss. `canUseFullScreenIntent()` is the documented way to ask, and
- * `ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT` the documented way to send the user to grant it.
- *
- * It is a row rather than a launch-time dialog on purpose: the app is perfectly usable without it,
- * and prompting for a special permission before the user has set a single alarm is how permission
- * prompts get dismissed reflexively.
- */
 @Composable
 private fun FullScreenIntentRow() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
     val context = LocalContext.current
     val nm = context.getSystemService(android.app.NotificationManager::class.java)
-    // Re-read on every recomposition rather than remembering: the user grants this in Settings and
-    // comes back, and a cached value would still say "not allowed" on their return.
     if (nm?.canUseFullScreenIntent() != false) return
     NavigateRow(
         title = "Full-screen alarms",
@@ -311,14 +263,6 @@ private fun FullScreenIntentRow() {
     )
 }
 
-/**
- * The palette picker: a swatch per scheme, showing the three accents it actually produces.
- *
- * A single dot would be a lie here: the Expressive variant's whole point is that secondary and
- * tertiary rotate away from the seed, so two palettes with similar primaries can be completely
- * different to use. The swatch is a three-stop gradient of primary, tertiary and secondary for
- * that reason.
- */
 @Composable
 private fun PaletteRow(
     dynamic: Boolean,
@@ -403,14 +347,6 @@ private fun Swatch(
     }
 }
 
-/**
- * Appearance and widgets, on the Stopwatch tab.
- *
- * They are app-wide rather than stopwatch-specific, and they used to hang off the alarm sheet
- * purely because that was the first sheet to exist. That made the longest settings screen in the
- * app the one for the feature with the most settings of its own. Stopwatch had none at all, so the
- * two shared concerns live here and each sheet is now about one thing.
- */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun StopwatchSettingsSheet(
@@ -444,10 +380,6 @@ fun StopwatchSettingsSheet(
                 onChange = { v -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
             )
 
-            // Always on show, with the wallpaper as the first swatch rather than as a switch
-            // somewhere above them. Hiding the palettes behind "wallpaper colours: off" meant that
-            // on a fresh install, where wallpaper colour is the default, the theme picker looked
-            // like it did not exist.
             PaletteRow(
                 dynamic = settings.theme.dynamicColor,
                 selected = settings.theme.palette,
@@ -473,9 +405,6 @@ fun WorldSettingsSheet(
     onChange: ((ClockSettings) -> ClockSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Reusing AddCitySheet's own search rather than building a second one: a home zone is picked
-    // from the exact same six-hundred-entry `ZoneId` list a world city is, so it would be the same
-    // sheet with a different button label if it were rebuilt here.
     var pickingHome by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val now by app.materialclock.ui.rememberWallTicker()
     val homeCityName = remember(settings.world.homeZoneOverride) {
@@ -511,9 +440,6 @@ fun WorldSettingsSheet(
                 title = "Automatic home clock",
                 subtitle = "While travelling in an area where the time is different, " +
                     "add a clock for home",
-                // Automatic *is* "no override" — see the same call in ClockApp's WORLD tab. Two
-                // fields that could disagree (an "automatic" flag plus a zone) is how a home clock
-                // ends up stuck on a city nobody asked for; one nullable field can't do that.
                 checked = settings.world.homeZoneOverride == null,
                 onChange = { v ->
                     if (v) {
@@ -610,7 +536,6 @@ fun TimerSettingsSheet(
     }
 }
 
-/** 0 is never, 1 is singular. Both of these read wrong the moment they are not special-cased. */
 private fun minutesLabel(minutes: Int): String = when (minutes) {
     0 -> "Never"
     1 -> "1 minute"
