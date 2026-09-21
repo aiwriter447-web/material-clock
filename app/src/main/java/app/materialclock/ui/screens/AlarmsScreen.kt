@@ -13,109 +13,76 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.materialclock.data.Alarm
-import app.materialclock.ui.ClockViewModel
 import app.materialclock.util.TimeUtils
+import java.time.DayOfWeek
 
 @Composable
 fun AlarmsScreen(
-    viewModel: ClockViewModel
+    alarms: List<Alarm>,
+    weekStart: DayOfWeek = DayOfWeek.MONDAY,
+    onToggle: (Alarm) -> Unit,
+    onEdit: (Alarm) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    is24Hour: Boolean = false
 ) {
-    val alarms by viewModel.alarms.collectAsState()
-    val is24Hour by viewModel.is24HourFormat.collectAsState()
     val groupedAlarms = alarms.groupBy { it.category }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "24-Hour Format",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Switch(
-                checked = is24Hour,
-                onCheckedChange = { viewModel.toggleTimeFormat() }
-            )
-        }
+        groupedAlarms.forEach { (category, alarmList) ->
+            item(key = category) {
+                var isExpanded by remember { mutableStateOf(true) }
+                val isGroupOn = alarmList.any { it.isEnabled }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            groupedAlarms.forEach { (category, alarmList) ->
-                item(key = category) {
-                    AlarmGroupHeader(
-                        category = category,
-                        alarmList = alarmList,
-                        onGroupToggle = { enabled ->
-                            viewModel.toggleAlarmGroup(category, enabled)
-                        },
-                        is24Hour = is24Hour,
-                        onAlarmToggle = { alarmId ->
-                            viewModel.toggleAlarm(alarmId)
+                Column(modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp)) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isExpanded = !isExpanded }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = category,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(
+                                    checked = isGroupOn,
+                                    onCheckedChange = { enabled ->
+                                        alarmList.forEach { alarm ->
+                                            if (alarm.isEnabled != enabled) onToggle(alarm)
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null
+                                )
+                            }
                         }
-                    )
-                }
-            }
-        }
-    }
-}
+                    }
 
-@Composable
-fun AlarmGroupHeader(
-    category: String,
-    alarmList: List<Alarm>,
-    onGroupToggle: (Boolean) -> Unit,
-    is24Hour: Boolean,
-    onAlarmToggle: (String) -> Unit
-) {
-    var isExpanded by remember { mutableStateOf(true) }
-    val isGroupOn = alarmList.any { it.isEnabled }
-
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = category,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = isGroupOn,
-                        onCheckedChange = onGroupToggle
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand"
-                    )
-                }
-            }
-        }
-
-        AnimatedVisibility(visible = isExpanded) {
-            Column {
-                alarmList.forEach { alarm ->
-                    AlarmItemCard(
-                        alarm = alarm,
-                        is24Hour = is24Hour,
-                        onToggle = { onAlarmToggle(alarm.id) }
-                    )
+                    AnimatedVisibility(visible = isExpanded) {
+                        Column {
+                            alarmList.forEach { alarm ->
+                                AlarmItemCard(
+                                    alarm = alarm,
+                                    is24Hour = is24Hour,
+                                    onToggle = { onToggle(alarm) },
+                                    onClick = { onEdit(alarm) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -126,12 +93,14 @@ fun AlarmGroupHeader(
 fun AlarmItemCard(
     alarm: Alarm,
     is24Hour: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
