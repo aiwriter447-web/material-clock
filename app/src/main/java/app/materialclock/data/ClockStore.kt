@@ -203,14 +203,18 @@ private fun Preferences.toSettings() = ClockSettings(
         weekStart = enumOr(this[stringPreferencesKey("weekStart")], WeekStart.SYSTEM),
         defaultSoundUri = this[stringPreferencesKey("alarmSound")],
         volume = this[floatPreferencesKey("alarmVolume")] ?: 1f,
+        volumeButtonsControlVolume = this[booleanPreferencesKey("volumeButtonsControlVolume")] ?: true,
+        dismissMethod = enumOr(this[stringPreferencesKey("dismissMethod")], DismissMethod.TAP),
     ),
     world = WorldClockSettings(
         showSeconds = this[booleanPreferencesKey("showSeconds")] ?: false,
         hourFormat = enumOr(this[stringPreferencesKey("hourFormat")], HourFormat.SYSTEM),
+        homeZoneOverride = this[stringPreferencesKey("homeZoneOverride")],
     ),
     timers = TimerSettings(
         soundUri = this[stringPreferencesKey("timerSound")],
         vibrate = this[booleanPreferencesKey("timerVibrate")] ?: true,
+        gradualVolume = this[booleanPreferencesKey("timerGradualVolume")] ?: false,
     ),
     theme = ThemeSettings(
         dynamicColor = this[booleanPreferencesKey("dynamicColor")] ?: true,
@@ -229,12 +233,18 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
         ?.let { this[stringPreferencesKey("alarmSound")] = it }
         ?: remove(stringPreferencesKey("alarmSound"))
     this[floatPreferencesKey("alarmVolume")] = s.alarms.volume
+    this[booleanPreferencesKey("volumeButtonsControlVolume")] = s.alarms.volumeButtonsControlVolume
+    this[stringPreferencesKey("dismissMethod")] = s.alarms.dismissMethod.name
     this[booleanPreferencesKey("showSeconds")] = s.world.showSeconds
     this[stringPreferencesKey("hourFormat")] = s.world.hourFormat.name
+    s.world.homeZoneOverride
+        ?.let { this[stringPreferencesKey("homeZoneOverride")] = it }
+        ?: remove(stringPreferencesKey("homeZoneOverride"))
     s.timers.soundUri
         ?.let { this[stringPreferencesKey("timerSound")] = it }
         ?: remove(stringPreferencesKey("timerSound"))
     this[booleanPreferencesKey("timerVibrate")] = s.timers.vibrate
+    this[booleanPreferencesKey("timerGradualVolume")] = s.timers.gradualVolume
     this[booleanPreferencesKey("dynamicColor")] = s.theme.dynamicColor
     this[stringPreferencesKey("palette")] = s.theme.palette.name
     this[stringPreferencesKey("darkMode")] = s.theme.darkMode.name
