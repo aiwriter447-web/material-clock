@@ -11,12 +11,33 @@ class ClockViewModel : ViewModel() {
 
     private val _alarms = MutableStateFlow<List<Alarm>>(
         listOf(
-            Alarm(hour = 7, minute = 0, label = "Morning Walk", category = "Morning"),
-            Alarm(hour = 7, minute = 30, label = "Breakfast", category = "Morning"),
-            Alarm(hour = 9, minute = 0, label = "Team Meeting", category = "Work"),
-            Alarm(hour = 22, minute = 0, label = "Bedtime", category = "Night")
+            Alarm(
+                hour = 7,
+                minute = 0,
+                label = "Morning Walk",
+                category = "Morning"
+            ),
+            Alarm(
+                hour = 7,
+                minute = 30,
+                label = "Breakfast",
+                category = "Morning"
+            ),
+            Alarm(
+                hour = 9,
+                minute = 0,
+                label = "Team Meeting",
+                category = "Work"
+            ),
+            Alarm(
+                hour = 22,
+                minute = 0,
+                label = "Bedtime",
+                category = "Night"
+            )
         )
     )
+
     val alarms: StateFlow<List<Alarm>> = _alarms.asStateFlow()
 
     private val _is24HourFormat = MutableStateFlow(false)
@@ -26,18 +47,41 @@ class ClockViewModel : ViewModel() {
         _is24HourFormat.update { !it }
     }
 
-    fun toggleAlarm(alarmId: String) {
+    /**
+     * Alarm को ON/OFF करता है।
+     *
+     * Signature:
+     * fun toggleAlarm(alarm: Alarm)
+     */
+    fun toggleAlarm(alarm: Alarm) {
         _alarms.update { list ->
-            list.map { alarm ->
-                if (alarm.id == alarmId) alarm.copy(isEnabled = !alarm.isEnabled) else alarm
+            list.map { currentAlarm ->
+                if (currentAlarm.id == alarm.id) {
+                    currentAlarm.copy(
+                        isEnabled = !currentAlarm.isEnabled
+                    )
+                } else {
+                    currentAlarm
+                }
             }
         }
     }
 
-    fun toggleAlarmGroup(category: String, isEnabled: Boolean) {
+    /**
+     * किसी एक category के सभी alarms को
+     * ON या OFF करता है।
+     */
+    fun toggleAlarmGroup(
+        category: String,
+        isEnabled: Boolean
+    ) {
         _alarms.update { list ->
             list.map { alarm ->
-                if (alarm.category == category) alarm.copy(isEnabled = isEnabled) else alarm
+                if (alarm.category == category) {
+                    alarm.copy(isEnabled = isEnabled)
+                } else {
+                    alarm
+                }
             }
         }
     }
