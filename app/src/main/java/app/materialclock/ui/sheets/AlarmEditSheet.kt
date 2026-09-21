@@ -20,16 +20,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -52,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -103,6 +108,9 @@ fun AlarmEditSheet(
     var vibrate by rememberSaveable(initial.id) { mutableStateOf(initial.vibrate) }
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var discard by remember(initial.id) { mutableStateOf(false) }
+    // Dial by default; a tap on the keyboard icon swaps the dial for two typed fields below the
+    // same live readout, for anyone who'd rather punch in a time than drag to it.
+    var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
 
     val timeState = rememberTimePickerState(
         initialHour = initial.time.hour,
@@ -188,14 +196,32 @@ fun AlarmEditSheet(
             // Small, but not nothing: the field's pills and the dial's pill are the same shape in
             // the same colour family, and with them touching they read as one container with a
             // notch in it rather than as a readout above a picker.
-            Spacer(Modifier.height(8.dp))
-            PillDial(
-                state = timeState,
-                modifier = Modifier.padding(horizontal = EDGE),
-                // Same courtesy the library's dial does: picking an hour moves you on to minutes,
-                // because nobody sets an alarm for exactly o'clock and then stops.
-                onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
-            )
+            Spacer(Modifier.height(4.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = EDGE),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                // The dial is the default and the one every other alarm app opens on, so this is a
+                // one-tap escape hatch rather than a second front door: same spot, same size,
+                // whichever mode you're not currently in.
+                IconButton(onClick = { manualEntry = !manualEntry }) {
+                    Icon(
+                        imageVector = if (manualEntry) Icons.Outlined.AccessTime else Icons.Outlined.Keyboard,
+                        contentDescription = if (manualEntry) "Use dial" else "Type time",
+                    )
+                }
+            }
+            if (manualEntry) {
+                ManualTimeEntry(state = timeState)
+            } else {
+                PillDial(
+                    state = timeState,
+                    modifier = Modifier.padding(horizontal = EDGE),
+                    // Same courtesy the library's dial does: picking an hour moves you on to minutes,
+                    // because nobody sets an alarm for exactly o'clock and then stops.
+                    onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+                )
+            }
 
             Spacer(Modifier.height(4.dp))
             DayToggles(
@@ -359,6 +385,79 @@ private fun WideTimeField(state: TimePickerState) {
             }
         }
     }
+}
+
+/**
+ * The keyboard alternative to [PillDial].
+ *
+ * Two plain numeric fields standing in for the dial, wired to the same [TimePickerState] so the
+ * live readout above and the dial (if you flip back to it) never disagree with what was typed.
+ * Each field only commits a keystroke once it is a value the state can actually hold — a stray "0"
+ * typed first for a 12-hour hour, or a "9" that would make a 12-hour hour read "19", is left
+ * showing but not applied, rather than clamped out from under the person mid-keystroke.
+ */
+@Composable
+private fun ManualTimeEntry(state: TimePickerState) {
+    var hourText by remember(state.is24hour) {
+        val h = if (state.is24hour) state.hour else (state.hour % 12).takeIf { it != 0 } ?: 12
+        mutableStateOf("%02d".format(h))
+    }
+    var minuteText by remember { mutableStateOf("%02d".format(state.minute)) }
+
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = EDGE),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = hourText,
+            onValueChange = { new ->
+                val digits = new.filter(Char::isDigit).take(2)
+                hourText = digits
+                val n = digits.toIntOrNull()
+                if (n != null) {
+                    if (state.is24hour) {
+                        if (n in 0..23) state.hour = n
+                    } else if (n in 1..12) {
+                        state.hour = (n % 12) + if (state.hour >= 12) 12 else 0
+                    }
+                }
+            },
+            label = { Text("Hour") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.width(96.dp),
+        )
+        Text(
+            ":",
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        OutlinedTextField(
+            value = minuteText,
+            onValueChange = { new ->
+                val digits = new.filter(Char::isDigit).take(2)
+                minuteText = digits
+                val n = digits.toIntOrNull()
+                if (n != null && n in 0..59) state.minute = n
+            },
+            label = { Text("Min") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.width(96.dp),
+        )
+        if (!state.is24hour) {
+            Spacer(Modifier.width(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(MERIDIEM_GAP)) {
+                MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
+                MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
