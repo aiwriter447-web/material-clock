@@ -110,19 +110,22 @@ data class WorldCity(
         return (a - b) / 3600.0
     }
 
+    /** Signed difference from [home] as "+4:30 h" / "−9:00 h" / "+0:00 h", exact to the minute. */
     fun offsetLabel(home: ZoneId, nowUtcMillis: Long): String {
-        val h = offsetHours(home, nowUtcMillis)
-        val sign = if (h >= 0) "+" else "−"
-        val abs = kotlin.math.abs(h)
-        val whole = abs.toInt()
-        val half = abs - whole
-        val frac = when {
-            half > 0.7 -> "¾"
-            half > 0.4 -> "½"
-            half > 0.2 -> "¼"
-            else -> ""
-        }
-        return "$sign$whole$frac h"
+        val inst = java.time.Instant.ofEpochMilli(nowUtcMillis)
+        val diffSeconds = zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
+        val sign = if (diffSeconds >= 0) "+" else "−"
+        val totalMinutes = kotlin.math.abs(diffSeconds) / 60
+        return "$sign${totalMinutes / 60}:${"%02d".format(totalMinutes % 60)} h"
+    }
+
+    /** This city's own offset from UTC, as the standard "UTC+05:30" / "UTC−08:00" code. */
+    fun utcCode(nowUtcMillis: Long): String {
+        val inst = java.time.Instant.ofEpochMilli(nowUtcMillis)
+        val seconds = zone.rules.getOffset(inst).totalSeconds
+        val sign = if (seconds >= 0) "+" else "−"
+        val totalMinutes = kotlin.math.abs(seconds) / 60
+        return "UTC$sign${"%02d".format(totalMinutes / 60)}:${"%02d".format(totalMinutes % 60)}"
     }
 
     /** Whether it is currently night there. Used to invert the row, as the concept does. */
