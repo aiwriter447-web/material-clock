@@ -5,23 +5,14 @@ android:height="108dp"
 android:viewportWidth="108"
 android:viewportHeight="108">
 
-<!-- Clock Outer Ring Outline -->
+<!-- Solid Disk with Cutout Clock Needles for Material You Theme -->
 <path
-android:pathData="M54,54m-26,0a26,26 0 1,0 52,0a26,26 0 1,0 -52,0"
-android:strokeColor="#000000"
-android:strokeWidth="5" />
-
-<!-- Top Hand -->
-<path
-android:pathData="M54,54 L54,32"
-android:strokeColor="#000000"
-android:strokeWidth="6"
-android:strokeLineCap="round" />
-
-<!-- Bottom-Right Hand -->
-<path
-android:pathData="M54,54 L69,69"
-android:strokeColor="#000000"
-android:strokeWidth="6"
-android:strokeLineCap="round" />
+android:fillColor="#000000"
+android:fillType="evenOdd"
+android:pathData="
+M 54,20
+A 34,34 0 1,0 54,88
+A 34,34 0 1,0 54,20 Z
+M 50,54 L 50,26 A 4,4 0 0,1 58,26 L 58,54 A 4,4 0 0,1 50,54 Z
+M 51.17,56.83 L 69.17,74.83 A 4,4 0 0,1 74.83,69.17 L 56.83,51.17 A 4,4 0 0,1 51.17,56.83 Z" />
 </vector>
