@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.materialclock.alarm.Notifications
 import app.materialclock.core.Alarm
+import app.materialclock.core.AlarmGroup
 import app.materialclock.core.TimerPreset
 import app.materialclock.ui.screens.AlarmsScreen
 import app.materialclock.ui.screens.StopwatchScreen
@@ -71,6 +72,7 @@ import app.materialclock.ui.screens.TimersScreen
 import app.materialclock.ui.screens.WorldClockScreen
 import app.materialclock.ui.sheets.AddCitySheet
 import app.materialclock.ui.sheets.AlarmEditSheet
+import app.materialclock.ui.sheets.AlarmGroupsSheet
 import app.materialclock.ui.sheets.AlarmSettingsSheet
 import app.materialclock.ui.sheets.PresetEditSheet
 import app.materialclock.ui.sheets.StopwatchSettingsSheet
@@ -124,6 +126,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
+        var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
@@ -255,10 +258,13 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 when (current) {
                     Tab.ALARMS -> {
                         val alarms by vm.alarms.collectAsStateWithLifecycle()
+                        val groups by vm.groups.collectAsStateWithLifecycle()
                         AlarmsScreen(
                             alarms = alarms,
+                            groups = groups,
                             weekStart = settings.alarms.weekStart,
                             onToggle = vm::toggleAlarm,
+                            onToggleGroup = vm::toggleGroup,
                             onEdit = { editing = it },
                             contentPadding = body,
                         )
@@ -375,12 +381,28 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         }
 
         editing?.let { draft ->
+            val groups by vm.groups.collectAsStateWithLifecycle()
             AlarmEditSheet(
                 initial = draft,
                 weekStart = settings.alarms.weekStart,
+                groups = groups,
+                onCreateGroup = { name -> vm.addGroup(name) },
                 onDismiss = { editing = null },
                 onSave = { vm.saveAlarm(it) },
                 onDelete = if (draft.id == 0L) null else ({ id -> vm.deleteAlarm(id) }),
+            )
+        }
+
+        if (showGroupsManager) {
+            val groups by vm.groups.collectAsStateWithLifecycle()
+            val alarms by vm.alarms.collectAsStateWithLifecycle()
+            AlarmGroupsSheet(
+                groups = groups,
+                alarms = alarms,
+                onAdd = { name -> vm.addGroup(name) },
+                onRename = { id, name -> vm.renameGroup(id, name) },
+                onDelete = { id -> vm.deleteGroup(id) },
+                onDismiss = { showGroupsManager = false },
             )
         }
 
@@ -406,7 +428,12 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
         if (showSettings) {
             when (tab) {
-                Tab.ALARMS -> AlarmSettingsSheet(settings, vm::updateSettings) { showSettings = false }
+                Tab.ALARMS -> AlarmSettingsSheet(
+                    settings = settings,
+                    onChange = vm::updateSettings,
+                    onManageGroups = { showGroupsManager = true },
+                    onDismiss = { showSettings = false },
+                )
                 Tab.WORLD -> WorldSettingsSheet(settings, vm::updateSettings) { showSettings = false }
                 Tab.TIMERS -> TimerSettingsSheet(settings, vm::updateSettings) { showSettings = false }
                 Tab.STOPWATCH ->
