@@ -59,6 +59,7 @@ class AlarmService : Service() {
     private var vibrator: Vibrator? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var silenceJob: Job? = null
+    private var rampJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -105,7 +106,11 @@ class AlarmService : Service() {
         scope.launch {
             val settings = ClockStore(this@AlarmService).settingsNow()
             foreground(timerNotification(this@AlarmService))
-            play(settings.timers.soundUri?.let(Uri::parse) ?: defaultAlarmUri(), settings.alarms.volume)
+            play(
+                uri = settings.timers.soundUri?.let(Uri::parse) ?: defaultAlarmUri(),
+                volume = settings.alarms.volume,
+                gradual = settings.timers.gradualVolume,
+            )
             if (settings.timers.vibrate) vibrate(TIMER_PATTERN)
             silenceJob = launch {
                 val minutes = settings.alarms.silenceAfterMinutes
@@ -124,8 +129,16 @@ class AlarmService : Service() {
         }
     }
 
-    private fun play(uri: Uri, volume: Float = 1f) {
-        val v = volume.coerceIn(0f, 1f)
+    /**
+     * @param gradual Starts the ringer near-silent and ramps it up to [volume] over
+     * [RAMP_DURATION_MS], instead of starting at full volume straight away. Only the timer chime
+     * offers this ([app.materialclock.data.TimerSettings.gradualVolume]); a ringing alarm always
+     * starts at its set volume, because a ramp that takes twenty seconds to reach an audible level
+     * defeats the point of an alarm.
+     */
+    private fun play(uri: Uri, volume: Float = 1f, gradual: Boolean = false) {
+        val target = volume.coerceIn(0f, 1f)
+        val start = if (gradual) RAMP_START_VOLUME.coerceAtMost(target) else target
         runCatching {
             player = MediaPlayer().apply {
                 setAudioAttributes(
@@ -136,7 +149,7 @@ class AlarmService : Service() {
                 )
                 setDataSource(this@AlarmService, uri)
                 isLooping = true
-                setVolume(v, v)
+                setVolume(start, start)
                 prepare()
                 start()
             }
@@ -145,7 +158,22 @@ class AlarmService : Service() {
             // is not an acceptable alarm, so fall back rather than let the exception kill it.
             runCatching {
                 player = MediaPlayer.create(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
-                    ?.apply { isLooping = true; setVolume(v, v); start() }
+                    ?.apply { isLooping = true; setVolume(start, start) }
+                player?.start()
+            }
+        }
+        if (gradual && target > start) rampVolume(from = start, to = target)
+    }
+
+    /** Steps [player]'s volume from [from] up to [to] in small increments over [RAMP_DURATION_MS]. */
+    private fun rampVolume(from: Float, to: Float) {
+        rampJob?.cancel()
+        rampJob = scope.launch {
+            val stepDelay = RAMP_DURATION_MS / RAMP_STEPS
+            for (step in 1..RAMP_STEPS) {
+                delay(stepDelay)
+                val v = from + (to - from) * (step.toFloat() / RAMP_STEPS)
+                player?.setVolume(v, v)
             }
         }
     }
@@ -167,6 +195,7 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         silenceJob?.cancel()
+        rampJob?.cancel()
         runCatching { player?.stop() }
         player?.release()
         player = null
@@ -187,6 +216,13 @@ class AlarmService : Service() {
         /** Half a second on, half off: insistent without being a klaxon. */
         private val ALARM_PATTERN = longArrayOf(0, 500, 500)
         private val TIMER_PATTERN = longArrayOf(0, 300, 200, 300, 900)
+
+        /** Where a gradual ramp starts: quiet, but not literally silent (some devices mute 0). */
+        private const val RAMP_START_VOLUME = 0.05f
+        /** How long a gradual ramp takes to reach its target volume. */
+        private const val RAMP_DURATION_MS = 20_000L
+        /** How many discrete volume steps make up the ramp. */
+        private const val RAMP_STEPS = 25
 
         fun stop(context: Context) {
             context.stopService(Intent(context, AlarmService::class.java))
