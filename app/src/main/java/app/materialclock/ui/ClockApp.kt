@@ -266,10 +266,11 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
                     Tab.WORLD -> {
                         val cities by vm.cities.collectAsStateWithLifecycle()
+                        val homeZone by vm.homeZone.collectAsStateWithLifecycle()
                         val now by rememberWallTicker()
                         WorldClockScreen(
                             cities = cities,
-                            home = vm.homeZone,
+                            home = homeZone,
                             nowUtcMillis = now,
                             settings = settings.world,
                             // Swiping a city away is instant and undoable, rather than instant and
