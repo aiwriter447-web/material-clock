@@ -44,6 +44,7 @@ import app.materialclock.data.DarkMode
 import app.materialclock.data.DismissMethod
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WeekStart
+import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.ClockWidgetProvider
 import app.materialclock.widget.WidgetEntryPoints
@@ -62,6 +63,7 @@ import app.materialclock.widget.WidgetEntryPoints
 fun AlarmSettingsSheet(
     settings: ClockSettings,
     onChange: ((ClockSettings) -> ClockSettings) -> Unit,
+    onManageGroups: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -125,6 +127,13 @@ fun AlarmSettingsSheet(
                 options = WeekStart.entries,
                 label = { it.label },
                 onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
+            )
+
+            SectionLabel("Groups")
+            NavigateRow(
+                title = "Alarm groups",
+                subtitle = "Create, rename or delete",
+                onClick = onManageGroups,
             )
 
         }
@@ -493,6 +502,13 @@ fun WorldSettingsSheet(
         Column(Modifier.padding(bottom = 32.dp)) {
             SheetTitle("World clock settings")
             SectionLabel("Display")
+            ChoiceRow(
+                title = "Style",
+                value = settings.world.style,
+                options = WorldClockStyle.entries,
+                label = { it.label },
+                onSelect = { v -> onChange { it.copy(world = it.world.copy(style = v)) } },
+            )
             SwitchRow(
                 title = "Display time with seconds",
                 checked = settings.world.showSeconds,
