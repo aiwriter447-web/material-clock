@@ -25,13 +25,10 @@ data class Alarm(
     val soundUri: String? = null,
     /**
      * Wall-clock millis a snooze is due, or null.
-     *
-     * Snooze lives on the alarm rather than in a side table because it has to survive a reboot and
-     * because it *replaces* the next occurrence: an alarm snoozed at 06:45 must not also ring at
-     * its usual 07:15 twenty seconds later. [nextFire] therefore returns the snooze when one is
-     * pending, which keeps every caller (scheduler, list, boot receiver) automatically correct.
      */
     val snoozedUntilMillis: Long? = null,
+    /** [AlarmGroup.id] this alarm belongs to, or null for no group. */
+    val groupId: Long? = null,
 ) {
     val isOneShot: Boolean get() = days.isEmpty()
 
@@ -44,7 +41,6 @@ data class Alarm(
         }
         val todayAt = now.with(time).withSecond(0).withNano(0)
         if (isOneShot) return if (todayAt.isAfter(now)) todayAt else todayAt.plusDays(1)
-        // Seven candidates is enough: a repeating alarm always has one inside a week.
         return (0..7).asSequence()
             .map { todayAt.plusDays(it.toLong()) }
             .firstOrNull { it.isAfter(now) && it.dayOfWeek in days }
@@ -70,6 +66,11 @@ data class Alarm(
     }
 }
 
+/**
+ * A named bucket of alarms — "Morning", "Night shift"
+ */
+data class AlarmGroup(val id: Long, val name: String)
+
 /** "in 17 h 54 min", deliberately coarse because a countdown to tomorrow does not need seconds. */
 fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
     val d = Duration.between(from, to)
@@ -77,21 +78,15 @@ fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
     val hours = d.toHours() % 24
     val mins = d.toMinutes() % 60
     return when {
-        days > 0 -> "${days} d ${hours} h"
-        hours > 0 -> "${hours} h ${mins} min"
+        days > 0 -> "${days} d${hours} h"
+        hours > 0 -> "${hours} h${mins} min"
         mins > 0 -> "${mins} min"
         else -> "less than a minute"
     }
 }
 
 /**
- * A city on the world clock. [zone] is a real IANA id, so DST is the platform's problem.
- *
- * [region] is the continent — the literal mid-segment of the zone id, no lookup needed — kept
- * mainly so old rows and [prettify] agree on what a "region" is. [country] is the actual country
- * name, resolved once via ICU (see [prettify]'s doc for why the zone id alone can't give you
- * this), and is what search and the row's subtitle should prefer; empty only for the rare zone ICU
- * can't attribute to one country, which falls back to [region] rather than showing nothing.
+ * A city on the world clock.
  */
 data class WorldCity(
     val zone: ZoneId,
@@ -102,7 +97,6 @@ data class WorldCity(
     fun timeAt(nowUtcMillis: Long): ZonedDateTime =
         java.time.Instant.ofEpochMilli(nowUtcMillis).atZone(zone)
 
-    /** Whole hours from [home], signed. Half-hour zones round toward zero; the label prints exact. */
     fun offsetHours(home: ZoneId, nowUtcMillis: Long): Double {
         val inst = java.time.Instant.ofEpochMilli(nowUtcMillis)
         val a = zone.rules.getOffset(inst).totalSeconds
@@ -110,7 +104,6 @@ data class WorldCity(
         return (a - b) / 3600.0
     }
 
-    /** Signed difference from [home] as "+4:30 h" / "−9:00 h" / "+0:00 h", exact to the minute. */
     fun offsetLabel(home: ZoneId, nowUtcMillis: Long): String {
         val inst = java.time.Instant.ofEpochMilli(nowUtcMillis)
         val diffSeconds = zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
@@ -119,20 +112,17 @@ data class WorldCity(
         return "$sign${totalMinutes / 60}:${"%02d".format(totalMinutes % 60)} h"
     }
 
-    /** This city's own offset from UTC, as the standard "UTC+05:30" / "UTC−08:00" code. */
     fun utcCode(nowUtcMillis: Long): String {
         val inst = java.time.Instant.ofEpochMilli(nowUtcMillis)
         val seconds = zone.rules.getOffset(inst).totalSeconds
         val sign = if (seconds >= 0) "+" else "−"
         val totalMinutes = kotlin.math.abs(seconds) / 60
-        return "UTC$sign${"%02d".format(totalMinutes / 60)}:${"%02d".format(totalMinutes % 60)}"
+        return "UTC$sign${"\%02d".format(totalMinutes / 60)}:${"%02d".format(totalMinutes % 60)}"
     }
 
-    /** Whether it is currently night there. Used to invert the row, as the concept does. */
     fun isNight(nowUtcMillis: Long): Boolean =
         timeAt(nowUtcMillis).hour.let { it < 6 || it >= 20 }
 
-    /** 0..1 through the local day, which is what the concept's split discs encode. */
     fun dayFraction(nowUtcMillis: Long): Float {
         val t = timeAt(nowUtcMillis).toLocalTime()
         return (t.toSecondOfDay() / 86400f)
@@ -142,19 +132,12 @@ data class WorldCity(
 enum class TimerState { IDLE, RUNNING, PAUSED, FINISHED }
 
 /**
- * A named, reusable timer length — "Study", "Deep Work", "Break" — for one-tap starts instead of
- * re-entering the same duration on the keypad every time. Deliberately just a name and a length:
- * work/break cycling and session stats are a different, bigger feature than what was asked for
- * here, which is fast access to durations you use often.
+ * A named, reusable timer length.
  */
 data class TimerPreset(val id: Long, val name: String, val totalSeconds: Int)
 
 /**
  * A countdown.
- *
- * Stored as a *deadline* rather than a remaining count, so it stays correct while the process is
- * dead and needs no tick to make progress. [remaining] is derived. Paused timers keep their
- * remaining time and have no deadline.
  */
 data class ClockTimer(
     val id: Long,
@@ -177,15 +160,10 @@ data class ClockTimer(
     }
 }
 
-/** One completed lap: its own split, and the total elapsed at the moment it was taken. */
 data class Lap(val index: Int, val split: Duration, val total: Duration)
 
 /**
  * The stopwatch.
- *
- * Also deadline-style: [startedAtElapsed] plus [accumulated] survives a process death, where a
- * ticking counter would not. `elapsedRealtime` and not wall time, so changing the clock or
- * crossing a DST boundary mid-run cannot move it.
  */
 data class Stopwatch(
     val running: Boolean = false,
@@ -200,7 +178,6 @@ data class Stopwatch(
     val slowest: Int? get() = laps.maxByOrNull { it.split }?.index?.takeIf { laps.size > 1 }
 }
 
-/** `PT1H2M3S` → `1:02:03`, and under an hour → `12:34`. What every screen prints. */
 fun Duration.clockFormat(withHours: Boolean = false): String {
     val total = seconds.coerceAtLeast(0)
     val h = total / 3600
@@ -209,7 +186,6 @@ fun Duration.clockFormat(withHours: Boolean = false): String {
     return if (h > 0 || withHours) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** The stopwatch prints hundredths; anything slower would look frozen. */
 fun Duration.stopwatchParts(): Triple<String, String, String> {
     val ms = toMillis().coerceAtLeast(0)
     val h = ms / 3_600_000
@@ -223,7 +199,6 @@ fun Duration.stopwatchParts(): Triple<String, String, String> {
     }
 }
 
-/** Splits a wall time into the concept's three parts: hour, minute, and the meridiem. */
 fun LocalDateTime.parts(use24h: Boolean): Triple<String, String, String?> {
     val h = if (use24h) hour else ((hour % 12).takeIf { it != 0 } ?: 12)
     val ap = if (use24h) null else if (hour < 12) "AM" else "PM"
