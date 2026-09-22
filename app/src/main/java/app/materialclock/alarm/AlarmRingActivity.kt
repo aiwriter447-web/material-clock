@@ -417,8 +417,8 @@ private fun SwipeToDismissPill(
                         if (maxOffset > 0f) {
                             if (offsetX.value >= maxOffset * DISMISS_THRESHOLD) {
                                 dismissed = true
-                                offsetX.animateTo(maxOffset)
                                 onDismiss()
+                                offsetX.animateTo(maxOffset)
                             } else {
                                 offsetX.animateTo(0f)
                             }
