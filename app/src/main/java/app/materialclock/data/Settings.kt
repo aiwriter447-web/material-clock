@@ -50,7 +50,14 @@ data class WorldClockSettings(
     val hourFormat: HourFormat = HourFormat.SYSTEM,
     /** An IANA zone id, or null to follow the device's own time zone automatically. */
     val homeZoneOverride: String? = null,
+    /** How the world clock's own hero widget draws: the multi-hand dial, or a digital grid. */
+    val style: WorldClockStyle = WorldClockStyle.ANALOG,
 )
+
+enum class WorldClockStyle(val label: String) {
+    ANALOG("Analogue"),
+    DIGITAL("Digital"),
+}
 
 data class TimerSettings(
     /** A `content://` ringtone URI, or null for the system default alarm sound. */
