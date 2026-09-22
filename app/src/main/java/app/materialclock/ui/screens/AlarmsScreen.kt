@@ -45,20 +45,14 @@ import java.time.DayOfWeek
 /**
  * Alarm list.
  *
- * One full-width alarm card per row.
- *
  * Layout:
+ * - One full-width alarm card per row.
+ * - Optional alarm label above the time.
+ * - Large clock-face numerals.
+ * - Repeat days on the right.
+ * - Switch below the repeat days.
  *
- *   Label
- *   07 15
- *      AM                         S M T W T F S
- *                                  [ switch ]
- *
- * Enabled state controls:
- * - label color
- * - numeral weight
- * - repeat-day weight/color
- * - switch state
+ * The dimensions are tuned toward the supplied reference screenshots.
  */
 @Composable
 fun AlarmsScreen(
@@ -107,21 +101,47 @@ fun AlarmsScreen(
 /* Row dimensions                                                              */
 /* -------------------------------------------------------------------------- */
 
-private val ROW_HORIZONTAL_PADDING = 32.dp
+/**
+ * Horizontal inset of the card content.
+ *
+ * The screenshots have a relatively compact inset, leaving the clock face
+ * dominant inside the card.
+ */
+private val ROW_HORIZONTAL_PADDING = 16.dp
+
+/**
+ * Vertical inset of the card content.
+ */
 private val ROW_VERTICAL_PADDING = 16.dp
 
 private val ROW_CORNER_RADIUS = 24.dp
 
+/**
+ * Gap between an alarm label such as "Morning" and its time.
+ */
 private val ROW_LABEL_TO_TIME = 4.dp
 
+/**
+ * Gap between the large hour and the minutes block in 12-hour mode.
+ */
 private val ROW_TIME_GAP = 8.dp
 
 /**
- * Main clock cap height.
+ * Main time cap height.
+ *
+ * This is deliberately much larger than the old 40.dp value. The supplied
+ * reference screenshots use the time as the dominant visual element.
  */
 private val ROW_TIME_CAP = 120.dp
 
+/**
+ * Relative size of minutes compared with the large hour.
+ */
 private const val ROW_MINUTE_CAP_FRACTION = 0.66f
+
+/**
+ * Relative size of AM/PM compared with the large hour.
+ */
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
@@ -139,40 +159,21 @@ private fun AlarmRow(
     val enabled = alarm.enabled
 
     /*
-     * Card surface.
-     *
-     * Keep the same card background for ON/OFF.
-     * The alarm state is communicated through the text weight/color
-     * and the switch.
+     * Dynamically change colors based on whether the alarm is enabled.
+     * Matches the colorized UI design when active, and muted grey when inactive.
      */
-    val container =
+    val container = if (enabled) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
         MaterialTheme.colorScheme.surfaceContainer
+    }
 
-    /*
-     * Main clock/day color.
-     */
-    val ink =
+    val ink = if (enabled) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
         MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
-    /*
-     * Enabled alarm label color.
-     *
-     * This restores the behavior from the old alarm grid:
-     *
-     * enabled  -> primary/highlighted
-     * disabled -> muted
-     */
-    val titleColor =
-        if (enabled) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            ink.copy(alpha = 0.70f)
-        }
-
-    /*
-     * Enabled alarm gets the heavy clock-face weight.
-     * Disabled alarm gets the lighter weight.
-     */
     val numeralWeight =
         if (enabled) {
             ClockFace.WEIGHT_ON
@@ -209,36 +210,34 @@ private fun AlarmRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
 
-            /* ----------------------------------------------------------------
+            /*
              * LEFT SIDE
-             * ---------------------------------------------------------------- */
-
+             *
+             * With a label:
+             *
+             * Morning
+             * 07:15
+             *
+             * Or in 12-hour mode:
+             *
+             * Morning
+             * 07  15
+             *      AM
+             */
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top,
             ) {
-
-                /*
-                 * Alarm label.
-                 *
-                 * ON:
-                 *     primary
-                 *
-                 * OFF:
-                 *     muted onSurfaceVariant
-                 */
                 if (alarm.label.isNotBlank()) {
                     Text(
                         text = alarm.label,
                         style = MaterialTheme.typography.titleMediumEmphasized,
-                        color = titleColor,
+                        color = ink,
                         maxLines = 1,
                     )
 
                     Spacer(
-                        modifier = Modifier.height(
-                            ROW_LABEL_TO_TIME
-                        )
+                        modifier = Modifier.height(ROW_LABEL_TO_TIME)
                     )
                 }
 
@@ -264,15 +263,16 @@ private fun AlarmRow(
                 modifier = Modifier.width(16.dp)
             )
 
-            /* ----------------------------------------------------------------
+            /*
              * RIGHT SIDE
-             * ---------------------------------------------------------------- */
-
+             *
+             * S M T W T F S
+             *       [switch]
+             */
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
             ) {
-
                 DayLetters(
                     alarm = alarm,
                     order = order,
@@ -283,22 +283,21 @@ private fun AlarmRow(
                     modifier = Modifier.height(8.dp)
                 )
 
+                /*
+                 * Material 3 Switch is intentionally kept here rather than
+                 * replacing it with a custom control. Its visual appearance
+                 * can therefore continue to follow the app's Material theme.
+                 */
                 Switch(
                     checked = enabled,
                     onCheckedChange = {
                         onToggle()
                     },
                     colors = SwitchDefaults.colors(
-                        /*
-                         * ON
-                         */
                         checkedThumbColor = container,
                         checkedTrackColor = ink,
                         checkedBorderColor = Color.Transparent,
 
-                        /*
-                         * OFF
-                         */
                         uncheckedThumbColor = ink,
                         uncheckedTrackColor = Color.Transparent,
                         uncheckedBorderColor = ink,
@@ -326,10 +325,7 @@ private fun RowTime24(
     weight: Int,
 ) {
     Numerals(
-        text = "%02d:%02d".format(
-            hour,
-            minute,
-        ),
+        text = "%02d:%02d".format(hour, minute),
         capHeight = ROW_TIME_CAP,
         color = ink,
         width = ClockFace.CONDENSED,
@@ -353,11 +349,8 @@ private fun RowTime12(
     Row(
         verticalAlignment = Alignment.Top,
     ) {
-
         /*
-         * Large hour.
-         *
-         * Example:
+         * Large hour:
          *
          * 07
          */
@@ -371,25 +364,18 @@ private fun RowTime12(
         )
 
         Spacer(
-            modifier = Modifier.width(
-                ROW_TIME_GAP
-            )
+            modifier = Modifier.width(ROW_TIME_GAP)
         )
 
         Column {
-
             /*
-             * Smaller minutes.
-             *
-             * Example:
+             * Smaller minutes:
              *
              * 15
              */
             Numerals(
                 text = "%02d".format(minute),
-                capHeight =
-                    ROW_TIME_CAP *
-                        ROW_MINUTE_CAP_FRACTION,
+                capHeight = ROW_TIME_CAP * ROW_MINUTE_CAP_FRACTION,
                 color = ink,
                 width = ClockFace.CONDENSED,
                 weight = weight,
@@ -401,13 +387,11 @@ private fun RowTime12(
             )
 
             /*
-             * AM / PM
+             * AM / PM below minutes.
              */
             CapText(
                 text = meridiem,
-                capHeight =
-                    ROW_TIME_CAP *
-                        ROW_MERIDIEM_CAP_FRACTION,
+                capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
                 color = ink,
                 tracking = ClockFace.CONDENSED_TRACKING,
             )
@@ -420,17 +404,7 @@ private fun RowTime12(
 /* -------------------------------------------------------------------------- */
 
 private val DAY_CAP = 23.dp
-
-/**
- * Fixed width for:
- *
- * S M T W T F S
- */
 private val DAY_BLOCK_WIDTH = 91.dp
-
-/**
- * Physical tracking between letters.
- */
 private val DAY_TRACKING = 2.2.dp
 
 private const val DAY_WEIGHT_ON = 700
@@ -439,8 +413,11 @@ private const val DAY_WEIGHT_OFF = 400
 /**
  * Repeat-day letters.
  *
- * All seven letters are kept in one AnnotatedString so Compose's text
- * shaper handles the complete run instead of seven independent boxes.
+ * All seven letters remain in one AnnotatedString so Compose's text shaper
+ * sees them as one run instead of seven independently positioned boxes.
+ *
+ * The final run is horizontally scaled to a fixed width so the switch below
+ * does not move when the repeat pattern changes.
  */
 @Composable
 private fun DayLetters(
@@ -451,9 +428,6 @@ private fun DayLetters(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
 
-    /*
-     * ON day-letter font.
-     */
     val bold = remember {
         ClockFace.capitals(
             DAY_CAP,
@@ -462,9 +436,6 @@ private fun DayLetters(
         )
     }
 
-    /*
-     * OFF day-letter font.
-     */
     val light = remember {
         ClockFace.capitals(
             DAY_CAP,
@@ -473,9 +444,6 @@ private fun DayLetters(
         )
     }
 
-    /*
-     * Create all seven letters as a single text run.
-     */
     val text = remember(
         alarm.days,
         alarm.isOneShot,
@@ -483,9 +451,7 @@ private fun DayLetters(
         ink,
     ) {
         buildAnnotatedString {
-
             order.forEach { day ->
-
                 val active =
                     !alarm.isOneShot &&
                         day in alarm.days
@@ -503,56 +469,33 @@ private fun DayLetters(
                             if (active) {
                                 ink
                             } else {
-                                ink.copy(
-                                    alpha = 0.30f
-                                )
+                                ink.copy(alpha = 0.30f)
                             },
                     )
                 ) {
-                    append(
-                        day.name.take(1)
-                    )
+                    append(day.name.take(1))
                 }
             }
         }
     }
 
     /*
-     * Convert tracking from dp to em.
-     *
-     * IMPORTANT:
-     *
-     * We use the Compose `.em` extension here.
-     *
-     * Required import:
-     *
-     *     import androidx.compose.ui.unit.em
-     *
-     * We do NOT use TextUnit or TextUnitType.
+     * Tracking is expressed in em so it scales with the cap height.
      */
-    val trackingEm =
+    val letterSpacing =
         with(density) {
-
-            val fontSizePx =
-                bold.fontSize.toPx()
-
-            val trackingPx =
-                DAY_TRACKING.toPx()
-
-            if (fontSizePx > 0f) {
-                trackingPx / fontSizePx
-            } else {
-                0f
-            }
+            (DAY_TRACKING / bold.fontSize.toDp()).em
         }
 
-    val style =
-        bold.copy(
-            letterSpacing = trackingEm.em,
-        )
+    val style = bold.copy(
+        letterSpacing = letterSpacing,
+    )
 
     /*
-     * Measure the final text run.
+     * Measure the actual seven-letter run.
+     *
+     * This avoids hard-coding a separate width for each possible repeat
+     * pattern. The target block remains fixed.
      */
     val measuredWidth =
         measurer
@@ -563,19 +506,13 @@ private fun DayLetters(
             .size
             .width
 
-    /*
-     * Desired fixed width.
-     */
     val targetWidth =
         with(density) {
             DAY_BLOCK_WIDTH.toPx()
         }
 
-    /*
-     * Scale the run into the fixed width.
-     */
     val scaleX =
-        if (measuredWidth > 0f) {
+        if (measuredWidth > 0) {
             targetWidth / measuredWidth
         } else {
             1f
