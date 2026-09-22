@@ -22,14 +22,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -48,6 +53,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +67,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.materialclock.core.Alarm
+import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.theme.Numerals
@@ -96,6 +103,8 @@ import java.util.Locale
 fun AlarmEditSheet(
     initial: Alarm,
     weekStart: WeekStart,
+    groups: List<AlarmGroup>,
+    onCreateGroup: (String) -> Unit,
     onDismiss: () -> Unit,
     onSave: (Alarm) -> Unit,
     onDelete: ((Long) -> Unit)?,
@@ -107,10 +116,25 @@ fun AlarmEditSheet(
     var days by remember(initial.id) { mutableStateOf(initial.days) }
     var vibrate by rememberSaveable(initial.id) { mutableStateOf(initial.vibrate) }
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
+    var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
     var discard by remember(initial.id) { mutableStateOf(false) }
     // Dial by default; a tap on the keyboard icon swaps the dial for two typed fields below the
     // same live readout, for anyone who'd rather punch in a time than drag to it.
     var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
+
+    // The name a "+ New group" dialog just created, held only until that group shows up in
+    // [groups] — the group itself is born in the view model, asynchronously, so there is no id to
+    // select the moment the dialog closes. Matching by name against the next emission is what lets
+    // creating a group and landing on it feel like one action instead of two.
+    var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(groups) {
+        pendingNewGroupName?.let { pending ->
+            groups.firstOrNull { it.name == pending }?.let {
+                groupId = it.id
+                pendingNewGroupName = null
+            }
+        }
+    }
 
     val timeState = rememberTimePickerState(
         initialHour = initial.time.hour,
@@ -143,6 +167,7 @@ fun AlarmEditSheet(
                     enabled = initial.enabled,
                     vibrate = vibrate,
                     soundUri = soundUri,
+                    groupId = groupId,
                 )
             )
         }
@@ -238,6 +263,14 @@ fun AlarmEditSheet(
                 singleLine = true,
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
+            )
+
+            Spacer(Modifier.height(10.dp))
+            GroupPicker(
+                groups = groups,
+                selectedId = groupId,
+                onSelect = { groupId = it },
+                onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
             )
 
             Spacer(Modifier.height(10.dp))
@@ -507,6 +540,93 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
         Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
             Text(text, style = MaterialTheme.typography.labelLargeEmphasized)
         }
+    }
+}
+
+/**
+ * The alarm's group, picked from a menu rather than typed, because it is a *choice among a short,
+ * named list* — exactly what a menu is for, and exactly what free text (a second [OutlinedTextField]
+ * duplicating [AlarmGroup.name]) would only invite typos into. "No group" is always the first item,
+ * ahead of any group, because leaving an alarm ungrouped is the common case, not an edge one.
+ *
+ * "+ New group" opens a one-field dialog rather than routing away from the sheet entirely — this is
+ * still deciding one alarm's own group, so leaving the sheet to manage groups as their own screen
+ * would be a bigger detour than the decision deserves.
+ */
+@Composable
+private fun GroupPicker(
+    groups: List<AlarmGroup>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+    onCreateGroup: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showCreate by remember { mutableStateOf(false) }
+    val selectedName = groups.firstOrNull { it.id == selectedId }?.name ?: "No group"
+
+    Box(Modifier.fillMaxWidth().padding(horizontal = EDGE)) {
+        FilledTonalButton(
+            onClick = { expanded = true },
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            modifier = Modifier.fillMaxWidth().height(ROW_H),
+        ) {
+            Icon(Icons.Outlined.Group, contentDescription = null, Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                selectedName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelLargeEmphasized,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Start,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("No group") },
+                onClick = { onSelect(null); expanded = false },
+            )
+            groups.forEach { group ->
+                DropdownMenuItem(
+                    text = { Text(group.name) },
+                    onClick = { onSelect(group.id); expanded = false },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("New group") },
+                leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                onClick = { expanded = false; showCreate = true },
+            )
+        }
+    }
+
+    if (showCreate) {
+        var name by rememberSaveable { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("New group") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Group name") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (name.isNotBlank()) onCreateGroup(name.trim())
+                        showCreate = false
+                    },
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCreate = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
