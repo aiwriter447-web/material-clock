@@ -28,7 +28,9 @@ import app.materialclock.data.ClockStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -100,7 +102,18 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     val presets: StateFlow<List<TimerPreset>> =
         store.presets.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val homeZone: ZoneId = ZoneId.systemDefault()
+    /**
+     * The zone World Clock treats as "home". Reactive on [settings], because a fixed `val` here
+     * was the bug: it read [ZoneId.systemDefault] once at construction and then ignored
+     * [app.materialclock.data.WorldClockSettings.homeZoneOverride] forever after, no matter what
+     * the settings sheet said. An id that fails to parse (a zone the device no longer ships, say)
+     * falls back to the device zone rather than crashing the tab.
+     */
+    val homeZone: StateFlow<ZoneId> = settings
+        .map { it.world.homeZoneOverride }
+        .distinctUntilChanged()
+        .map { override -> override?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: ZoneId.systemDefault() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ZoneId.systemDefault())
 
     init {
         // The first run has never scheduled anything, and a reinstall wipes AlarmManager. Doing it
