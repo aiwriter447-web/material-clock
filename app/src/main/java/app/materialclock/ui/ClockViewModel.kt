@@ -17,6 +17,7 @@ import app.materialclock.alarm.LiveUpdateService
 import app.materialclock.alarm.Notifications
 import app.materialclock.alarm.TimerScheduler
 import app.materialclock.core.Alarm
+import app.materialclock.core.AlarmGroup
 import app.materialclock.core.ClockTimer
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
@@ -93,6 +94,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ClockSettings())
     val alarms: StateFlow<List<Alarm>> =
         store.alarms.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val groups: StateFlow<List<AlarmGroup>> =
+        store.groups.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val cities: StateFlow<List<WorldCity>> =
         store.cities.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val timer: StateFlow<ClockTimer?> =
@@ -165,6 +168,51 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteAlarm(id: Long) = viewModelScope.launch {
         AlarmScheduler.cancel(ctx, id)
         store.putAlarms(store.alarmsNow().filterNot { it.id == id })
+    }
+
+    /* ── Alarm groups ───────────────────────────────────────────────────────────────────────── */
+
+    /** Creates a new named group. Alarms are assigned to it afterward from the edit sheet. */
+    fun addGroup(name: String) = viewModelScope.launch {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return@launch
+        store.putGroups(store.groupsNow() + AlarmGroup(id = store.nextId(), name = trimmed))
+    }
+
+    fun renameGroup(id: Long, name: String) = viewModelScope.launch {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return@launch
+        store.putGroups(store.groupsNow().map { if (it.id == id) it.copy(name = trimmed) else it })
+    }
+
+    /**
+     * Deleting a group does not delete its alarms — only the bucket. Each alarm that pointed at it
+     * falls back to [Alarm.groupId] `null`, which the list already renders as "no group" without a
+     * special case, the same way [app.materialclock.core.AlarmGroup]'s own doc explains an empty
+     * group needs none.
+     */
+    fun deleteGroup(id: Long) = viewModelScope.launch {
+        store.putGroups(store.groupsNow().filterNot { it.id == id })
+        store.putAlarms(store.alarmsNow().map { if (it.groupId == id) it.copy(groupId = null) else it })
+    }
+
+    /** Moves an alarm into [groupId] (or out of any group, if null) without touching anything else. */
+    fun setAlarmGroup(alarmId: Long, groupId: Long?) = viewModelScope.launch {
+        store.putAlarms(store.alarmsNow().map { if (it.id == alarmId) it.copy(groupId = groupId) else it })
+    }
+
+    /**
+     * The one-tap arm/disarm the group header's own switch offers: every alarm in [groupId] gets
+     * [enabled] and is rescheduled or cancelled to match, the same as [toggleAlarm] does for one.
+     */
+    fun toggleGroup(groupId: Long, enabled: Boolean) = viewModelScope.launch {
+        val next = store.alarmsNow().map {
+            if (it.groupId == groupId) it.copy(enabled = enabled, snoozedUntilMillis = null) else it
+        }
+        store.putAlarms(next)
+        next.filter { it.groupId == groupId }.forEach { a ->
+            if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+        }
     }
 
     /* ── World clock ────────────────────────────────────────────────────────────────────────── */
