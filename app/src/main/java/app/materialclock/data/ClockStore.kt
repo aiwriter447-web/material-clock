@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.materialclock.core.Alarm
+import app.materialclock.core.AlarmGroup
 import app.materialclock.core.ClockTimer
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
@@ -55,6 +56,9 @@ class ClockStore(private val context: Context) {
     val cities: Flow<List<WorldCity>> = context.prefs.data.map { p ->
         p[KEY_CITIES]?.let(::parseCities) ?: SEED_CITIES
     }
+    val groups: Flow<List<AlarmGroup>> = context.prefs.data.map { p ->
+        p[KEY_GROUPS]?.let(::parseGroups) ?: emptyList()
+    }
     val timer: Flow<ClockTimer?> = context.prefs.data.map { p -> p[KEY_TIMER]?.let(::parseTimer) }
     val stopwatch: Flow<Stopwatch> = context.prefs.data.map { p ->
         p[KEY_STOPWATCH]?.let(::parseStopwatch) ?: Stopwatch()
@@ -66,6 +70,7 @@ class ClockStore(private val context: Context) {
     /** A one-shot read, for the receivers and services that have no scope to collect in. */
     suspend fun settingsNow(): ClockSettings = settings.first()
     suspend fun alarmsNow(): List<Alarm> = alarms.first()
+    suspend fun groupsNow(): List<AlarmGroup> = groups.first()
     suspend fun timerNow(): ClockTimer? = timer.first()
 
     suspend fun putAlarms(list: List<Alarm>) {
@@ -74,6 +79,10 @@ class ClockStore(private val context: Context) {
 
     suspend fun putCities(list: List<WorldCity>) {
         context.prefs.edit { it[KEY_CITIES] = encodeCities(list) }
+    }
+
+    suspend fun putGroups(list: List<AlarmGroup>) {
+        context.prefs.edit { it[KEY_GROUPS] = encodeGroups(list) }
     }
 
     suspend fun putPresets(list: List<TimerPreset>) {
@@ -162,6 +171,7 @@ class ClockStore(private val context: Context) {
 
         val KEY_ALARMS = stringPreferencesKey("alarms")
         val KEY_CITIES = stringPreferencesKey("cities")
+        val KEY_GROUPS = stringPreferencesKey("alarmGroups")
         val KEY_TIMER = stringPreferencesKey("timer")
         val KEY_STOPWATCH = stringPreferencesKey("stopwatch")
         val KEY_PRESETS = stringPreferencesKey("timerPresets")
@@ -210,6 +220,7 @@ private fun Preferences.toSettings() = ClockSettings(
         showSeconds = this[booleanPreferencesKey("showSeconds")] ?: false,
         hourFormat = enumOr(this[stringPreferencesKey("hourFormat")], HourFormat.SYSTEM),
         homeZoneOverride = this[stringPreferencesKey("homeZoneOverride")],
+        style = enumOr(this[stringPreferencesKey("worldClockStyle")], WorldClockStyle.ANALOG),
     ),
     timers = TimerSettings(
         soundUri = this[stringPreferencesKey("timerSound")],
@@ -237,6 +248,7 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     this[stringPreferencesKey("dismissMethod")] = s.alarms.dismissMethod.name
     this[booleanPreferencesKey("showSeconds")] = s.world.showSeconds
     this[stringPreferencesKey("hourFormat")] = s.world.hourFormat.name
+    this[stringPreferencesKey("worldClockStyle")] = s.world.style.name
     s.world.homeZoneOverride
         ?.let { this[stringPreferencesKey("homeZoneOverride")] = it }
         ?: remove(stringPreferencesKey("homeZoneOverride"))
@@ -270,6 +282,7 @@ private fun encodeAlarms(list: List<Alarm>) = JSONArray().apply {
                 .put("vibrate", a.vibrate)
                 .apply { a.soundUri?.let { put("sound", it) } }
                 .apply { a.snoozedUntilMillis?.let { put("snoozed", it) } }
+                .apply { a.groupId?.let { put("group", it) } }
         )
     }
 }.toString()
@@ -288,7 +301,22 @@ private fun parseAlarms(s: String): List<Alarm> = runCatching {
             vibrate = o.optBoolean("vibrate", true),
             soundUri = o.optString("sound").takeIf { it.isNotEmpty() },
             snoozedUntilMillis = o.optLong("snoozed").takeIf { it > 0L },
+            groupId = o.optLong("group", -1L).takeIf { it > 0L },
         )
+    }
+}.getOrDefault(emptyList())
+
+/* ── Alarm groups ⇄ JSON ────────────────────────────────────────────────────────────────── */
+
+private fun encodeGroups(list: List<AlarmGroup>) = JSONArray().apply {
+    list.forEach { g -> put(JSONObject().put("id", g.id).put("name", g.name)) }
+}.toString()
+
+private fun parseGroups(s: String): List<AlarmGroup> = runCatching {
+    val arr = JSONArray(s)
+    (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i)
+        AlarmGroup(id = o.getLong("id"), name = o.optString("name", ""))
     }
 }.getOrDefault(emptyList())
 
