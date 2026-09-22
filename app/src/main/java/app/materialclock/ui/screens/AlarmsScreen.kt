@@ -30,9 +30,11 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import app.materialclock.core.Alarm
+import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.sheets.systemFirstDay
@@ -52,13 +54,22 @@ import java.time.DayOfWeek
  * - Repeat days on the right.
  * - Switch below the repeat days.
  *
- * The dimensions are tuned toward the supplied reference screenshots.
+ * ## Groups
+ *
+ * Alarms whose [Alarm.groupId] points at a live [AlarmGroup] are sectioned under that group's own
+ * header — its name plus one switch that arms or disarms every alarm inside it at once, the same
+ * one-tap behaviour the latest Google Clock offers. A group with no alarms left in it draws
+ * nothing; per [AlarmGroup]'s own doc, that is not a case to special-case, only a section to skip.
+ * Alarms with no group are listed last, exactly as they were before groups existed — no header,
+ * because "ungrouped" is the default, not a category.
  */
 @Composable
 fun AlarmsScreen(
     alarms: List<Alarm>,
+    groups: List<AlarmGroup>,
     weekStart: WeekStart,
     onToggle: (Long) -> Unit,
+    onToggleGroup: (Long, Boolean) -> Unit,
     onEdit: (Alarm) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -73,32 +84,89 @@ fun AlarmsScreen(
         android.text.format.DateFormat.is24HourFormat(context)
     }
 
+    // Grouped first, in the order [groups] itself lists them, each with only its own alarms and
+    // never an empty one; ungrouped last, with no header at all.
+    val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
+    val sections = remember(groups, byGroup) {
+        buildList {
+            groups.forEach { g -> byGroup[g.id]?.let { add(g to it) } }
+            byGroup[null]?.let { add(null to it) }
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(
-            items = alarms,
-            key = { it.id },
-        ) { alarm ->
-            AlarmRow(
-                alarm = alarm,
-                order = order,
-                is24Hour = is24Hour,
-                onToggle = {
-                    onToggle(alarm.id)
-                },
-                onEdit = {
-                    onEdit(alarm)
-                },
-            )
+        sections.forEach { (group, groupAlarms) ->
+            if (group != null) {
+                item(key = "group-${group.id}") {
+                    GroupHeader(
+                        group = group,
+                        allArmed = groupAlarms.all { it.enabled },
+                        onToggle = { onToggleGroup(group.id, it) },
+                    )
+                }
+            }
+            items(groupAlarms, key = { it.id }) { alarm ->
+                AlarmRow(
+                    alarm = alarm,
+                    order = order,
+                    is24Hour = is24Hour,
+                    onToggle = {
+                        onToggle(alarm.id)
+                    },
+                    onEdit = {
+                        onEdit(alarm)
+                    },
+                )
+            }
         }
     }
 }
 
 /* -------------------------------------------------------------------------- */
-/* Row dimensions                                                              */
+/* Group header                                                               */
+/* -------------------------------------------------------------------------- */
+
+private val GROUP_HEADER_PADDING_H = 20.dp
+private val GROUP_HEADER_PADDING_V = 4.dp
+
+/**
+ * A group's name and its one-tap switch.
+ *
+ * [allArmed] — not "any armed" — decides the switch's own drawn state, so a group with a mix of
+ * on and off alarms reads as off until every alarm in it agrees; that is the least surprising
+ * reading of a control that is about to make them all match each other.
+ */
+@Composable
+private fun GroupHeader(
+    group: AlarmGroup,
+    allArmed: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = GROUP_HEADER_PADDING_H, vertical = GROUP_HEADER_PADDING_V)
+            .clickable { onToggle(!allArmed) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = group.name,
+            style = MaterialTheme.typography.titleMediumEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = allArmed, onCheckedChange = onToggle)
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Row dimensions                                                             */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -109,21 +177,15 @@ fun AlarmsScreen(
  */
 private val ROW_HORIZONTAL_PADDING = 16.dp
 
-/**
- * Vertical inset of the card content.
- */
+/** Vertical inset of the card content. */
 private val ROW_VERTICAL_PADDING = 16.dp
 
 private val ROW_CORNER_RADIUS = 24.dp
 
-/**
- * Gap between an alarm label such as "Morning" and its time.
- */
+/** Gap between an alarm label such as "Morning" and its time. */
 private val ROW_LABEL_TO_TIME = 4.dp
 
-/**
- * Gap between the large hour and the minutes block in 12-hour mode.
- */
+/** Gap between the large hour and the minutes block in 12-hour mode. */
 private val ROW_TIME_GAP = 8.dp
 
 /**
@@ -134,18 +196,14 @@ private val ROW_TIME_GAP = 8.dp
  */
 private val ROW_TIME_CAP = 120.dp
 
-/**
- * Relative size of minutes compared with the large hour.
- */
+/** Relative size of minutes compared with the large hour. */
 private const val ROW_MINUTE_CAP_FRACTION = 0.66f
 
-/**
- * Relative size of AM/PM compared with the large hour.
- */
+/** Relative size of AM/PM compared with the large hour. */
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
-/* Alarm row                                                                   */
+/* Alarm row                                                                  */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -158,10 +216,8 @@ private fun AlarmRow(
 ) {
     val enabled = alarm.enabled
 
-    /*
-     * Dynamically change colors based on whether the alarm is enabled.
-     * Matches the colorized UI design when active, and muted grey when inactive.
-     */
+    // Dynamically change colors based on whether the alarm is enabled. Matches the colorized UI
+    // design when active, and muted grey when inactive.
     val container = if (enabled) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -174,24 +230,19 @@ private fun AlarmRow(
         MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    val numeralWeight =
-        if (enabled) {
-            ClockFace.WEIGHT_ON
-        } else {
-            ClockFace.WEIGHT_OFF
-        }
+    val numeralWeight = if (enabled) {
+        ClockFace.WEIGHT_ON
+    } else {
+        ClockFace.WEIGHT_OFF
+    }
 
-    val hour12 =
-        (alarm.time.hour % 12)
-            .takeIf { it != 0 }
-            ?: 12
+    val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
 
-    val meridiem =
-        if (alarm.time.hour < 12) {
-            "AM"
-        } else {
-            "PM"
-        }
+    val meridiem = if (alarm.time.hour < 12) {
+        "AM"
+    } else {
+        "PM"
+    }
 
     Surface(
         color = container,
@@ -210,20 +261,7 @@ private fun AlarmRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
 
-            /*
-             * LEFT SIDE
-             *
-             * With a label:
-             *
-             * Morning
-             * 07:15
-             *
-             * Or in 12-hour mode:
-             *
-             * Morning
-             * 07  15
-             *      AM
-             */
+            // LEFT SIDE — optional label above the time, in either the 24-hour or 12-hour shape.
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top,
@@ -236,9 +274,7 @@ private fun AlarmRow(
                         maxLines = 1,
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(ROW_LABEL_TO_TIME)
-                    )
+                    Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
                 }
 
                 if (is24Hour) {
@@ -259,16 +295,9 @@ private fun AlarmRow(
                 }
             }
 
-            Spacer(
-                modifier = Modifier.width(16.dp)
-            )
+            Spacer(modifier = Modifier.width(16.dp))
 
-            /*
-             * RIGHT SIDE
-             *
-             * S M T W T F S
-             *       [switch]
-             */
+            // RIGHT SIDE — day letters over the switch.
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
@@ -279,15 +308,10 @@ private fun AlarmRow(
                     ink = ink,
                 )
 
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
+                Spacer(modifier = Modifier.height(8.dp))
 
-                /*
-                 * Material 3 Switch is intentionally kept here rather than
-                 * replacing it with a custom control. Its visual appearance
-                 * can therefore continue to follow the app's Material theme.
-                 */
+                // Material 3 Switch is intentionally kept here rather than replacing it with a
+                // custom control, so its appearance continues to follow the app's Material theme.
                 Switch(
                     checked = enabled,
                     onCheckedChange = {
@@ -314,7 +338,7 @@ private fun AlarmRow(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 24-hour time                                                                */
+/* 24-hour time                                                               */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -335,7 +359,7 @@ private fun RowTime24(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 12-hour time                                                                */
+/* 12-hour time                                                               */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -349,11 +373,7 @@ private fun RowTime12(
     Row(
         verticalAlignment = Alignment.Top,
     ) {
-        /*
-         * Large hour:
-         *
-         * 07
-         */
+        // Large hour: 07
         Numerals(
             text = "%02d".format(hour12),
             capHeight = ROW_TIME_CAP,
@@ -363,16 +383,10 @@ private fun RowTime12(
             tracking = ClockFace.CONDENSED_TRACKING,
         )
 
-        Spacer(
-            modifier = Modifier.width(ROW_TIME_GAP)
-        )
+        Spacer(modifier = Modifier.width(ROW_TIME_GAP))
 
         Column {
-            /*
-             * Smaller minutes:
-             *
-             * 15
-             */
+            // Smaller minutes: 15
             Numerals(
                 text = "%02d".format(minute),
                 capHeight = ROW_TIME_CAP * ROW_MINUTE_CAP_FRACTION,
@@ -382,13 +396,9 @@ private fun RowTime12(
                 tracking = ClockFace.CONDENSED_TRACKING,
             )
 
-            Spacer(
-                modifier = Modifier.height(2.dp)
-            )
+            Spacer(modifier = Modifier.height(2.dp))
 
-            /*
-             * AM / PM below minutes.
-             */
+            // AM / PM below minutes.
             CapText(
                 text = meridiem,
                 capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
@@ -400,7 +410,7 @@ private fun RowTime12(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Repeat-day letters                                                          */
+/* Repeat-day letters                                                         */
 /* -------------------------------------------------------------------------- */
 
 private val DAY_CAP = 23.dp
@@ -413,11 +423,9 @@ private const val DAY_WEIGHT_OFF = 400
 /**
  * Repeat-day letters.
  *
- * All seven letters remain in one AnnotatedString so Compose's text shaper
- * sees them as one run instead of seven independently positioned boxes.
- *
- * The final run is horizontally scaled to a fixed width so the switch below
- * does not move when the repeat pattern changes.
+ * All seven letters remain in one AnnotatedString so Compose's text shaper sees them as one run
+ * instead of seven independently positioned boxes. The final run is horizontally scaled to a fixed
+ * width so the switch below does not move when the repeat pattern changes.
  */
 @Composable
 private fun DayLetters(
@@ -452,25 +460,21 @@ private fun DayLetters(
     ) {
         buildAnnotatedString {
             order.forEach { day ->
-                val active =
-                    !alarm.isOneShot &&
-                        day in alarm.days
+                val active = !alarm.isOneShot && day in alarm.days
 
                 withStyle(
                     SpanStyle(
-                        fontFamily =
-                            if (active) {
-                                bold.fontFamily
-                            } else {
-                                light.fontFamily
-                            },
+                        fontFamily = if (active) {
+                            bold.fontFamily
+                        } else {
+                            light.fontFamily
+                        },
 
-                        color =
-                            if (active) {
-                                ink
-                            } else {
-                                ink.copy(alpha = 0.30f)
-                            },
+                        color = if (active) {
+                            ink
+                        } else {
+                            ink.copy(alpha = 0.30f)
+                        },
                     )
                 ) {
                     append(day.name.take(1))
@@ -479,44 +483,34 @@ private fun DayLetters(
         }
     }
 
-    /*
-     * Tracking is expressed in em so it scales with the cap height.
-     */
-    val letterSpacing =
-        with(density) {
-            (DAY_TRACKING / bold.fontSize.toDp()).em
-        }
+    // Tracking is expressed in em so it scales with the cap height.
+    val letterSpacing = with(density) {
+        (DAY_TRACKING / bold.fontSize.toDp()).em
+    }
 
     val style = bold.copy(
         letterSpacing = letterSpacing,
     )
 
-    /*
-     * Measure the actual seven-letter run.
-     *
-     * This avoids hard-coding a separate width for each possible repeat
-     * pattern. The target block remains fixed.
-     */
-    val measuredWidth =
-        measurer
-            .measure(
-                text = text,
-                style = style,
-            )
-            .size
-            .width
+    // Measure the actual seven-letter run. This avoids hard-coding a separate width for each
+    // possible repeat pattern. The target block remains fixed.
+    val measuredWidth = measurer
+        .measure(
+            text = text,
+            style = style,
+        )
+        .size
+        .width
 
-    val targetWidth =
-        with(density) {
-            DAY_BLOCK_WIDTH.toPx()
-        }
+    val targetWidth = with(density) {
+        DAY_BLOCK_WIDTH.toPx()
+    }
 
-    val scaleX =
-        if (measuredWidth > 0) {
-            targetWidth / measuredWidth
-        } else {
-            1f
-        }
+    val scaleX = if (measuredWidth > 0) {
+        targetWidth / measuredWidth
+    } else {
+        1f
+    }
 
     StretchedCaps(
         text = text,
