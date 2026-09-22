@@ -10,9 +10,6 @@ import java.time.ZonedDateTime
 
 /**
  * One alarm.
- *
- * [days] empty means a one-shot: it fires at the next occurrence of [time] and disarms itself.
- * That is the same rule Android's own clock uses and it is why [nextFire] needs no separate flag.
  */
 data class Alarm(
     val id: Long,
@@ -21,18 +18,12 @@ data class Alarm(
     val days: Set<DayOfWeek> = emptySet(),
     val enabled: Boolean = true,
     val vibrate: Boolean = true,
-    /** A `content://` ringtone URI, or null for the system default alarm sound. */
     val soundUri: String? = null,
-    /**
-     * Wall-clock millis a snooze is due, or null.
-     */
     val snoozedUntilMillis: Long? = null,
-    /** [AlarmGroup.id] this alarm belongs to, or null for no group. */
     val groupId: Long? = null,
 ) {
     val isOneShot: Boolean get() = days.isEmpty()
 
-    /** The next instant this alarm would sound, or null when it is off. */
     fun nextFire(now: ZonedDateTime): ZonedDateTime? {
         if (!enabled) return null
         snoozedUntilMillis?.let { at ->
@@ -46,7 +37,6 @@ data class Alarm(
             .firstOrNull { it.isAfter(now) && it.dayOfWeek in days }
     }
 
-    /** The words the app prints: "Every day" / "Weekdays" / "Mon, Wed, Fri" / "Tomorrow". */
     fun repeatLabel(now: LocalDate = LocalDate.now()): String = when {
         isOneShot -> "Once"
         days.size == 7 -> "Every day"
@@ -71,15 +61,14 @@ data class Alarm(
  */
 data class AlarmGroup(val id: Long, val name: String)
 
-/** "in 17 h 54 min", deliberately coarse because a countdown to tomorrow does not need seconds. */
 fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
     val d = Duration.between(from, to)
     val days = d.toDays()
     val hours = d.toHours() % 24
     val mins = d.toMinutes() % 60
     return when {
-        days > 0 -> "${days} d${hours} h"
-        hours > 0 -> "${hours} h${mins} min"
+        days > 0 -> "${days} d ${hours} h"
+        hours > 0 -> "${hours} h ${mins} min"
         mins > 0 -> "${mins} min"
         else -> "less than a minute"
     }
@@ -109,7 +98,8 @@ data class WorldCity(
         val diffSeconds = zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
         val sign = if (diffSeconds >= 0) "+" else "−"
         val totalMinutes = kotlin.math.abs(diffSeconds) / 60
-        return "$sign${totalMinutes / 60}:${"%02d".format(totalMinutes % 60)} h"
+        val m = (totalMinutes % 60).toString().padStart(2, '0')
+        return "$sign${totalMinutes / 60}:$m h"
     }
 
     fun utcCode(nowUtcMillis: Long): String {
@@ -117,7 +107,9 @@ data class WorldCity(
         val seconds = zone.rules.getOffset(inst).totalSeconds
         val sign = if (seconds >= 0) "+" else "−"
         val totalMinutes = kotlin.math.abs(seconds) / 60
-        return "UTC$sign${"\%02d".format(totalMinutes / 60)}:${"%02d".format(totalMinutes % 60)}"
+        val h = (totalMinutes / 60).toString().padStart(2, '0')
+        val m = (totalMinutes % 60).toString().padStart(2, '0')
+        return "UTC$sign$h:$m"
     }
 
     fun isNight(nowUtcMillis: Long): Boolean =
