@@ -27,11 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextUnit
+import androidx.compose.ui.text.TextUnitType
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import app.materialclock.core.Alarm
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
@@ -45,14 +46,20 @@ import java.time.DayOfWeek
 /**
  * Alarm list.
  *
- * Layout:
- * - One full-width alarm card per row.
- * - Optional alarm label above the time.
- * - Large clock-face numerals.
- * - Repeat days on the right.
- * - Switch below the repeat days.
+ * One full-width alarm card per row.
  *
- * The dimensions are tuned toward the supplied reference screenshots.
+ * Layout:
+ *
+ *   Label
+ *   07 15
+ *      AM              S M T W T F S
+ *                    [ switch ]
+ *
+ * The enabled state controls:
+ * - label color
+ * - numeral weight
+ * - active repeat-day weight/color
+ * - switch state
  */
 @Composable
 fun AlarmsScreen(
@@ -98,54 +105,30 @@ fun AlarmsScreen(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Row dimensions                                                              */
+/* Row dimensions                                                             */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Horizontal inset of the card content.
- *
- * The screenshots have a relatively compact inset, leaving the clock face
- * dominant inside the card.
- */
-private val ROW_HORIZONTAL_PADDING = 16.dp
-
-/**
- * Vertical inset of the card content.
- */
+private val ROW_HORIZONTAL_PADDING = 32.dp
 private val ROW_VERTICAL_PADDING = 16.dp
 
 private val ROW_CORNER_RADIUS = 24.dp
 
-/**
- * Gap between an alarm label such as "Morning" and its time.
- */
 private val ROW_LABEL_TO_TIME = 4.dp
 
-/**
- * Gap between the large hour and the minutes block in 12-hour mode.
- */
 private val ROW_TIME_GAP = 8.dp
 
 /**
- * Main time cap height.
+ * Main clock height.
  *
- * This is deliberately much larger than the old 40.dp value. The supplied
- * reference screenshots use the time as the dominant visual element.
+ * The supplied reference uses a very large clock-face treatment.
  */
 private val ROW_TIME_CAP = 120.dp
 
-/**
- * Relative size of minutes compared with the large hour.
- */
 private const val ROW_MINUTE_CAP_FRACTION = 0.66f
-
-/**
- * Relative size of AM/PM compared with the large hour.
- */
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
-/* Alarm row                                                                   */
+/* Alarm row                                                                  */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -159,16 +142,35 @@ private fun AlarmRow(
     val enabled = alarm.enabled
 
     /*
-     * Keep the card surface quiet, like the reference screenshots.
+     * Keep the row/card background consistent with the reference.
      *
-     * Alarm state is primarily represented by:
-     * - numeral weight
-     * - active/inactive day letters
-     * - switch state
+     * The ON state is communicated by the typography and switch rather than
+     * changing the entire row to a different surface color.
      */
     val container = MaterialTheme.colorScheme.surfaceContainer
+
+    /*
+     * Base clock color.
+     */
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
 
+    /*
+     * Enabled title uses the app's primary color.
+     *
+     * This is the important fix for the bug where an enabled alarm's label
+     * remained the same color as a disabled alarm.
+     */
+    val titleColor =
+        if (enabled) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            ink.copy(alpha = 0.70f)
+        }
+
+    /*
+     * Enabled alarms use the heavy clock-face weight.
+     * Disabled alarms use the lighter clock-face weight.
+     */
     val numeralWeight =
         if (enabled) {
             ClockFace.WEIGHT_ON
@@ -206,28 +208,28 @@ private fun AlarmRow(
         ) {
 
             /*
-             * LEFT SIDE
-             *
-             * With a label:
-             *
-             * Morning
-             * 07:15
-             *
-             * Or in 12-hour mode:
-             *
-             * Morning
-             * 07  15
-             *      AM
+             * ----------------------------------------------------------------
+             * LEFT
+             * ----------------------------------------------------------------
              */
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top,
             ) {
+
+                /*
+                 * Alarm label.
+                 *
+                 * FIX:
+                 * Enabled alarm -> primary/active color
+                 * Disabled alarm -> muted color
+                 */
                 if (alarm.label.isNotBlank()) {
                     Text(
                         text = alarm.label,
                         style = MaterialTheme.typography.titleMediumEmphasized,
-                        color = ink,
+                        color = titleColor,
                         maxLines = 1,
                     )
 
@@ -259,11 +261,11 @@ private fun AlarmRow(
             )
 
             /*
-             * RIGHT SIDE
-             *
-             * S M T W T F S
-             *       [switch]
+             * ----------------------------------------------------------------
+             * RIGHT
+             * ----------------------------------------------------------------
              */
+
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
@@ -278,21 +280,26 @@ private fun AlarmRow(
                     modifier = Modifier.height(8.dp)
                 )
 
-                /*
-                 * Material 3 Switch is intentionally kept here rather than
-                 * replacing it with a custom control. Its visual appearance
-                 * can therefore continue to follow the app's Material theme.
-                 */
                 Switch(
                     checked = enabled,
                     onCheckedChange = {
                         onToggle()
                     },
                     colors = SwitchDefaults.colors(
+                        /*
+                         * ON:
+                         * dark/active track
+                         * light thumb
+                         */
                         checkedThumbColor = container,
                         checkedTrackColor = ink,
                         checkedBorderColor = Color.Transparent,
 
+                        /*
+                         * OFF:
+                         * transparent inside
+                         * outlined border
+                         */
                         uncheckedThumbColor = ink,
                         uncheckedTrackColor = Color.Transparent,
                         uncheckedBorderColor = ink,
@@ -309,7 +316,7 @@ private fun AlarmRow(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 24-hour time                                                                */
+/* 24-hour time                                                               */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -330,7 +337,7 @@ private fun RowTime24(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 12-hour time                                                                */
+/* 12-hour time                                                               */
 /* -------------------------------------------------------------------------- */
 
 @Composable
@@ -345,7 +352,9 @@ private fun RowTime12(
         verticalAlignment = Alignment.Top,
     ) {
         /*
-         * Large hour:
+         * Large hour.
+         *
+         * Example:
          *
          * 07
          */
@@ -364,7 +373,9 @@ private fun RowTime12(
 
         Column {
             /*
-             * Smaller minutes:
+             * Smaller minute section.
+             *
+             * Example:
              *
              * 15
              */
@@ -395,11 +406,20 @@ private fun RowTime12(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Repeat-day letters                                                          */
+/* Repeat-day letters                                                         */
 /* -------------------------------------------------------------------------- */
 
 private val DAY_CAP = 23.dp
+
+/**
+ * The repeat-day block stays at a fixed width so the switch below it
+ * does not move between alarms.
+ */
 private val DAY_BLOCK_WIDTH = 91.dp
+
+/**
+ * Desired physical tracking.
+ */
 private val DAY_TRACKING = 2.2.dp
 
 private const val DAY_WEIGHT_ON = 700
@@ -408,11 +428,10 @@ private const val DAY_WEIGHT_OFF = 400
 /**
  * Repeat-day letters.
  *
- * All seven letters remain in one AnnotatedString so Compose's text shaper
- * sees them as one run instead of seven independently positioned boxes.
+ * All seven letters are kept inside one AnnotatedString.
  *
- * The final run is horizontally scaled to a fixed width so the switch below
- * does not move when the repeat pattern changes.
+ * This is important because creating seven independent Text composables
+ * introduces independent layout boxes and makes the spacing inconsistent.
  */
 @Composable
 private fun DayLetters(
@@ -423,6 +442,9 @@ private fun DayLetters(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
 
+    /*
+     * Build the two font variants once.
+     */
     val bold = remember {
         ClockFace.capitals(
             DAY_CAP,
@@ -439,6 +461,9 @@ private fun DayLetters(
         )
     }
 
+    /*
+     * Build the seven-letter run.
+     */
     val text = remember(
         alarm.days,
         alarm.isOneShot,
@@ -475,22 +500,51 @@ private fun DayLetters(
     }
 
     /*
-     * Tracking is expressed in em so it scales with the cap height.
+     * ---------------------------------------------------------------
+     * FIX FOR THE PREVIOUS COMPILATION ERROR
+     * ---------------------------------------------------------------
+     *
+     * Do NOT use:
+     *
+     *     something.em
+     *
+     * in this file.
+     *
+     * Instead create the TextUnit explicitly.
+     *
+     * TextUnitType.Em is available without relying on the `.em`
+     * extension that caused the previous build failure.
      */
-    val letterSpacing =
+
+    val fontSizePx =
         with(density) {
-            (DAY_TRACKING / bold.fontSize.toDp()).em
+            bold.fontSize.toPx()
         }
+
+    val trackingPx =
+        with(density) {
+            DAY_TRACKING.toPx()
+        }
+
+    val trackingEm =
+        if (fontSizePx > 0f) {
+            trackingPx / fontSizePx
+        } else {
+            0f
+        }
+
+    val letterSpacing =
+        TextUnit(
+            value = trackingEm,
+            type = TextUnitType.Em,
+        )
 
     val style = bold.copy(
         letterSpacing = letterSpacing,
     )
 
     /*
-     * Measure the actual seven-letter run.
-     *
-     * This avoids hard-coding a separate width for each possible repeat
-     * pattern. The target block remains fixed.
+     * Measure the actual text run.
      */
     val measuredWidth =
         measurer
@@ -501,11 +555,17 @@ private fun DayLetters(
             .size
             .width
 
+    /*
+     * Convert target width from dp to px.
+     */
     val targetWidth =
         with(density) {
             DAY_BLOCK_WIDTH.toPx()
         }
 
+    /*
+     * Scale only when we have a valid measured width.
+     */
     val scaleX =
         if (measuredWidth > 0) {
             targetWidth / measuredWidth
