@@ -61,7 +61,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 128
+private const val ROW_HEIGHT_DP = 100 // Reduced from 128 for a compacter pill shape
 
 @Composable
 fun WorldClockScreen(
