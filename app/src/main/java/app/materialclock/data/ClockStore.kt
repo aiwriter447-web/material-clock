@@ -215,6 +215,7 @@ private fun Preferences.toSettings() = ClockSettings(
         volume = this[floatPreferencesKey("alarmVolume")] ?: 1f,
         volumeButtonsControlVolume = this[booleanPreferencesKey("volumeButtonsControlVolume")] ?: true,
         dismissMethod = enumOr(this[stringPreferencesKey("dismissMethod")], DismissMethod.TAP),
+        upcomingNotificationMinutes = this[intPreferencesKey("upcomingNotificationMinutes")] ?: 30,
     ),
     world = WorldClockSettings(
         showSeconds = this[booleanPreferencesKey("showSeconds")] ?: false,
@@ -246,6 +247,7 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     this[floatPreferencesKey("alarmVolume")] = s.alarms.volume
     this[booleanPreferencesKey("volumeButtonsControlVolume")] = s.alarms.volumeButtonsControlVolume
     this[stringPreferencesKey("dismissMethod")] = s.alarms.dismissMethod.name
+    this[intPreferencesKey("upcomingNotificationMinutes")] = s.alarms.upcomingNotificationMinutes
     this[booleanPreferencesKey("showSeconds")] = s.world.showSeconds
     this[stringPreferencesKey("hourFormat")] = s.world.hourFormat.name
     this[stringPreferencesKey("worldClockStyle")] = s.world.style.name
