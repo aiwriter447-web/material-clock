@@ -218,11 +218,11 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 /* -------------------------------------------------------------------------- */
 
 private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 16.dp
+private val ROW_VERTICAL_PADDING = 10.dp // Reduced from 16.dp for compact height
 private val ROW_CORNER_RADIUS = 24.dp
-private val ROW_LABEL_TO_TIME = 4.dp
+private val ROW_LABEL_TO_TIME = 0.dp // Reduced from 4.dp
 private val ROW_TIME_GAP = 8.dp
-private val ROW_TIME_CAP = 120.dp
+private val ROW_TIME_CAP = 104.dp // Reduced from 120.dp
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
