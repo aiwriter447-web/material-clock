@@ -90,7 +90,7 @@ fun AlarmsScreen(
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
 
-    // Confirmation Dialog before delete
+    // Delete Confirmation Dialog
     alarmToDelete?.let { alarm ->
         AlertDialog(
             onDismissRequest = { alarmToDelete = null },
@@ -119,17 +119,28 @@ fun AlarmsScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Upcoming Alarm Text Section - designed as two lines
         item(key = "upcoming-alarm-text") {
-            val upcomingText = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
-            if (upcomingText.isNotEmpty()) {
-                Text(
-                    text = upcomingText,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
+            if (upcomingInfo != null) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp)
-                )
+                        .padding(horizontal = 20.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.Start // Left aligned according to the UI
+                ) {
+                    Text(
+                        text = upcomingInfo.first,
+                        style = MaterialTheme.typography.titleMedium, // Easy-to-read size
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = upcomingInfo.second,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary, // To make the date stand out
+                    )
+                }
             }
         }
 
@@ -166,9 +177,7 @@ fun AlarmsScreen(
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
                         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(ROW_FIXED_HEIGHT),
+                        modifier = Modifier.fillMaxSize(),
                     ) {
                         Box(
                             modifier = Modifier
@@ -198,9 +207,10 @@ fun AlarmsScreen(
     }
 }
 
-private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
+// New function: now returns a Pair (two separate strings) so the UI can display two lines
+private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): Pair<String, String>? {
     val activeAlarms = alarms.filter { it.enabled }
-    if (activeAlarms.isEmpty()) return ""
+    if (activeAlarms.isEmpty()) return null
 
     val now = LocalDateTime.now()
     var minDuration: Duration? = null
@@ -227,23 +237,24 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
         }
     }
 
-    if (minDuration == null || nextAlarmTime == null) return ""
-
+    if (minDuration == null || nextAlarmTime == null) return null
+    
     val hours = minDuration.toHours()
     val minutes = minDuration.toMinutes() % 60
 
-    // Use DateTimeFormatter for the new format (e.g.: Thu, 24 Sept, 2:30 pm)
+    // Date formatting
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM, h:mm a")
     val formattedDate = nextAlarmTime.format(formatter)
         .replace("AM", "am")
         .replace("PM", "pm")
 
-    return buildString {
+    val durationString = buildString {
         append("Alarm in ")
         if (hours > 0) append("$hours hours ")
-        append("$minutes minutes ")
-        append("($formattedDate)")
+        append("$minutes minutes")
     }
+
+    return Pair(durationString, formattedDate)
 }
 
 private val GROUP_SECTION_PADDING_H = 4.dp
@@ -340,15 +351,16 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 }
 
 /* -------------------------------------------------------------------------- */
-/* Uniform Row Dimensions                                                     */
+/* Row Dimensions */
 /* -------------------------------------------------------------------------- */
 
-private val ROW_FIXED_HEIGHT = 104.dp
 private val ROW_HORIZONTAL_PADDING = 16.dp
+private val ROW_VERTICAL_PADDING = 10.dp
 private val ROW_CORNER_RADIUS = 24.dp
-private val ROW_TIME_GAP = 6.dp
-private val ROW_TIME_CAP = 64.dp
-private const val ROW_MERIDIEM_CAP_FRACTION = 0.35f
+private val ROW_LABEL_TO_TIME = 0.dp
+private val ROW_TIME_GAP = 8.dp
+private val ROW_TIME_CAP = 104.dp
+private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 @Composable
 private fun AlarmRow(
@@ -381,33 +393,38 @@ private fun AlarmRow(
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
+    val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
+    val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
+
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
         modifier = Modifier
             .fillMaxWidth()
-            .height(ROW_FIXED_HEIGHT)
             .clickable(onClick = onEdit),
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = ROW_HORIZONTAL_PADDING),
+                .fillMaxWidth()
+                .padding(
+                    horizontal = ROW_HORIZONTAL_PADDING,
+                    vertical = ROW_VERTICAL_PADDING,
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Top,
             ) {
-                if (alarm.label.isNotBlank()) {
-                    Text(
-                        text = alarm.label,
-                        style = MaterialTheme.typography.titleMediumEmphasized,
-                        color = ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = displayLabel,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    color = labelColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
                 if (is24Hour) {
                     RowTime24(
@@ -427,11 +444,11 @@ private fun AlarmRow(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Top,
             ) {
                 DayLetters(
                     alarm = alarm,
@@ -439,7 +456,7 @@ private fun AlarmRow(
                     ink = ink,
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Switch(
                     checked = enabled,
@@ -517,14 +534,14 @@ private fun RowTime12(
             capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
             color = ink,
             tracking = ClockFace.CONDENSED_TRACKING,
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 6.dp)
         )
     }
 }
 
-private val DAY_CAP = 20.dp
-private val DAY_BLOCK_WIDTH = 85.dp
-private val DAY_TRACKING = 2.dp
+private val DAY_CAP = 23.dp
+private val DAY_BLOCK_WIDTH = 91.dp
+private val DAY_TRACKING = 2.2.dp
 
 private const val DAY_WEIGHT_ON = 700
 private const val DAY_WEIGHT_OFF = 400
