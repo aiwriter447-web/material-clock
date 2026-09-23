@@ -102,7 +102,7 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         else -> scheme.onSurface
     }
 
-    // बहुत तेज़ और रिस्पॉन्सिव कलर फेड (Fade) एनिमेशन
+    // Very fast and responsive color fade animation.
     val containerColor by animateColorAsState(
         targetValue = targetContainer,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -135,7 +135,7 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // आइकन के लिए पैरेलल पॉप एनिमेशन (Fast & Snappy)
+        // Parallel pop animation for the icon (Fast & Snappy).
         AnimatedContent(
             targetState = currentIcon,
             transitionSpec = {
@@ -152,7 +152,7 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
             )
         }
         
-        // बैलेंस्ड बाउंस के साथ स्मूथ स्प्रिंग इफ़ेक्ट
+        // Smooth spring effect with a balanced bounce.
         AnimatedVisibility(
             visible = selected,
             enter = fadeIn(tween(150)) + expandHorizontally(
