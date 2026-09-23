@@ -91,7 +91,6 @@ fun ClockDock(
 private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     
-    // Smooth Color Transitions
     val targetContainer = when {
         !selected -> Color.Transparent
         dark -> scheme.primary
@@ -103,18 +102,18 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         else -> scheme.onSurface
     }
 
+    // बहुत तेज़ और रिस्पॉन्सिव कलर फेड (Fade) एनिमेशन
     val containerColor by animateColorAsState(
         targetValue = targetContainer,
-        animationSpec = tween(300),
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "containerColor"
     )
     val contentColor by animateColorAsState(
         targetValue = targetContent,
-        animationSpec = tween(300),
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "contentColor"
     )
 
-    // Filled Icons mapping for live interaction state
     val activeIcon = remember(tab) {
         when (tab) {
             Tab.ALARMS -> Icons.Rounded.Alarm
@@ -136,12 +135,12 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Animated Pop for Icon change
+        // आइकन के लिए पैरेलल पॉप एनिमेशन (Fast & Snappy)
         AnimatedContent(
             targetState = currentIcon,
             transitionSpec = {
-                (fadeIn(tween(200)) + scaleIn(initialScale = 0.8f, animationSpec = tween(200)))
-                    .togetherWith(fadeOut(tween(200)) + scaleOut(targetScale = 0.8f, animationSpec = tween(200)))
+                (fadeIn(tween(150)) + scaleIn(initialScale = 0.6f, animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f)))
+                    .togetherWith(fadeOut(tween(150)) + scaleOut(targetScale = 0.6f, animationSpec = tween(150)))
             },
             label = "iconAnim"
         ) { icon ->
@@ -153,20 +152,20 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
             )
         }
         
-        // Expressive Spring Expansion for Text
+        // बैलेंस्ड बाउंस के साथ स्मूथ स्प्रिंग इफ़ेक्ट
         AnimatedVisibility(
             visible = selected,
-            enter = fadeIn(tween(250)) + expandHorizontally(
+            enter = fadeIn(tween(150)) + expandHorizontally(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = 0.7f, 
+                    stiffness = 500f
                 ),
                 clip = false
             ),
-            exit = fadeOut(tween(200)) + shrinkHorizontally(
+            exit = fadeOut(tween(100)) + shrinkHorizontally(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
+                    dampingRatio = 0.8f, 
+                    stiffness = 600f
                 ),
                 clip = false
             ),
@@ -193,10 +192,9 @@ fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modi
         label = "addGlyph",
     )
     
-    // Live Interaction Rotation
     val rotation by animateFloatAsState(
         targetValue = if (visible) 0f else -90f,
-        animationSpec = tween(durationMillis = 250),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
         label = "addRotate"
     )
     
