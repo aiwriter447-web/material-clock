@@ -73,7 +73,28 @@ fun AlarmSettingsSheet(
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 32.dp)) {
             SheetTitle("Alarm settings")
 
-            SectionLabel("Ringing")
+            SectionLabel("Schedule & Behavior")
+            NavigateRow(
+                title = "Groups",
+                subtitle = "Alarm groups\nCreate, rename or delete",
+                onClick = onManageGroups,
+            )
+            ChoiceRow(
+                title = "Start week on",
+                value = settings.alarms.weekStart,
+                options = WeekStart.entries,
+                label = { it.label },
+                onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
+            )
+            ChoiceRow(
+                title = "Dismiss alarm with",
+                value = settings.alarms.dismissMethod,
+                options = DismissMethod.entries,
+                label = { it.label },
+                onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
+            )
+
+            SectionLabel("Ringing & Sound")
             ChoiceRow(
                 title = "Silence after",
                 value = settings.alarms.silenceAfterMinutes,
@@ -91,6 +112,17 @@ fun AlarmSettingsSheet(
                 label = ::minutesLabel,
                 onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) } },
             )
+            ChoiceRow(
+                title = "Upcoming alarm notification",
+                value = settings.alarms.upcomingNotificationMinutes,
+                // 0 is "Off": no heads-up notice at all, straight to the ring, same as before this
+                // setting existed.
+                options = listOf(0, 5, 10, 15, 30, 60),
+                label = { if (it == 0) "Off" else "$it minutes before" },
+                onSelect = { v ->
+                    onChange { it.copy(alarms = it.alarms.copy(upcomingNotificationMinutes = v)) }
+                },
+            )
             DefaultToneRow(
                 soundUri = settings.alarms.defaultSoundUri,
                 onPick = { v -> onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) } },
@@ -107,34 +139,11 @@ fun AlarmSettingsSheet(
                     onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
                 },
             )
-            ChoiceRow(
-                title = "Dismiss alarm with",
-                value = settings.alarms.dismissMethod,
-                options = DismissMethod.entries,
-                label = { it.label },
-                onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
-            )
 
-            SectionLabel("Permissions")
+            SectionLabel("Permissions & Alerts")
             NotificationPermissionRow()
             ExactAlarmPermissionRow()
             FullScreenIntentRow()
-
-            SectionLabel("Schedule")
-            ChoiceRow(
-                title = "Start week on",
-                value = settings.alarms.weekStart,
-                options = WeekStart.entries,
-                label = { it.label },
-                onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
-            )
-
-            SectionLabel("Groups")
-            NavigateRow(
-                title = "Alarm groups",
-                subtitle = "Create, rename or delete",
-                onClick = onManageGroups,
-            )
 
         }
     }
@@ -207,10 +216,9 @@ private fun VolumeRow(volume: Float, onChange: (Float) -> Unit) {
 private fun NotificationPermissionRow() {
     val context = LocalContext.current
     val granted = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
-    if (granted) return
     NavigateRow(
         title = "Notifications",
-        subtitle = "Off — a ringing alarm still sounds, but its controls won't show",
+        subtitle = if (granted) "Allowed" else "Off — a ringing alarm still sounds, but its controls won't show",
         onClick = {
             runCatching {
                 context.startActivity(
@@ -244,10 +252,10 @@ private fun ChangeDateTimeRow() {
 @Composable
 private fun ExactAlarmPermissionRow() {
     val context = LocalContext.current
-    if (app.materialclock.alarm.AlarmScheduler.canScheduleExact(context)) return
+    val granted = app.materialclock.alarm.AlarmScheduler.canScheduleExact(context)
     NavigateRow(
-        title = "Alarms & reminders",
-        subtitle = "Not allowed, so alarms may fire late or not at all",
+        title = "Alarms and reminders",
+        subtitle = if (granted) "Allowed" else "Not allowed, so alarms may fire late or not at all",
         onClick = {
             runCatching {
                 context.startActivity(
@@ -305,10 +313,14 @@ private fun FullScreenIntentRow() {
     val nm = context.getSystemService(android.app.NotificationManager::class.java)
     // Re-read on every recomposition rather than remembering: the user grants this in Settings and
     // comes back, and a cached value would still say "not allowed" on their return.
-    if (nm?.canUseFullScreenIntent() != false) return
+    val granted = nm?.canUseFullScreenIntent() != false
     NavigateRow(
-        title = "Full-screen alarms",
-        subtitle = "Not allowed, so a ringing alarm will show as a banner instead",
+        title = "Full screen alerts",
+        subtitle = if (granted) {
+            "Allow apps to send full screen alerts that cover the entire screen."
+        } else {
+            "Not allowed, so a ringing alarm will show as a banner instead"
+        },
         onClick = {
             runCatching {
                 context.startActivity(
