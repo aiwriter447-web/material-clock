@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
+import app.materialclock.data.WorldClockStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -98,17 +99,28 @@ fun WorldClockScreen(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         item {
-            CityDial(
-                cities = cities,
-                nowUtcMillis = nowUtcMillis,
-                measurer = measurer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // Not a full-width circle: at 130 dp per row a 372 dp dial leaves room for
-                    // barely one city, and the list is the dial's fallback for colliding offsets.
-                    .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 18.dp)
-                    .aspectRatio(1f),
-            )
+            if (settings.style == WorldClockStyle.DIGITAL) {
+                CityDigitalGrid(
+                    cities = cities,
+                    nowUtcMillis = nowUtcMillis,
+                    use24h = use24h,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            } else {
+                CityDial(
+                    cities = cities,
+                    nowUtcMillis = nowUtcMillis,
+                    measurer = measurer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // Not a full-width circle: at 130 dp per row a 372 dp dial leaves room for
+                        // barely one city, and the list is the dial's fallback for colliding offsets.
+                        .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 18.dp)
+                        .aspectRatio(1f),
+                )
+            }
         }
         items(cities, key = { it.zone.id }) { city ->
             CityRow(
