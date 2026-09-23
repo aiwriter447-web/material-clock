@@ -38,6 +38,12 @@ data class AlarmSettings(
     val volumeButtonsControlVolume: Boolean = true,
     /** How a ringing alarm's own controls are worked: [DismissMethod]. */
     val dismissMethod: DismissMethod = DismissMethod.TAP,
+    /**
+     * Minutes before an alarm rings that a heads-up notification announces it's coming, so
+     * "did I actually set that?" has an answer well before the alarm itself is the answer.
+     * **0 means off** — no notice, straight to the ring, same as before this setting existed.
+     */
+    val upcomingNotificationMinutes: Int = 30,
 )
 
 enum class DismissMethod(val label: String) {
