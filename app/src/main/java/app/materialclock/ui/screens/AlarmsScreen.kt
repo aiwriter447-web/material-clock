@@ -2,6 +2,7 @@ package app.materialclock.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,14 +19,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,8 +45,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import app.materialclock.core.Alarm
@@ -48,10 +59,12 @@ import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
 import app.materialclock.ui.theme.StretchedCaps
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.Duration
+import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmsScreen(
     alarms: List<Alarm>,
@@ -60,6 +73,7 @@ fun AlarmsScreen(
     onToggle: (Long) -> Unit,
     onToggleGroup: (Long, Boolean) -> Unit,
     onEdit: (Alarm) -> Unit,
+    onDelete: (Alarm) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -74,13 +88,37 @@ fun AlarmsScreen(
     }
 
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
+    var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
+
+    // Confirmation Dialog before delete
+    alarmToDelete?.let { alarm ->
+        AlertDialog(
+            onDismissRequest = { alarmToDelete = null },
+            title = { Text("Delete Alarm") },
+            text = { Text("Are you sure you want to delete this alarm?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete(alarm)
+                        alarmToDelete = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { alarmToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // New change: Show the time remaining until the next alarm
         item(key = "upcoming-alarm-text") {
             val upcomingText = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
             if (upcomingText.isNotEmpty()) {
@@ -106,50 +144,82 @@ fun AlarmsScreen(
         }
 
         items(alarms, key = { it.id }) { alarm ->
-            AlarmRow(
-                alarm = alarm,
-                order = order,
-                is24Hour = is24Hour,
-                onToggle = {
-                    onToggle(alarm.id)
-                },
-                onEdit = {
-                    onEdit(alarm)
-                },
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = { value ->
+                    if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
+                        alarmToDelete = alarm
+                        false
+                    } else false
+                }
             )
+
+            SwipeToDismissBox(
+                state = dismissState,
+                enableDismissFromStartToEnd = true,
+                enableDismissFromEndToStart = true,
+                backgroundContent = {
+                    val alignment = when (dismissState.dismissDirection) {
+                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                        else -> Alignment.Center
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(ROW_CORNER_RADIUS),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(ROW_FIXED_HEIGHT),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
+                            contentAlignment = alignment
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                    }
+                }
+            ) {
+                AlarmRow(
+                    alarm = alarm,
+                    order = order,
+                    is24Hour = is24Hour,
+                    onToggle = { onToggle(alarm.id) },
+                    onEdit = { onEdit(alarm) },
+                )
+            }
         }
     }
 }
 
-// New function: Calculate the time until the nearest alarm
 private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
     val activeAlarms = alarms.filter { it.enabled }
-    if (activeAlarms.isEmpty()) return "" // Show nothing if no alarm is enabled
+    if (activeAlarms.isEmpty()) return ""
 
     val now = LocalDateTime.now()
     var minDuration: Duration? = null
+    var nextAlarmTime: LocalDateTime? = null
 
     for (alarm in activeAlarms) {
         val alarmTime = LocalTime.of(alarm.time.hour, alarm.time.minute)
-
         for (i in 0..7) {
             val checkDate = now.plusDays(i.toLong())
             val checkDay = checkDate.dayOfWeek
-
-            val isActiveDay =
-                alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
+            val isActiveDay = alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
 
             if (isActiveDay) {
-                val candidateDateTime = checkDate
-                    .withHour(alarmTime.hour)
-                    .withMinute(alarmTime.minute)
-                    .withSecond(0)
-                    .withNano(0)
-
+                val candidateDateTime = checkDate.withHour(alarmTime.hour).withMinute(alarmTime.minute).withSecond(0).withNano(0)
                 if (candidateDateTime.isAfter(now)) {
                     val duration = Duration.between(now, candidateDateTime)
                     if (minDuration == null || duration < minDuration) {
                         minDuration = duration
+                        nextAlarmTime = candidateDateTime
                     }
                     break
                 }
@@ -157,21 +227,24 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
         }
     }
 
-    if (minDuration == null) return ""
+    if (minDuration == null || nextAlarmTime == null) return ""
 
     val hours = minDuration.toHours()
     val minutes = minDuration.toMinutes() % 60
 
+    // Use DateTimeFormatter for the new format (e.g.: Thu, 24 Sept, 2:30 pm)
+    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM, h:mm a")
+    val formattedDate = nextAlarmTime.format(formatter)
+        .replace("AM", "am")
+        .replace("PM", "pm")
+
     return buildString {
         append("Alarm in ")
         if (hours > 0) append("$hours hours ")
-        append("$minutes minutes")
+        append("$minutes minutes ")
+        append("($formattedDate)")
     }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Group cards                                                                */
-/* -------------------------------------------------------------------------- */
 
 private val GROUP_SECTION_PADDING_H = 4.dp
 private val GROUP_CARD_GAP = 10.dp
@@ -185,9 +258,7 @@ private fun GroupCardsSection(
     onToggleGroup: (Long, Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = GROUP_SECTION_PADDING_H),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
         verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
         groups.chunked(2).forEach { pair ->
@@ -197,7 +268,6 @@ private fun GroupCardsSection(
             ) {
                 pair.forEach { group ->
                     val groupAlarms = byGroup[group.id].orEmpty()
-
                     GroupCard(
                         group = group,
                         total = groupAlarms.size,
@@ -207,10 +277,7 @@ private fun GroupCardsSection(
                         modifier = Modifier.weight(1f),
                     )
                 }
-
-                if (pair.size == 1) {
-                    Spacer(Modifier.weight(1f))
-                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -230,7 +297,6 @@ private fun GroupCard(
     } else {
         MaterialTheme.colorScheme.surfaceContainer
     }
-
     val ink = if (checked) {
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {
@@ -252,73 +318,37 @@ private fun GroupCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-
-                Switch(
-                    checked = checked,
-                    onCheckedChange = onToggle,
-                )
+                Switch(checked = checked, onCheckedChange = onToggle)
             }
-
             Spacer(Modifier.height(10.dp))
-
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupCount(
-                    icon = Icons.Outlined.Alarm,
-                    count = total,
-                    ink = ink,
-                )
-
+                GroupCount(icon = Icons.Outlined.Alarm, count = total, ink = ink)
                 Spacer(Modifier.width(16.dp))
-
-                GroupCount(
-                    icon = Icons.Filled.Alarm,
-                    count = armed,
-                    ink = ink,
-                )
+                GroupCount(icon = Icons.Filled.Alarm, count = armed, ink = ink)
             }
         }
     }
 }
 
 @Composable
-private fun GroupCount(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    count: Int,
-    ink: Color,
-) {
+private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int, ink: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = ink.copy(alpha = 0.75f),
-            modifier = Modifier.size(16.dp),
-        )
-
+        Icon(icon, contentDescription = null, tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(4.dp))
-
-        Text(
-            count.toString(),
-            style = MaterialTheme.typography.labelLarge,
-            color = ink,
-        )
+        Text(count.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
     }
 }
 
 /* -------------------------------------------------------------------------- */
-/* Row dimensions                                                             */
+/* Uniform Row Dimensions                                                     */
 /* -------------------------------------------------------------------------- */
 
+private val ROW_FIXED_HEIGHT = 104.dp
 private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 10.dp
 private val ROW_CORNER_RADIUS = 24.dp
-private val ROW_LABEL_TO_TIME = 0.dp
-private val ROW_TIME_GAP = 8.dp
-private val ROW_TIME_CAP = 104.dp
-private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
-
-/* -------------------------------------------------------------------------- */
-/* Alarm row                                                                  */
-/* -------------------------------------------------------------------------- */
+private val ROW_TIME_GAP = 6.dp
+private val ROW_TIME_CAP = 64.dp
+private const val ROW_MERIDIEM_CAP_FRACTION = 0.35f
 
 @Composable
 private fun AlarmRow(
@@ -349,32 +379,25 @@ private fun AlarmRow(
     }
 
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
-
-    val meridiem = if (alarm.time.hour < 12) {
-        "AM"
-    } else {
-        "PM"
-    }
+    val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
         modifier = Modifier
             .fillMaxWidth()
+            .height(ROW_FIXED_HEIGHT)
             .clickable(onClick = onEdit),
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = ROW_HORIZONTAL_PADDING,
-                    vertical = ROW_VERTICAL_PADDING,
-                ),
+                .fillMaxSize()
+                .padding(horizontal = ROW_HORIZONTAL_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.Center,
             ) {
                 if (alarm.label.isNotBlank()) {
                     Text(
@@ -382,9 +405,8 @@ private fun AlarmRow(
                         style = MaterialTheme.typography.titleMediumEmphasized,
                         color = ink,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-
-                    Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
                 }
 
                 if (is24Hour) {
@@ -405,11 +427,11 @@ private fun AlarmRow(
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.Center,
             ) {
                 DayLetters(
                     alarm = alarm,
@@ -417,22 +439,18 @@ private fun AlarmRow(
                     ink = ink,
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Switch(
                     checked = enabled,
-                    onCheckedChange = {
-                        onToggle()
-                    },
+                    onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = container,
                         checkedTrackColor = ink,
                         checkedBorderColor = Color.Transparent,
-
                         uncheckedThumbColor = ink,
                         uncheckedTrackColor = Color.Transparent,
                         uncheckedBorderColor = ink,
-
                         disabledCheckedThumbColor = container,
                         disabledCheckedTrackColor = ink,
                         disabledUncheckedThumbColor = ink,
@@ -499,14 +517,14 @@ private fun RowTime12(
             capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
             color = ink,
             tracking = ClockFace.CONDENSED_TRACKING,
-            modifier = Modifier.padding(bottom = 6.dp),
+            modifier = Modifier.padding(bottom = 4.dp)
         )
     }
 }
 
-private val DAY_CAP = 23.dp
-private val DAY_BLOCK_WIDTH = 91.dp
-private val DAY_TRACKING = 2.2.dp
+private val DAY_CAP = 20.dp
+private val DAY_BLOCK_WIDTH = 85.dp
+private val DAY_TRACKING = 2.dp
 
 private const val DAY_WEIGHT_ON = 700
 private const val DAY_WEIGHT_OFF = 400
@@ -548,17 +566,8 @@ private fun DayLetters(
 
                 withStyle(
                     SpanStyle(
-                        fontFamily = if (active) {
-                            bold.fontFamily
-                        } else {
-                            light.fontFamily
-                        },
-
-                        color = if (active) {
-                            ink
-                        } else {
-                            ink.copy(alpha = 0.30f)
-                        },
+                        fontFamily = if (active) bold.fontFamily else light.fontFamily,
+                        color = if (active) ink else ink.copy(alpha = 0.30f),
                     )
                 ) {
                     append(day.name.take(1))
@@ -571,27 +580,15 @@ private fun DayLetters(
         (DAY_TRACKING / bold.fontSize.toDp()).em
     }
 
-    val style = bold.copy(
-        letterSpacing = letterSpacing,
-    )
+    val style = bold.copy(letterSpacing = letterSpacing)
 
     val measuredWidth = measurer
-        .measure(
-            text = text,
-            style = style,
-        )
-        .size
-        .width
+        .measure(text = text, style = style)
+        .size.width
 
-    val targetWidth = with(density) {
-        DAY_BLOCK_WIDTH.toPx()
-    }
+    val targetWidth = with(density) { DAY_BLOCK_WIDTH.toPx() }
 
-    val scaleX = if (measuredWidth > 0) {
-        targetWidth / measuredWidth
-    } else {
-        1f
-    }
+    val scaleX = if (measuredWidth > 0) targetWidth / measuredWidth else 1f
 
     StretchedCaps(
         text = text,
