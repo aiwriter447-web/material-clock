@@ -53,15 +53,9 @@ import java.time.DayOfWeek
  * Alarm list.
  *
  * Layout:
- * - "Alarm Groups" at the top: a wrapped row of summary cards, two per row, one per group — its
- *   name, a one-tap switch that arms or disarms every alarm inside it, and how many of its alarms
- *   are set versus currently armed. No card for an empty group; per [AlarmGroup]'s own doc, that
- *   is not a case to special-case, only a card to skip drawing.
- * - Every alarm below, in one flat list — not sectioned under its group's card. The group cards
- *   are the dashboard; this is still the same list of every alarm there is, grouped or not,
- *   exactly as it read before groups existed.
- * - One full-width alarm card per row: optional label above the time, large clock-face numerals,
- *   repeat days over the switch on the right.
+ * - "Alarm Groups" at the top: a wrapped row of summary cards, two per row, one per group.
+ * - Every alarm below, in one flat list.
+ * - One full-width alarm card per row.
  */
 @Composable
 fun AlarmsScreen(
@@ -126,7 +120,6 @@ private val GROUP_CARD_GAP = 10.dp
 private val GROUP_CARD_PADDING = 16.dp
 private val GROUP_CARD_CORNER = 22.dp
 
-/** The "Alarm Groups" dashboard: one summary card per group, two to a row, wrapping as needed. */
 @Composable
 private fun GroupCardsSection(
     groups: List<AlarmGroup>,
@@ -153,16 +146,11 @@ private fun GroupCardsSection(
                         group = group,
                         total = groupAlarms.size,
                         armed = groupAlarms.count { it.enabled },
-                        // Not "any armed": a mixed group reads as off until every alarm in it
-                        // agrees, which is the least surprising state for a switch that is about
-                        // to make them all match each other. An empty group is always off — there
-                        // is nothing in it for the switch to mean "on".
                         checked = groupAlarms.isNotEmpty() && groupAlarms.all { it.enabled },
                         onToggle = { onToggleGroup(group.id, it) },
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // An odd group out still gets a half-width card, matching every other row.
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -216,9 +204,6 @@ private fun GroupCard(
     }
 }
 
-/** [total] alarms in the group beside [Icons.Outlined.Alarm]; how many are currently armed beside
- * the filled glyph — an outline for "exists" and a filled one for "is doing something" reads the
- * same way it does everywhere else a bell icon draws a ringer's on/off state. */
 @Composable
 private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int, ink: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -232,37 +217,12 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 /* Row dimensions                                                             */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Horizontal inset of the card content.
- *
- * The screenshots have a relatively compact inset, leaving the clock face
- * dominant inside the card.
- */
 private val ROW_HORIZONTAL_PADDING = 16.dp
-
-/** Vertical inset of the card content. */
 private val ROW_VERTICAL_PADDING = 16.dp
-
 private val ROW_CORNER_RADIUS = 24.dp
-
-/** Gap between an alarm label such as "Morning" and its time. */
 private val ROW_LABEL_TO_TIME = 4.dp
-
-/** Gap between the large hour and the minutes block in 12-hour mode. */
 private val ROW_TIME_GAP = 8.dp
-
-/**
- * Main time cap height.
- *
- * This is deliberately much larger than the old 40.dp value. The supplied
- * reference screenshots use the time as the dominant visual element.
- */
 private val ROW_TIME_CAP = 120.dp
-
-/** Relative size of minutes compared with the large hour. */
-private const val ROW_MINUTE_CAP_FRACTION = 0.66f
-
-/** Relative size of AM/PM compared with the large hour. */
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
@@ -279,8 +239,6 @@ private fun AlarmRow(
 ) {
     val enabled = alarm.enabled
 
-    // Dynamically change colors based on whether the alarm is enabled. Matches the colorized UI
-    // design when active, and muted grey when inactive.
     val container = if (enabled) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -323,8 +281,6 @@ private fun AlarmRow(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-
-            // LEFT SIDE — optional label above the time, in either the 24-hour or 12-hour shape.
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top,
@@ -360,7 +316,6 @@ private fun AlarmRow(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // RIGHT SIDE — day letters over the switch.
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
@@ -373,8 +328,6 @@ private fun AlarmRow(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Material 3 Switch is intentionally kept here rather than replacing it with a
-                // custom control, so its appearance continues to follow the app's Material theme.
                 Switch(
                     checked = enabled,
                     onCheckedChange = {
@@ -434,9 +387,8 @@ private fun RowTime12(
     weight: Int,
 ) {
     Row(
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.Bottom,
     ) {
-        // Large hour: 07
         Numerals(
             text = "%02d".format(hour12),
             capHeight = ROW_TIME_CAP,
@@ -448,27 +400,24 @@ private fun RowTime12(
 
         Spacer(modifier = Modifier.width(ROW_TIME_GAP))
 
-        Column {
-            // Smaller minutes: 15
-            Numerals(
-                text = "%02d".format(minute),
-                capHeight = ROW_TIME_CAP * ROW_MINUTE_CAP_FRACTION,
-                color = ink,
-                width = ClockFace.CONDENSED,
-                weight = weight,
-                tracking = ClockFace.CONDENSED_TRACKING,
-            )
+        Numerals(
+            text = "%02d".format(minute),
+            capHeight = ROW_TIME_CAP,
+            color = ink,
+            width = ClockFace.CONDENSED,
+            weight = weight,
+            tracking = ClockFace.CONDENSED_TRACKING,
+        )
 
-            Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.width(ROW_TIME_GAP))
 
-            // AM / PM below minutes.
-            CapText(
-                text = meridiem,
-                capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
-                color = ink,
-                tracking = ClockFace.CONDENSED_TRACKING,
-            )
-        }
+        CapText(
+            text = meridiem,
+            capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
+            color = ink,
+            tracking = ClockFace.CONDENSED_TRACKING,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
     }
 }
 
@@ -483,13 +432,6 @@ private val DAY_TRACKING = 2.2.dp
 private const val DAY_WEIGHT_ON = 700
 private const val DAY_WEIGHT_OFF = 400
 
-/**
- * Repeat-day letters.
- *
- * All seven letters remain in one AnnotatedString so Compose's text shaper sees them as one run
- * instead of seven independently positioned boxes. The final run is horizontally scaled to a fixed
- * width so the switch below does not move when the repeat pattern changes.
- */
 @Composable
 private fun DayLetters(
     alarm: Alarm,
@@ -546,7 +488,6 @@ private fun DayLetters(
         }
     }
 
-    // Tracking is expressed in em so it scales with the cap height.
     val letterSpacing = with(density) {
         (DAY_TRACKING / bold.fontSize.toDp()).em
     }
@@ -555,8 +496,6 @@ private fun DayLetters(
         letterSpacing = letterSpacing,
     )
 
-    // Measure the actual seven-letter run. This avoids hard-coding a separate width for each
-    // possible repeat pattern. The target block remains fixed.
     val measuredWidth = measurer
         .measure(
             text = text,
