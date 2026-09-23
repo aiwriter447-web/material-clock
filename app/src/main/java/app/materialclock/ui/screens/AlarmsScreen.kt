@@ -15,8 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Alarm as AlarmFilledIcon
-import androidx.compose.material.icons.outlined.Alarm as AlarmOutlinedIcon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -207,9 +208,9 @@ private fun GroupCard(
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupCount(icon = AlarmOutlinedIcon, count = total, ink = ink)
+                GroupCount(icon = Icons.Outlined.Alarm, count = total, ink = ink)
                 Spacer(Modifier.width(16.dp))
-                GroupCount(icon = AlarmFilledIcon, count = armed, ink = ink)
+                GroupCount(icon = Icons.Filled.Alarm, count = armed, ink = ink)
             }
         }
     }
