@@ -90,6 +90,7 @@ fun WorldClockScreen(
                     home = home,
                     nowUtcMillis = nowUtcMillis,
                     use24h = use24h,
+                    showSeconds = settings.showSeconds,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -121,14 +122,14 @@ fun WorldClockScreen(
 }
 
 /** 
- * A large central digital clock for the Home time, matching the Google Clock aesthetic 
- * instead of displaying a grid of world cities. 
+ * A large central digital clock for the Home time, matching the Google Clock aesthetic.
  */
 @Composable
 private fun HomeDigitalClock(
     home: ZoneId,
     nowUtcMillis: Long,
     use24h: Boolean,
+    showSeconds: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val instant = Instant.ofEpochMilli(nowUtcMillis)
@@ -136,6 +137,17 @@ private fun HomeDigitalClock(
     val hour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
+
+    val timeText = buildString {
+        if (use24h) {
+            append("%02d:%02d".format(hour, local.minute))
+        } else {
+            append("%d:%02d".format(hour, local.minute))
+        }
+        if (showSeconds) {
+            append(":%02d".format(local.second))
+        }
+    }
 
     Column(
         modifier = modifier
@@ -146,8 +158,8 @@ private fun HomeDigitalClock(
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
             Numerals(
-                text = if (use24h) "%02d:%02d".format(hour, local.minute) else "%d:%02d".format(hour, local.minute),
-                capHeight = 72.dp,
+                text = timeText,
+                capHeight = 110.dp, // Enlarged to match alarm clock size
                 color = ink,
                 width = ClockFace.CONDENSED,
                 weight = ClockFace.WEIGHT_ON,
@@ -157,15 +169,17 @@ private fun HomeDigitalClock(
                 Spacer(Modifier.width(8.dp))
                 CapText(
                     text = meridiem,
-                    capHeight = 24.dp,
+                    capHeight = 28.dp,
                     color = ink,
                     tracking = ClockFace.CONDENSED_TRACKING,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
         }
-        Spacer(Modifier.height(12.dp))
-        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEE, d MMM").withZone(home) }
+        Spacer(Modifier.height(16.dp))
+        
+        // Formatted to output: Wed, 23 Sept 2026
+        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEE, d MMM yyyy").withZone(home) }
         Text(
             text = formatter.format(instant),
             style = MaterialTheme.typography.titleMedium,
@@ -254,6 +268,17 @@ private fun CityRow(
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
+    
+    // Restored the original string formatting for standard text font
+    val clock = buildString {
+        if (use24h) {
+            append("%02d:%02d".format(local.hour, local.minute))
+        } else {
+            append("%d:%02d".format((local.hour % 12).takeIf { it != 0 } ?: 12, local.minute))
+        }
+        if (showSeconds) append(":%02d".format(local.second))
+        if (!use24h) append(if (local.hour < 12) "am" else "pm")
+    }
 
     val state = remember(city.zone.id) {
         SwipeToDismissBoxState(
@@ -345,37 +370,17 @@ private fun CityRow(
                     )
                 }
                 
-                // Digital clock look added to the side of the World Clock List 
-                val hour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
-                val timeText = buildString {
-                    if (use24h) {
-                        append("%02d:%02d".format(hour, local.minute))
+                // Restored standard Text component for CityRow time
+                Text(
+                    clock,
+                    style = if (showSeconds) {
+                        MaterialTheme.typography.titleLargeEmphasized
                     } else {
-                        append("%d:%02d".format(hour, local.minute))
-                    }
-                    if (showSeconds) append(":%02d".format(local.second))
-                }
-                
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Numerals(
-                        text = timeText,
-                        capHeight = if (showSeconds) 24.dp else 36.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        width = ClockFace.CONDENSED,
-                        weight = ClockFace.WEIGHT_ON,
-                        tracking = ClockFace.CONDENSED_TRACKING,
-                    )
-                    if (!use24h) {
-                        Spacer(Modifier.width(4.dp))
-                        CapText(
-                            text = if (local.hour < 12) "AM" else "PM",
-                            capHeight = if (showSeconds) 10.dp else 14.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            tracking = ClockFace.CONDENSED_TRACKING,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
-                    }
-                }
+                        MaterialTheme.typography.headlineMediumEmphasized
+                    },
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                )
             }
         }
     }
