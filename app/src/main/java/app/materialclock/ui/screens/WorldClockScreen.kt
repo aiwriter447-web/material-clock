@@ -34,10 +34,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
@@ -46,39 +43,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
 import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
+import app.materialclock.ui.theme.CapText
 import java.time.ZoneId
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * The world clock.
- *
- * Its hero is the concept's own idea and, as far as I can find, unique to it: **one dial with a
- * hand per city**, each hand tipped with a capsule carrying that city's name. Where every other
- * world clock makes you read six rows to answer "who is awake", this answers it as a shape. The
- * cities clustered near the bottom of the dial are the ones in the small hours.
- *
- * Its honest failure mode is on screen too: two cities on the same offset put their capsules in
- * exactly the same place. London and Algiers do it for most of the year. The dial draws them in
- * order and the list underneath is the fallback, which is why the list is not optional.
- */
 private const val ROW_HEIGHT_DP = 128
 
 @Composable
@@ -104,8 +86,8 @@ fun WorldClockScreen(
     ) {
         item {
             if (settings.style == WorldClockStyle.DIGITAL) {
-                CityDigitalGrid(
-                    cities = cities,
+                HomeDigitalClock(
+                    home = home,
                     nowUtcMillis = nowUtcMillis,
                     use24h = use24h,
                     modifier = Modifier
@@ -119,8 +101,6 @@ fun WorldClockScreen(
                     measurer = measurer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        // Not a full-width circle: at 130 dp per row a 372 dp dial leaves room for
-                        // barely one city, and the list is the dial's fallback for colliding offsets.
                         .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 18.dp)
                         .aspectRatio(1f),
                 )
@@ -140,96 +120,57 @@ fun WorldClockScreen(
     }
 }
 
-/**
- * The digital alternative to [CityDial].
- *
- * A dial's whole point is reading several zones as one shape; a grid gives that up in exchange for
- * every city's exact time being legible at a glance, which is what "Style: Digital" is for — the
- * same trade every digital world clock makes against an analogue one. Two cards per row, wrapping
- * to as many rows as there are cities, rather than a fixed square footprint like the dial's: a
- * grid has no natural aspect ratio to hold onto the way a circle does.
+/** 
+ * A large central digital clock for the Home time, matching the Google Clock aesthetic 
+ * instead of displaying a grid of world cities. 
  */
 @Composable
-private fun CityDigitalGrid(
-    cities: List<WorldCity>,
+private fun HomeDigitalClock(
+    home: ZoneId,
     nowUtcMillis: Long,
     use24h: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        cities.chunked(2).forEach { pair ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                pair.forEach { city ->
-                    DigitalCityCard(
-                        city = city,
-                        nowUtcMillis = nowUtcMillis,
-                        use24h = use24h,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // An odd city out still gets a half-width card rather than a full-width one, so
-                // every row's cards are the same size whether or not the last row is full.
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DigitalCityCard(
-    city: WorldCity,
-    nowUtcMillis: Long,
-    use24h: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val local = city.timeAt(nowUtcMillis)
-    val night = city.isNight(nowUtcMillis)
-    val container = MaterialTheme.colorScheme.surfaceContainerHighest
-    val ink = MaterialTheme.colorScheme.onSurface
+    val instant = Instant.ofEpochMilli(nowUtcMillis)
+    val local = instant.atZone(home)
     val hour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
+    val meridiem = if (local.hour < 12) "AM" else "PM"
+    val ink = MaterialTheme.colorScheme.onSurface
 
-    Surface(color = container, shape = RoundedCornerShape(20.dp), modifier = modifier) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
-                    contentDescription = null,
-                    tint = ink.copy(alpha = 0.55f),
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    city.city,
-                    style = MaterialTheme.typography.labelLarge,
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Numerals(
+                text = if (use24h) "%02d:%02d".format(hour, local.minute) else "%d:%02d".format(hour, local.minute),
+                capHeight = 72.dp,
+                color = ink,
+                width = ClockFace.CONDENSED,
+                weight = ClockFace.WEIGHT_ON,
+                tracking = ClockFace.CONDENSED_TRACKING,
+            )
+            if (!use24h) {
+                Spacer(Modifier.width(8.dp))
+                CapText(
+                    text = meridiem,
+                    capHeight = 24.dp,
                     color = ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Numerals(
-                    text = "%02d:%02d".format(hour, local.minute),
-                    capHeight = 30.dp,
-                    color = ink,
-                    width = ClockFace.CONDENSED,
-                    weight = ClockFace.WEIGHT_ON,
                     tracking = ClockFace.CONDENSED_TRACKING,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
-                if (!use24h) {
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        if (local.hour < 12) "AM" else "PM",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ink.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 3.dp),
-                    )
-                }
             }
         }
+        Spacer(Modifier.height(12.dp))
+        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEE, d MMM").withZone(home) }
+        Text(
+            text = formatter.format(instant),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -256,7 +197,6 @@ private fun CityDial(
         val c = Offset(size.width / 2f, size.height / 2f)
         drawCircle(face, radius = r, center = c)
 
-        // 12 / 3 / 6 / 9 set large and ghosted; the rest are dots. Straight from the render.
         for (i in 0 until 12) {
             val a = (i / 12f) * 2f * PI.toFloat() - PI.toFloat() / 2f
             val p = Offset(c.x + cos(a) * (r - 44.dp.toPx()), c.y + sin(a) * (r - 44.dp.toPx()))
@@ -283,8 +223,6 @@ private fun CityDial(
             val padH = 7.dp.toPx()
             val w = m.size.width + padH * 2
             val h = m.size.height + 5.dp.toPx()
-            // Flip through 180° in the lower half so a name is never upside down, which is what
-            // the render does: its upper-left hands read normally rather than mirrored.
             val flip = if (angle.mod(360f) in 90f..270f) 180f else 0f
             rotate(degrees = angle + flip, pivot = tip) {
                 drawRoundRect(
@@ -303,29 +241,6 @@ private fun CityDial(
     }
 }
 
-/**
- * A city row.
- *
- * Measured, and much larger than a list item: **128 dp tall on a 2 dp gap**, so the pitch is 130.
- * The right end is a true semicircle (the corner radius is exactly half the row height), not a
- * 24-28 dp rounded corner. Two earlier passes had these at 56 and then 88 dp, and both read as an
- * ordinary list; at 128 the time can be set at display size, which is the point. The time is the
- * content and the city is its label, not the other way round.
- */
-/**
- * A city, removable by swiping it away to the left.
- *
- * `SwipeToDismissBox` is the component for this, and the spec's rule for a swipeable container is
- * "one swipe action", which is why only end-to-start is enabled and start-to-end is off, rather
- * than offering two directions that do the same thing. The revealed layer is the error container
- * with a trailing bin, which is the standard destructive treatment and reads before the row has
- * travelled far enough to commit.
- *
- * It replaces a long-press and a confirmation dialog. The dialog was defensible while the gesture
- * was invisible; with a swipe, the gesture is deliberate enough to stand on its own, and the safety
- * net moves to an Undo snackbar. That is both the documented mitigation and less work to use than a
- * dialog you have to answer every time.
- */
 @OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun CityRow(
@@ -339,24 +254,7 @@ private fun CityRow(
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
-    val clock = buildString {
-        if (use24h) {
-            append("%02d:%02d".format(local.hour, local.minute))
-        } else {
-            append("%d:%02d".format((local.hour % 12).takeIf { it != 0 } ?: 12, local.minute))
-        }
-        if (showSeconds) append(":%02d".format(local.second))
-        if (!use24h) append(if (local.hour < 12) "am" else "pm")
-    }
 
-    // A plain `remember`, not `rememberSwipeToDismissBoxState`.
-    //
-    // That helper is *saveable* and LazyColumn restores saved state per item key, so a city that
-    // is swiped away and then comes back, whether by Undo or by adding it again, lands on its old
-    // saved `EndToStart` value. `SwipeToDismissBox` then sees a box that is already dismissed and
-    // fires `onDismiss` on its first composition, deleting the row the instant it returns. The
-    // symptom is baffling from the outside: the store logs the city restored and the screen stays
-    // empty. Swipe offset is transient gesture state and has no business outliving the row.
     val state = remember(city.zone.id) {
         SwipeToDismissBoxState(
             initialValue = SwipeToDismissBoxValue.Settled,
@@ -366,8 +264,6 @@ private fun CityRow(
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
-        // One swipe action per container, per the spec. Two directions doing the same thing is not
-        // twice the affordance, it is a coin flip about whether the row came back.
         enableDismissFromStartToEnd = false,
         onDismiss = { onRemove() },
         backgroundContent = {
@@ -398,72 +294,89 @@ private fun CityRow(
                 .padding(horizontal = 16.dp)
                 .height(ROW_HEIGHT_DP.dp)
                 .semantics {
-                    // A swipe is a gesture, and a gesture is invisible to a screen reader. The same
-                    // action has to exist as a verb it can announce and perform.
                     customActions = listOf(
                         CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }
                     )
                 },
         ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Day or night, not an initial. The initial says nothing you cannot read in the name
-            // beside it; whether they are awake is the only thing a world clock is actually for.
-            Surface(
-                color = if (night) {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                } else {
-                    MaterialTheme.colorScheme.primaryContainer
-                },
-                shape = CircleShape,
-                modifier = Modifier.size(51.dp),
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
-                        contentDescription = if (night) "night" else "daytime",
-                        tint = if (night) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        },
-                        modifier = Modifier.size(24.dp),
+                Surface(
+                    color = if (night) {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    },
+                    shape = CircleShape,
+                    modifier = Modifier.size(51.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
+                            contentDescription = if (night) "night" else "daytime",
+                            tint = if (night) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            },
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f).padding(start = 9.6.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        city.city,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} | ${city.utcCode(nowUtcMillis)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
+                
+                // Digital clock look added to the side of the World Clock List 
+                val hour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
+                val timeText = buildString {
+                    if (use24h) {
+                        append("%02d:%02d".format(hour, local.minute))
+                    } else {
+                        append("%d:%02d".format(hour, local.minute))
+                    }
+                    if (showSeconds) append(":%02d".format(local.second))
+                }
+                
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Numerals(
+                        text = timeText,
+                        capHeight = if (showSeconds) 24.dp else 36.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        width = ClockFace.CONDENSED,
+                        weight = ClockFace.WEIGHT_ON,
+                        tracking = ClockFace.CONDENSED_TRACKING,
+                    )
+                    if (!use24h) {
+                        Spacer(Modifier.width(4.dp))
+                        CapText(
+                            text = if (local.hour < 12) "AM" else "PM",
+                            capHeight = if (showSeconds) 10.dp else 14.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            tracking = ClockFace.CONDENSED_TRACKING,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    }
+                }
             }
-            Column(
-                modifier = Modifier.weight(1f).padding(start = 9.6.dp),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    city.city,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} | ${city.utcCode(nowUtcMillis)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                clock,
-                style = if (showSeconds) {
-                    // Seconds add three glyphs to a row that was already tight at four.
-                    MaterialTheme.typography.titleLargeEmphasized
-                } else {
-                    MaterialTheme.typography.headlineMediumEmphasized
-                },
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-            )
         }
-    }
     }
 }
