@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -58,6 +60,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
+import app.materialclock.ui.theme.ClockFace
+import app.materialclock.ui.theme.Numerals
 import java.time.ZoneId
 import kotlin.math.PI
 import kotlin.math.cos
@@ -132,6 +136,99 @@ fun WorldClockScreen(
                 onRemove = { onRemove(city) },
                 modifier = Modifier.animateItem(),
             )
+        }
+    }
+}
+
+/**
+ * The digital alternative to [CityDial].
+ *
+ * A dial's whole point is reading several zones as one shape; a grid gives that up in exchange for
+ * every city's exact time being legible at a glance, which is what "Style: Digital" is for — the
+ * same trade every digital world clock makes against an analogue one. Two cards per row, wrapping
+ * to as many rows as there are cities, rather than a fixed square footprint like the dial's: a
+ * grid has no natural aspect ratio to hold onto the way a circle does.
+ */
+@Composable
+private fun CityDigitalGrid(
+    cities: List<WorldCity>,
+    nowUtcMillis: Long,
+    use24h: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        cities.chunked(2).forEach { pair ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                pair.forEach { city ->
+                    DigitalCityCard(
+                        city = city,
+                        nowUtcMillis = nowUtcMillis,
+                        use24h = use24h,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // An odd city out still gets a half-width card rather than a full-width one, so
+                // every row's cards are the same size whether or not the last row is full.
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DigitalCityCard(
+    city: WorldCity,
+    nowUtcMillis: Long,
+    use24h: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val local = city.timeAt(nowUtcMillis)
+    val night = city.isNight(nowUtcMillis)
+    val container = MaterialTheme.colorScheme.surfaceContainerHighest
+    val ink = MaterialTheme.colorScheme.onSurface
+    val hour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
+
+    Surface(color = container, shape = RoundedCornerShape(20.dp), modifier = modifier) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
+                    contentDescription = null,
+                    tint = ink.copy(alpha = 0.55f),
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    city.city,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Numerals(
+                    text = "%02d:%02d".format(hour, local.minute),
+                    capHeight = 30.dp,
+                    color = ink,
+                    width = ClockFace.CONDENSED,
+                    weight = ClockFace.WEIGHT_ON,
+                    tracking = ClockFace.CONDENSED_TRACKING,
+                )
+                if (!use24h) {
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        if (local.hour < 12) "AM" else "PM",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ink.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 3.dp),
+                    )
+                }
+            }
         }
     }
 }
