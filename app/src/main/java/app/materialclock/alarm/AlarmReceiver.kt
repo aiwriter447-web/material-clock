@@ -38,6 +38,7 @@ class AlarmReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     ACTION_FIRE -> fire(app, intent.getLongExtra(EXTRA_ID, -1L))
+                    ACTION_UPCOMING -> upcoming(app, intent.getLongExtra(EXTRA_ID, -1L))
                     ACTION_TIMER_EXPIRED -> timerExpired(app)
                     else -> reschedule(app)
                 }
@@ -66,7 +67,8 @@ class AlarmReceiver : BroadcastReceiver() {
             }
         }
         store.putAlarms(cleared)
-        cleared.firstOrNull { it.id == id }?.let { AlarmScheduler.schedule(context, it) }
+        val upcomingMinutes = store.settingsNow().alarms.upcomingNotificationMinutes
+        cleared.firstOrNull { it.id == id }?.let { AlarmScheduler.schedule(context, it, upcomingMinutes) }
 
         ContextCompat.startForegroundService(
             context,
@@ -74,6 +76,21 @@ class AlarmReceiver : BroadcastReceiver() {
                 .setAction(AlarmService.ACTION_START)
                 .putExtra(EXTRA_ID, alarm.id),
         )
+    }
+
+    /**
+     * The heads-up notice that fires [app.materialclock.data.AlarmSettings
+     * .upcomingNotificationMinutes] ahead of the ring itself — not the ring. An alarm toggled off,
+     * deleted, or rescheduled to a different time since this was set is checked for here rather
+     * than trusted, because [AlarmScheduler] has no way to reach back and cancel a notice that is
+     * already sitting in `AlarmManager` the moment any of those happen; this is the check that
+     * catches it instead, the same instant the notice would otherwise fire.
+     */
+    private suspend fun upcoming(context: Context, id: Long) {
+        val store = ClockStore(context)
+        val alarm = store.alarmsNow().firstOrNull { it.id == id } ?: return
+        if (!alarm.enabled) return
+        Notifications.showUpcoming(context, alarm)
     }
 
     private suspend fun timerExpired(context: Context) {
@@ -94,7 +111,8 @@ class AlarmReceiver : BroadcastReceiver() {
     private suspend fun reschedule(context: Context) {
         val store = ClockStore(context)
         Notifications.ensureChannels(context)
-        AlarmScheduler.scheduleAll(context, store.alarmsNow())
+        val upcomingMinutes = store.settingsNow().alarms.upcomingNotificationMinutes
+        AlarmScheduler.scheduleAll(context, store.alarmsNow(), upcomingMinutes)
         // A reboot resets elapsedRealtime, so any stored deadline is meaningless. Rebuild the
         // timer's notification from what survived and let the store's own clamp decide.
         store.timerNow()?.let { TimerScheduler.sync(context, it) }
@@ -102,6 +120,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_FIRE = "app.materialclock.FIRE"
+        const val ACTION_UPCOMING = "app.materialclock.UPCOMING"
         const val ACTION_TIMER_EXPIRED = "app.materialclock.TIMER_EXPIRED"
         const val EXTRA_ID = "id"
     }
