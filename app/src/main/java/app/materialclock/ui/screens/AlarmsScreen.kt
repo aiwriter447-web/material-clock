@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -48,20 +51,15 @@ import java.time.DayOfWeek
  * Alarm list.
  *
  * Layout:
- * - One full-width alarm card per row.
- * - Optional alarm label above the time.
- * - Large clock-face numerals.
- * - Repeat days on the right.
- * - Switch below the repeat days.
- *
- * ## Groups
- *
- * Alarms whose [Alarm.groupId] points at a live [AlarmGroup] are sectioned under that group's own
- * header — its name plus one switch that arms or disarms every alarm inside it at once, the same
- * one-tap behaviour the latest Google Clock offers. A group with no alarms left in it draws
- * nothing; per [AlarmGroup]'s own doc, that is not a case to special-case, only a section to skip.
- * Alarms with no group are listed last, exactly as they were before groups existed — no header,
- * because "ungrouped" is the default, not a category.
+ * - "Alarm Groups" at the top: a wrapped row of summary cards, two per row, one per group — its
+ *   name, a one-tap switch that arms or disarms every alarm inside it, and how many of its alarms
+ *   are set versus currently armed. No card for an empty group; per [AlarmGroup]'s own doc, that
+ *   is not a case to special-case, only a card to skip drawing.
+ * - Every alarm below, in one flat list — not sectioned under its group's card. The group cards
+ *   are the dashboard; this is still the same list of every alarm there is, grouped or not,
+ *   exactly as it read before groups existed.
+ * - One full-width alarm card per row: optional label above the time, large clock-face numerals,
+ *   repeat days over the switch on the right.
  */
 @Composable
 fun AlarmsScreen(
@@ -84,84 +82,147 @@ fun AlarmsScreen(
         android.text.format.DateFormat.is24HourFormat(context)
     }
 
-    // Grouped first, in the order [groups] itself lists them, each with only its own alarms and
-    // never an empty one; ungrouped last, with no header at all.
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
-    val sections = remember(groups, byGroup) {
-        buildList {
-            groups.forEach { g -> byGroup[g.id]?.let { add(g to it) } }
-            byGroup[null]?.let { add(null to it) }
-        }
-    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        sections.forEach { (group, groupAlarms) ->
-            if (group != null) {
-                item(key = "group-${group.id}") {
-                    GroupHeader(
-                        group = group,
-                        allArmed = groupAlarms.all { it.enabled },
-                        onToggle = { onToggleGroup(group.id, it) },
-                    )
-                }
-            }
-            items(groupAlarms, key = { it.id }) { alarm ->
-                AlarmRow(
-                    alarm = alarm,
-                    order = order,
-                    is24Hour = is24Hour,
-                    onToggle = {
-                        onToggle(alarm.id)
-                    },
-                    onEdit = {
-                        onEdit(alarm)
-                    },
+        if (groups.isNotEmpty()) {
+            item(key = "group-cards") {
+                GroupCardsSection(
+                    groups = groups,
+                    byGroup = byGroup,
+                    onToggleGroup = onToggleGroup,
                 )
             }
+        }
+
+        items(alarms, key = { it.id }) { alarm ->
+            AlarmRow(
+                alarm = alarm,
+                order = order,
+                is24Hour = is24Hour,
+                onToggle = {
+                    onToggle(alarm.id)
+                },
+                onEdit = {
+                    onEdit(alarm)
+                },
+            )
         }
     }
 }
 
 /* -------------------------------------------------------------------------- */
-/* Group header                                                               */
+/* Group cards                                                                */
 /* -------------------------------------------------------------------------- */
 
-private val GROUP_HEADER_PADDING_H = 20.dp
-private val GROUP_HEADER_PADDING_V = 4.dp
+private val GROUP_SECTION_PADDING_H = 4.dp
+private val GROUP_CARD_GAP = 10.dp
+private val GROUP_CARD_PADDING = 16.dp
+private val GROUP_CARD_CORNER = 22.dp
 
-/**
- * A group's name and its one-tap switch.
- *
- * [allArmed] — not "any armed" — decides the switch's own drawn state, so a group with a mix of
- * on and off alarms reads as off until every alarm in it agrees; that is the least surprising
- * reading of a control that is about to make them all match each other.
- */
+/** The "Alarm Groups" dashboard: one summary card per group, two to a row, wrapping as needed. */
 @Composable
-private fun GroupHeader(
-    group: AlarmGroup,
-    allArmed: Boolean,
-    onToggle: (Boolean) -> Unit,
+private fun GroupCardsSection(
+    groups: List<AlarmGroup>,
+    byGroup: Map<Long?, List<Alarm>>,
+    onToggleGroup: (Long, Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = GROUP_HEADER_PADDING_H, vertical = GROUP_HEADER_PADDING_V)
-            .clickable { onToggle(!allArmed) },
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
+        verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
         Text(
-            text = group.name,
+            "Alarm Groups",
             style = MaterialTheme.typography.titleMediumEmphasized,
             color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
         )
-        Switch(checked = allArmed, onCheckedChange = onToggle)
+        groups.chunked(2).forEach { pair ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
+            ) {
+                pair.forEach { group ->
+                    val groupAlarms = byGroup[group.id].orEmpty()
+                    GroupCard(
+                        group = group,
+                        total = groupAlarms.size,
+                        armed = groupAlarms.count { it.enabled },
+                        // Not "any armed": a mixed group reads as off until every alarm in it
+                        // agrees, which is the least surprising state for a switch that is about
+                        // to make them all match each other. An empty group is always off — there
+                        // is nothing in it for the switch to mean "on".
+                        checked = groupAlarms.isNotEmpty() && groupAlarms.all { it.enabled },
+                        onToggle = { onToggleGroup(group.id, it) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // An odd group out still gets a half-width card, matching every other row.
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupCard(
+    group: AlarmGroup,
+    total: Int,
+    armed: Int,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val container = if (checked) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+    val ink = if (checked) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        color = container,
+        shape = RoundedCornerShape(GROUP_CARD_CORNER),
+        modifier = modifier,
+    ) {
+        Column(Modifier.padding(GROUP_CARD_PADDING)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = checked, onCheckedChange = onToggle)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GroupCount(icon = Icons.Outlined.Alarm, count = total, ink = ink)
+                Spacer(Modifier.width(16.dp))
+                GroupCount(icon = Icons.Filled.Alarm, count = armed, ink = ink)
+            }
+        }
+    }
+}
+
+/** [total] alarms in the group beside [Icons.Outlined.Alarm]; how many are currently armed beside
+ * the filled glyph — an outline for "exists" and a filled one for "is doing something" reads the
+ * same way it does everywhere else a bell icon draws a ringer's on/off state. */
+@Composable
+private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int, ink: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(count.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
     }
 }
 
