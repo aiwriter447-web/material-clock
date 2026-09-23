@@ -195,15 +195,13 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                         Text(tab.label, style = MaterialTheme.typography.headlineSmall)
                     },
                     actions = {
-                        // Used to be title-tap-only, then title-tap-plus-icon for anyone who'd
-                        // already learned the old gesture. The icon alone tested fine on its own,
-                        // so the invisible fallback is gone — one clear entry point instead of two.
                         IconButton(onClick = { showSettings = true }) {
                             Icon(Icons.Outlined.Settings, contentDescription = "${tab.label} settings")
                         }
                     },
+                    // यहाँ बदलाव किया गया है: Transparent की जगह surface कलर सेट किया गया है
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 )
