@@ -21,12 +21,13 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Settings // आउटलाइन्ड की जगह नया Rounded आइकन इंपोर्ट किया गया
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +59,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -147,22 +149,27 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             topBar = {
                 TopAppBar(
                     title = {
-                        // कैप्सूल (Pill) शेप के लिए नया Surface Wrapper
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.secondaryContainer,
                         ) {
                             Text(
                                 text = tab.label,
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.SemiBold, 
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     },
                     actions = {
                         IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Outlined.Settings, contentDescription = "${tab.label} settings")
+                            // नया Rounded Settings आइकन, जिसे थोड़ा बड़ा (28.dp) किया गया है
+                            Icon(
+                                Icons.Rounded.Settings, 
+                                contentDescription = "${tab.label} settings",
+                                modifier = Modifier.size(28.dp)
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
