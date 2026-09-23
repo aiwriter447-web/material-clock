@@ -113,7 +113,10 @@ fun <T> ChoiceRow(
 fun NavigateRow(title: String, subtitle: String?, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = subtitle?.let { { Text(it, maxLines = 1) } },
+        // maxLines = 2, not 1: a couple of rows (the groups row, notably) deliberately pass a
+        // subtitle with an embedded "\n" to say two separate things — a label and a description —
+        // rather than one. A single-line subtitle elsewhere just never reaches the second line.
+        supportingContent = subtitle?.let { { Text(it, maxLines = 2) } },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(onClick = onClick),
     )
