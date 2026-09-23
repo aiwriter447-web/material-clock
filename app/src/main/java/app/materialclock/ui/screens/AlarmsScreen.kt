@@ -48,15 +48,10 @@ import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
 import app.materialclock.ui.theme.StretchedCaps
 import java.time.DayOfWeek
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.Duration
 
-/**
- * Alarm list.
- *
- * Layout:
- * - "Alarm Groups" at the top: a wrapped row of summary cards, two per row, one per group.
- * - Every alarm below, in one flat list.
- * - One full-width alarm card per row.
- */
 @Composable
 fun AlarmsScreen(
     alarms: List<Alarm>,
@@ -85,6 +80,21 @@ fun AlarmsScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // नया बदलाव: अगला अलार्म बजने का समय दिखाने के लिए
+        item(key = "upcoming-alarm-text") {
+            val upcomingText = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
+            if (upcomingText.isNotEmpty()) {
+                Text(
+                    text = upcomingText,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, bottom = 4.dp, top = 4.dp)
+                )
+            }
+        }
+
         if (groups.isNotEmpty()) {
             item(key = "group-cards") {
                 GroupCardsSection(
@@ -111,6 +121,49 @@ fun AlarmsScreen(
     }
 }
 
+// नया फंक्शन: सबसे नज़दीकी अलार्म का समय कैलकुलेट करने के लिए
+private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
+    val activeAlarms = alarms.filter { it.enabled }
+    if (activeAlarms.isEmpty()) return "" // कोई अलार्म चालू नहीं है तो कुछ न दिखाएं
+
+    val now = LocalDateTime.now()
+    var minDuration: Duration? = null
+
+    for (alarm in activeAlarms) {
+        val alarmTime = LocalTime.of(alarm.time.hour, alarm.time.minute)
+        
+        for (i in 0..7) {
+            val checkDate = now.plusDays(i.toLong())
+            val checkDay = checkDate.dayOfWeek
+            
+            val isActiveDay = alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
+
+            if (isActiveDay) {
+                val candidateDateTime = checkDate.withHour(alarmTime.hour).withMinute(alarmTime.minute).withSecond(0).withNano(0)
+                
+                if (candidateDateTime.isAfter(now)) {
+                    val duration = Duration.between(now, candidateDateTime)
+                    if (minDuration == null || duration < minDuration) {
+                        minDuration = duration
+                    }
+                    break 
+                }
+            }
+        }
+    }
+
+    if (minDuration == null) return ""
+
+    val hours = minDuration.toHours()
+    val minutes = minDuration.toMinutes() % 60
+
+    return buildString {
+        append("Alarm in ")
+        if (hours > 0) append("$hours hours ")
+        append("$minutes minutes")
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Group cards                                                                */
 /* -------------------------------------------------------------------------- */
@@ -130,7 +183,6 @@ private fun GroupCardsSection(
         modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
         verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
-        // "Alarm Groups" title removed as requested
         groups.chunked(2).forEach { pair ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -214,11 +266,11 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 /* -------------------------------------------------------------------------- */
 
 private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 10.dp // Reduced from 16.dp for compact height
+private val ROW_VERTICAL_PADDING = 10.dp
 private val ROW_CORNER_RADIUS = 24.dp
-private val ROW_LABEL_TO_TIME = 0.dp // Reduced from 4.dp
+private val ROW_LABEL_TO_TIME = 0.dp
 private val ROW_TIME_GAP = 8.dp
-private val ROW_TIME_CAP = 104.dp // Reduced from 120.dp
+private val ROW_TIME_CAP = 104.dp
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
 /* -------------------------------------------------------------------------- */
@@ -349,10 +401,6 @@ private fun AlarmRow(
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/* 24-hour time                                                               */
-/* -------------------------------------------------------------------------- */
-
 @Composable
 private fun RowTime24(
     hour: Int,
@@ -369,10 +417,6 @@ private fun RowTime24(
         tracking = ClockFace.CONDENSED_TRACKING,
     )
 }
-
-/* -------------------------------------------------------------------------- */
-/* 12-hour time                                                               */
-/* -------------------------------------------------------------------------- */
 
 @Composable
 private fun RowTime12(
@@ -416,10 +460,6 @@ private fun RowTime12(
         )
     }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Repeat-day letters                                                         */
-/* -------------------------------------------------------------------------- */
 
 private val DAY_CAP = 23.dp
 private val DAY_BLOCK_WIDTH = 91.dp
