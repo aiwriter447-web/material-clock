@@ -62,7 +62,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 100 // Reduced from 128 for a compacter pill shape
+private const val ROW_HEIGHT_DP = 100 
 
 @Composable
 fun WorldClockScreen(
@@ -83,7 +83,7 @@ fun WorldClockScreen(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(10.dp), // Increased spacing between city pills
+        verticalArrangement = Arrangement.spacedBy(10.dp), 
     ) {
         item {
             if (settings.style == WorldClockStyle.DIGITAL) {
@@ -122,9 +122,6 @@ fun WorldClockScreen(
     }
 }
 
-/** 
- * A large central digital clock for the Home time, matching the Google Clock aesthetic.
- */
 @Composable
 private fun HomeDigitalClock(
     home: ZoneId,
@@ -139,15 +136,11 @@ private fun HomeDigitalClock(
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
 
-    // Added spaces around the colons for wider and ideal distance
+    // Changed to 08:30:35 PM format without spaces
     val timeText = buildString {
-        if (use24h) {
-            append("%02d : %02d".format(hour, local.minute))
-        } else {
-            append("%d : %02d".format(hour, local.minute))
-        }
+        append("%02d:%02d".format(hour, local.minute))
         if (showSeconds) {
-            append(" : %02d".format(local.second))
+            append(":%02d".format(local.second))
         }
     }
 
@@ -159,11 +152,10 @@ private fun HomeDigitalClock(
         verticalArrangement = Arrangement.Center
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            // Using standard Text with bold font instead of custom Numerals
             Text(
                 text = timeText,
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal, // Adjusted weight to match 2nd picture
                     letterSpacing = 2.sp,
                     fontSize = 64.sp
                 ),
@@ -182,12 +174,11 @@ private fun HomeDigitalClock(
         }
         Spacer(Modifier.height(16.dp))
         
-        // Full name date format: Wednesday, 23 September 2026
         val formatter = remember(home) { DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home) }
         Text(
             text = formatter.format(instant),
-            style = MaterialTheme.typography.titleLarge, // Increased size
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), // Changed to look like city pill title with bold font
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 8.dp)
         )
     }
@@ -274,15 +265,11 @@ private fun CityRow(
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
     
-    // Restored the original string formatting for standard text font
-    val clock = buildString {
-        if (use24h) {
-            append("%02d:%02d".format(local.hour, local.minute))
-        } else {
-            append("%d:%02d".format((local.hour % 12).takeIf { it != 0 } ?: 12, local.minute))
-        }
+    // Updated time format to include leading zeros for 12h format
+    val timeString = buildString {
+        val displayHour = if (use24h) local.hour else ((local.hour % 12).takeIf { it != 0 } ?: 12)
+        append("%02d:%02d".format(displayHour, local.minute))
         if (showSeconds) append(":%02d".format(local.second))
-        if (!use24h) append(if (local.hour < 12) "am" else "pm")
     }
 
     val state = remember(city.zone.id) {
@@ -375,17 +362,30 @@ private fun CityRow(
                     )
                 }
                 
-                // Restored standard Text component for CityRow time
-                Text(
-                    clock,
-                    style = if (showSeconds) {
-                        MaterialTheme.typography.titleLargeEmphasized
-                    } else {
-                        MaterialTheme.typography.headlineMediumEmphasized
-                    },
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                )
+                // Stacked time and am/pm using Column
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = timeString,
+                        style = if (showSeconds) {
+                            MaterialTheme.typography.titleLargeEmphasized
+                        } else {
+                            MaterialTheme.typography.headlineMediumEmphasized
+                        },
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
+                    if (!use24h) {
+                        Text(
+                            text = if (local.hour < 12) "am" else "pm",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
     }
