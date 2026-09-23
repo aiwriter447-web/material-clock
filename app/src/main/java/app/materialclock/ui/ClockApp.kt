@@ -14,15 +14,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import app.materialclock.alarm.AlarmScheduler
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -35,9 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -52,16 +48,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.materialclock.alarm.AlarmScheduler
 import app.materialclock.alarm.Notifications
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
@@ -79,21 +77,9 @@ import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
+import kotlinx.coroutines.launch
 
-/** Breathing room between the dock and the navigation bar. */
 private val DOCK_CLEARANCE = 20.dp
-
-/**
- * How much of the bottom of every screen the floating dock is standing on.
- *
- * This used to be a hand-derived constant (`DOCK_HEIGHT + DOCK_CLEARANCE + 12.dp`) reserved as
- * list padding, and it drifted out of sync with the dock's real size at least once already: the
- * pill grew from 64 dp to 72 dp and the constant stayed put, so the last row of every list sat 8
- * dp under the pill with nothing to notice and nothing to fail. It is now measured off the dock's
- * actual layout instead — see `dockHeight` in [ClockApp] — so there is no second number to forget
- * to update. [DOCK_HEIGHT] itself survives only as the first-frame fallback, before that
- * measurement exists.
- */
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
     ALARMS("Alarms", Icons.Outlined.Alarm, Notifications.TAB_ALARMS),
@@ -102,21 +88,6 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
     STOPWATCH("Stopwatch", Icons.Outlined.Timer, Notifications.TAB_STOPWATCH),
 }
 
-/**
- * The app shell.
- *
- * Navigation is [ClockDock], a floating pill with a detached add button and no navigation bar, so
- * the alarm grid and the world-clock list run full-bleed to the bottom edge. That component owes
- * the accessibility contract a `ShortNavigationBar` would have supplied for free; see its own
- * documentation for what it pays and why.
- *
- * ## Where the settings are
- *
- * In the title. Tapping "Alarms" opens the alarm settings, tapping "World Clock" opens that tab's,
- * and so on; Stopwatch has none and is inert. There is no gear and no ripple. See
- * [app.materialclock.ui.sheets.AlarmSettingsSheet] for why an unmarked affordance is the right
- * trade for preferences you set twice a year.
- */
 @Composable
 fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -132,11 +103,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
 
-        // Proactive, not buried: `ExactAlarmPermissionRow` in AlarmSettingsSheet covers the same
-        // ground, but a row inside a sheet inside a gear icon is easy to never see, and this is
-        // the one permission this app cannot silently do without — missing it means alarms fire
-        // without the status-bar glyph and can drift by up to a minute. This nudge is what a
-        // person who never opens Settings still sees on the one tab where it matters.
         LaunchedEffect(tab) {
             if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 val result = snackbar.showSnackbar(
@@ -155,11 +121,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             }
         }
 
-        // Reachability curtain: long-press the dock to pull the whole screen down into thumb
-        // range, on demand — the same gesture Samsung's own One UI one-handed mode uses, and
-        // Samsung's is invoked the same way, not left permanently shrunk the moment it's turned
-        // on. The setting only gates whether the gesture exists at all (see the pointerInput
-        // below); `curtainDown` is what actually drives the scale, toggled by that gesture.
         var curtainDown by remember { mutableStateOf(false) }
         LaunchedEffect(settings.theme.oneHandMode) {
             if (!settings.theme.oneHandMode) curtainDown = false
@@ -169,17 +130,9 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             label = "curtainScale",
         )
 
-        // The dock's real footprint, measured off the live layout rather than a hand-maintained
-        // constant. That constant already drifted out of sync once before (see the DOCK_RESERVE
-        // history) when the pill grew and nobody updated the number reserving space for it — a
-        // measured height can't drift, because it *is* whatever the dock is actually drawing this
-        // frame, whatever changes it, RTL, larger accessibility text, a future redesign.
-        // DOCK_RESERVE is only the first-frame fallback, before layout has happened once.
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        // Asked once, on first composition. Denying it costs the notifications and nothing else.
-        // The alarm still rings, because the ringer is a foreground service and audio, not a post.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
             LaunchedEffect(Unit) { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }
@@ -199,7 +152,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             Icon(Icons.Outlined.Settings, contentDescription = "${tab.label} settings")
                         }
                     },
-                    // यहाँ बदलाव किया गया है: Transparent की जगह surface कलर सेट किया गया है
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -207,23 +159,14 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 )
             },
         ) { padding ->
-            // Keep the bars' insets but let each screen own its horizontal margin, so a grid
-            // and a full-bleed dial can differ without fighting the Scaffold.
-            //
-            // The dock floats over the content rather than displacing it, so the space it occupies
-            // has to be reserved here by hand; otherwise the last alarm tile sits under the pill.
             val ld = LocalLayoutDirection.current
             val underDock = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
-            // The add button floats bottom-right, just above the dock, rather than top-right: top
-            // put it further from the thumb than the dock itself, which defeats the point of a
-            // one-hand-reachable layout. Stacking it above the dock instead means the two tabs
-            // that have it need extra bottom clearance, not top.
             val underDockAndFab = underDock + DOCK_HEIGHT + 12.dp
             val body = PaddingValues(
                 start = padding.calculateStartPadding(ld) + 16.dp,
                 end = padding.calculateEndPadding(ld) + 16.dp,
                 top = padding.calculateTopPadding(),
-                bottom = underDockAndFab, // Alarms always shows the add button
+                bottom = underDockAndFab,
             )
             val edgeToEdge = PaddingValues(
                 top = padding.calculateTopPadding(),
@@ -237,16 +180,8 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
           Box(Modifier.fillMaxSize()) {
             AnimatedContent(
                 targetState = tab,
-                // `clip = false`: the four tabs are wildly different heights (a 2×2 alarm grid vs
-                // a full-bleed world-clock list vs a centred timer dial), and the default
-                // SizeTransform clips content to whichever is smaller mid-transition — the same
-                // pop/blink fixed in TimersScreen's running/idle crossfade, for the same reason.
                 transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
                 label = "tab",
-                // Anchored at the bottom centre: the dial, the keypad, the day toggles are already
-                // near the thumb, so shrinking toward them (rather than toward the screen's centre)
-                // is what actually pulls the top of the screen down instead of just shrinking it
-                // in place.
                 modifier = Modifier.graphicsLayer {
                     scaleX = curtainScale
                     scaleY = curtainScale
@@ -264,6 +199,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             onToggle = vm::toggleAlarm,
                             onToggleGroup = vm::toggleGroup,
                             onEdit = { editing = it },
+                            onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
                             contentPadding = body,
                         )
                     }
@@ -277,21 +213,12 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             home = homeZone,
                             nowUtcMillis = now,
                             settings = settings.world,
-                            // Swiping a city away is instant and undoable, rather than instant and
-                            // final or safe and nagging. The snackbar is the spec's own mitigation
-                            // for a destructive swipe, and it costs one tap instead of one per
-                            // deletion the way a confirmation dialog did.
                             onRemove = { city ->
                                 vm.removeCity(city.zone)
                                 scope.launch {
                                     val r = snackbar.showSnackbar(
                                         message = "Removed ${city.city}",
                                         actionLabel = "Undo",
-                                        // Short, explicitly. With an action label the default is
-                                        // Indefinite, which leaves a bar you have to dismiss by
-                                        // hand sitting over the list after every swipe, and the
-                                        // separate dismiss affordance it needs then crowds the
-                                        // action itself. An undo that expires is the normal one.
                                         duration = SnackbarDuration.Short,
                                     )
                                     if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
@@ -304,7 +231,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     Tab.TIMERS -> {
                         val timer by vm.timer.collectAsStateWithLifecycle()
                         val presets by vm.presets.collectAsStateWithLifecycle()
-                        // Only tick while a timer exists; the setting screen has nothing moving.
                         val now by rememberElapsedTicker(active = timer != null)
                         TimersScreen(
                             timer = timer,
@@ -362,8 +288,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     },
             )
 
-            // Floating bottom-right, just above the dock — see FloatingAddButton's doc for why
-            // that beats both the old inline-with-the-dock spot and top-right.
             FloatingAddButton(
                 visible = tab == Tab.ALARMS || tab == Tab.WORLD,
                 label = if (tab == Tab.WORLD) "Add city" else "Add alarm",
