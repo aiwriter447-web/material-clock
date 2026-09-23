@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
 import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
@@ -82,7 +83,7 @@ fun WorldClockScreen(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp), // Increased spacing between city pills
     ) {
         item {
             if (settings.style == WorldClockStyle.DIGITAL) {
@@ -138,14 +139,15 @@ private fun HomeDigitalClock(
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
 
+    // Added spaces around the colons for wider and ideal distance
     val timeText = buildString {
         if (use24h) {
-            append("%02d:%02d".format(hour, local.minute))
+            append("%02d : %02d".format(hour, local.minute))
         } else {
-            append("%d:%02d".format(hour, local.minute))
+            append("%d : %02d".format(hour, local.minute))
         }
         if (showSeconds) {
-            append(":%02d".format(local.second))
+            append(" : %02d".format(local.second))
         }
     }
 
@@ -157,13 +159,15 @@ private fun HomeDigitalClock(
         verticalArrangement = Arrangement.Center
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Numerals(
+            // Using standard Text with bold font instead of custom Numerals
+            Text(
                 text = timeText,
-                capHeight = 110.dp, // Enlarged to match alarm clock size
-                color = ink,
-                width = ClockFace.CONDENSED,
-                weight = ClockFace.WEIGHT_ON,
-                tracking = ClockFace.CONDENSED_TRACKING,
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    fontSize = 64.sp
+                ),
+                color = ink
             )
             if (!use24h) {
                 Spacer(Modifier.width(8.dp))
@@ -178,12 +182,13 @@ private fun HomeDigitalClock(
         }
         Spacer(Modifier.height(16.dp))
         
-        // Formatted to output: Wed, 23 Sept 2026
-        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEE, d MMM yyyy").withZone(home) }
+        // Full name date format: Wednesday, 23 September 2026
+        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home) }
         Text(
             text = formatter.format(instant),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.titleLarge, // Increased size
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp)
         )
     }
 }
