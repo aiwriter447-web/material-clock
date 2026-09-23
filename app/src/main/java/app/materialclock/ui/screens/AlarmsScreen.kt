@@ -130,11 +130,7 @@ private fun GroupCardsSection(
         modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
         verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
-        Text(
-            "Alarm Groups",
-            style = MaterialTheme.typography.titleMediumEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        // "Alarm Groups" title removed as requested
         groups.chunked(2).forEach { pair ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
