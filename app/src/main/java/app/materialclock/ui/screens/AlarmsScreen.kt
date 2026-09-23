@@ -80,7 +80,7 @@ fun AlarmsScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // नया बदलाव: अगला अलार्म बजने का समय दिखाने के लिए
+        // New change: Show the time remaining until the next alarm
         item(key = "upcoming-alarm-text") {
             val upcomingText = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
             if (upcomingText.isNotEmpty()) {
@@ -90,7 +90,7 @@ fun AlarmsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, bottom = 4.dp, top = 4.dp)
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
                 )
             }
         }
@@ -121,32 +121,37 @@ fun AlarmsScreen(
     }
 }
 
-// नया फंक्शन: सबसे नज़दीकी अलार्म का समय कैलकुलेट करने के लिए
+// New function: Calculate the time until the nearest alarm
 private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): String {
     val activeAlarms = alarms.filter { it.enabled }
-    if (activeAlarms.isEmpty()) return "" // कोई अलार्म चालू नहीं है तो कुछ न दिखाएं
+    if (activeAlarms.isEmpty()) return "" // Show nothing if no alarm is enabled
 
     val now = LocalDateTime.now()
     var minDuration: Duration? = null
 
     for (alarm in activeAlarms) {
         val alarmTime = LocalTime.of(alarm.time.hour, alarm.time.minute)
-        
+
         for (i in 0..7) {
             val checkDate = now.plusDays(i.toLong())
             val checkDay = checkDate.dayOfWeek
-            
-            val isActiveDay = alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
+
+            val isActiveDay =
+                alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
 
             if (isActiveDay) {
-                val candidateDateTime = checkDate.withHour(alarmTime.hour).withMinute(alarmTime.minute).withSecond(0).withNano(0)
-                
+                val candidateDateTime = checkDate
+                    .withHour(alarmTime.hour)
+                    .withMinute(alarmTime.minute)
+                    .withSecond(0)
+                    .withNano(0)
+
                 if (candidateDateTime.isAfter(now)) {
                     val duration = Duration.between(now, candidateDateTime)
                     if (minDuration == null || duration < minDuration) {
                         minDuration = duration
                     }
-                    break 
+                    break
                 }
             }
         }
@@ -180,7 +185,9 @@ private fun GroupCardsSection(
     onToggleGroup: (Long, Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = GROUP_SECTION_PADDING_H),
         verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
         groups.chunked(2).forEach { pair ->
@@ -190,6 +197,7 @@ private fun GroupCardsSection(
             ) {
                 pair.forEach { group ->
                     val groupAlarms = byGroup[group.id].orEmpty()
+
                     GroupCard(
                         group = group,
                         total = groupAlarms.size,
@@ -199,7 +207,10 @@ private fun GroupCardsSection(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
+
+                if (pair.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
             }
         }
     }
@@ -219,6 +230,7 @@ private fun GroupCard(
     } else {
         MaterialTheme.colorScheme.surfaceContainer
     }
+
     val ink = if (checked) {
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {
@@ -240,24 +252,55 @@ private fun GroupCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Switch(checked = checked, onCheckedChange = onToggle)
+
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onToggle,
+                )
             }
+
             Spacer(Modifier.height(10.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupCount(icon = Icons.Outlined.Alarm, count = total, ink = ink)
+                GroupCount(
+                    icon = Icons.Outlined.Alarm,
+                    count = total,
+                    ink = ink,
+                )
+
                 Spacer(Modifier.width(16.dp))
-                GroupCount(icon = Icons.Filled.Alarm, count = armed, ink = ink)
+
+                GroupCount(
+                    icon = Icons.Filled.Alarm,
+                    count = armed,
+                    ink = ink,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int, ink: Color) {
+private fun GroupCount(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    count: Int,
+    ink: Color,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = ink.copy(alpha = 0.75f),
+            modifier = Modifier.size(16.dp),
+        )
+
         Spacer(Modifier.width(4.dp))
-        Text(count.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
+
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelLarge,
+            color = ink,
+        )
     }
 }
 
@@ -456,7 +499,7 @@ private fun RowTime12(
             capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
             color = ink,
             tracking = ClockFace.CONDENSED_TRACKING,
-            modifier = Modifier.padding(bottom = 6.dp)
+            modifier = Modifier.padding(bottom = 6.dp),
         )
     }
 }
