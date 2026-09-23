@@ -52,12 +52,15 @@ import app.materialclock.core.clockFormat
 object Notifications {
 
     const val CHANNEL_ALARM = "alarm"
+    const val CHANNEL_UPCOMING = "upcoming"
     const val CHANNEL_TIMER = "timer"
     const val CHANNEL_STOPWATCH = "stopwatch"
 
     const val ID_RINGING = 1
     const val ID_TIMER = 2
     const val ID_STOPWATCH = 3
+    /** Offset so an upcoming-alarm notice never collides with [ID_RINGING]/[ID_TIMER]/[ID_STOPWATCH]. */
+    private const val ID_UPCOMING_BASE = 4_000
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -75,6 +78,13 @@ object Notifications {
             }
         )
         nm.createNotificationChannel(
+            // DEFAULT, not HIGH: this is a heads-up notice, not the ring — it should announce
+            // itself once and sit in the shade, not compete with the alarm channel's own urgency.
+            NotificationChannel(CHANNEL_UPCOMING, "Upcoming alarms", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "A reminder before an alarm rings"
+            }
+        )
+        nm.createNotificationChannel(
             NotificationChannel(CHANNEL_TIMER, "Timers", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "A running timer"
                 setSound(null, null)
@@ -86,6 +96,38 @@ object Notifications {
                 setSound(null, null)
             }
         )
+    }
+
+    /* ── Upcoming alarm ─────────────────────────────────────────────────────────────────────── */
+
+    /**
+     * The heads-up notice [app.materialclock.data.AlarmSettings.upcomingNotificationMinutes]
+     * schedules ahead of the ring — see [AlarmReceiver.upcoming]. Auto-cancelling and non-ongoing,
+     * unlike the ringer: this is only ever a notice, never the thing standing between the user and
+     * turning the alarm off.
+     */
+    fun showUpcoming(context: Context, alarm: app.materialclock.core.Alarm) {
+        post(context, ID_UPCOMING_BASE + alarm.id.toInt(), buildUpcoming(context, alarm))
+    }
+
+    private fun buildUpcoming(context: Context, alarm: app.materialclock.core.Alarm): android.app.Notification {
+        val is24 = android.text.format.DateFormat.is24HourFormat(context)
+        val hour = if (is24) alarm.time.hour else ((alarm.time.hour % 12).takeIf { it != 0 } ?: 12)
+        val meridiem = if (is24) "" else if (alarm.time.hour < 12) " AM" else " PM"
+        val timeText = "%d:%02d%s".format(hour, alarm.time.minute, meridiem)
+        val title = if (alarm.label.isNotBlank()) {
+            "\"${alarm.label}\" rings at $timeText"
+        } else {
+            "Alarm rings at $timeText"
+        }
+        return NotificationCompat.Builder(context, CHANNEL_UPCOMING)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setContentTitle(title)
+            .setContentText("Tap to review it")
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openApp(context, TAB_ALARMS))
+            .build()
     }
 
     /* ── Timer ──────────────────────────────────────────────────────────────────────────────── */
