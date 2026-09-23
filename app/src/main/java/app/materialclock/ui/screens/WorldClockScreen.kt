@@ -21,29 +21,32 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import app.materialclock.data.HourFormat
-import app.materialclock.data.WorldClockSettings
-import app.materialclock.data.WorldClockStyle
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -52,11 +55,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
-import app.materialclock.ui.theme.ClockFace
-import app.materialclock.ui.theme.Numerals
+import app.materialclock.data.HourFormat
+import app.materialclock.data.WorldClockSettings
+import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.theme.CapText
-import java.time.ZoneId
+import app.materialclock.ui.theme.ClockFace
 import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.cos
@@ -64,6 +69,7 @@ import kotlin.math.sin
 
 private const val ROW_HEIGHT_DP = 100 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldClockScreen(
     cities: List<WorldCity>,
@@ -80,6 +86,32 @@ fun WorldClockScreen(
         HourFormat.H24 -> true
     }
     val measurer = rememberTextMeasurer()
+    var cityToDelete by remember { mutableStateOf<WorldCity?>(null) }
+
+    // Confirmation Dialog before city delete
+    cityToDelete?.let { city ->
+        AlertDialog(
+            onDismissRequest = { cityToDelete = null },
+            title = { Text("Remove City") },
+            text = { Text("Are you sure you want to remove ${city.city}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemove(city)
+                        cityToDelete = null
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { cityToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
@@ -109,15 +141,59 @@ fun WorldClockScreen(
             }
         }
         items(cities, key = { it.zone.id }) { city ->
-            CityRow(
-                city = city,
-                home = home,
-                nowUtcMillis = nowUtcMillis,
-                use24h = use24h,
-                showSeconds = settings.showSeconds,
-                onRemove = { onRemove(city) },
-                modifier = Modifier.animateItem(),
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = { value ->
+                    if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
+                        cityToDelete = city
+                        false
+                    } else false
+                }
             )
+
+            SwipeToDismissBox(
+                state = dismissState,
+                modifier = Modifier.animateItem(),
+                enableDismissFromStartToEnd = true,
+                enableDismissFromEndToStart = true,
+                backgroundContent = {
+                    val alignment = when (dismissState.dismissDirection) {
+                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                        else -> Alignment.Center
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(percent = 50),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(ROW_HEIGHT_DP.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
+                            contentAlignment = alignment
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                    }
+                },
+            ) {
+                CityRowContent(
+                    city = city,
+                    home = home,
+                    nowUtcMillis = nowUtcMillis,
+                    use24h = use24h,
+                    showSeconds = settings.showSeconds,
+                    onRemove = { onRemove(city) },
+                )
+            }
         }
     }
 }
@@ -250,16 +326,14 @@ private fun CityDial(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun CityRow(
+private fun CityRowContent(
     city: WorldCity,
     home: ZoneId,
     nowUtcMillis: Long,
     use24h: Boolean,
     showSeconds: Boolean,
     onRemove: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
@@ -270,119 +344,86 @@ private fun CityRow(
         if (showSeconds) append(":%02d".format(local.second))
     }
 
-    val state = remember(city.zone.id) {
-        SwipeToDismissBoxState(
-            initialValue = SwipeToDismissBoxValue.Settled,
-            positionalThreshold = { distance: Float -> distance * 0.5f },
-        )
-    }
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        enableDismissFromStartToEnd = false,
-        onDismiss = { onRemove() },
-        backgroundContent = {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(percent = 50),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(ROW_HEIGHT_DP.dp)
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }
+                )
+            },
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(percent = 50),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(ROW_HEIGHT_DP.dp),
+                color = if (night) {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                },
+                shape = CircleShape,
+                modifier = Modifier.size(51.dp),
             ) {
-                Box(Modifier.fillMaxSize().padding(end = 32.dp), Alignment.CenterEnd) {
+                Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(28.dp),
+                        imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
+                        contentDescription = if (night) "night" else "daytime",
+                        tint = if (night) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
-        },
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(percent = 50),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(ROW_HEIGHT_DP.dp)
-                .semantics {
-                    customActions = listOf(
-                        CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }
-                    )
-                },
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 9.6.dp),
+                verticalArrangement = Arrangement.Center,
             ) {
-                Surface(
-                    color = if (night) {
-                        MaterialTheme.colorScheme.surfaceContainerHighest
+                Text(
+                    city.city,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)}\n${city.utcCode(nowUtcMillis)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = timeString,
+                    style = if (showSeconds) {
+                        MaterialTheme.typography.titleLargeEmphasized
                     } else {
-                        MaterialTheme.colorScheme.primaryContainer
+                        MaterialTheme.typography.headlineMediumEmphasized
                     },
-                    shape = CircleShape,
-                    modifier = Modifier.size(51.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
-                            contentDescription = if (night) "night" else "daytime",
-                            tint = if (night) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            },
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f).padding(start = 9.6.dp),
-                    verticalArrangement = Arrangement.Center,
-                ) {
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                )
+                if (!use24h) {
                     Text(
-                        city.city,
+                        text = if (local.hour < 12) "am" else "pm",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    // नया बदलाव: \n का उपयोग करके UTC कोड को नीचे की लाइन में भेज दिया गया है
-                    Text(
-                        "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)}\n${city.utcCode(nowUtcMillis)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = timeString,
-                        style = if (showSeconds) {
-                            MaterialTheme.typography.titleLargeEmphasized
-                        } else {
-                            MaterialTheme.typography.headlineMediumEmphasized
-                        },
                         color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
+                        maxLines = 1
                     )
-                    if (!use24h) {
-                        Text(
-                            text = if (local.hour < 12) "am" else "pm",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1
-                        )
-                    }
                 }
             }
         }
