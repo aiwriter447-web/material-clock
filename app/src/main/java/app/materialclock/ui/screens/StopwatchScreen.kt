@@ -42,21 +42,21 @@ import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
 
 /**
- * Generates 14 different colors with support for both dark and light themes.
+ * Logic for generating 44 different colors
  */
 @Composable
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
-    // Divide 360 degrees into 14 sections to create 14 unique colors.
-    val hue = ((index - 1) * (360f / 14f)) % 360f
-
+    // Divide 360 degrees into 44 parts to create 44 unique colors
+    val hue = ((index - 1) * (360f / 44f)) % 360f 
+    
     val saturation = if (isDark) 0.5f else 0.7f
     val lightnessBadge = if (isDark) 0.3f else 0.85f
     val lightnessText = if (isDark) 0.9f else 0.2f
-
+    
     val badgeBg = Color.hsl(hue, saturation, lightnessBadge)
     val badgeFg = Color.hsl(hue, saturation, lightnessText)
-
+    
     return Pair(badgeBg, badgeFg)
 }
 
@@ -267,16 +267,14 @@ private val LAP_GAP = 4.dp
 
 @Composable
 private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
-    // New 14-color badge logic.
     val (badgeBg, badgeFg) = getLapColors(lap.index)
-
-    // The fastest/slowest indicator is now applied to the time text color.
+    
     val timeColor = when {
         isFastest -> MaterialTheme.colorScheme.tertiary
         isSlowest -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
-
+    
     val (m, s, cs) = lap.split.stopwatchParts()
     val (tm, ts, tcs) = lap.total.stopwatchParts()
 
@@ -302,7 +300,7 @@ private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
             Text(
                 "$m:$s.$cs",
                 style = MaterialTheme.typography.titleMediumEmphasized,
-                color = timeColor, // Highlights the fastest and slowest lap times.
+                color = timeColor,
                 modifier = Modifier.weight(1f),
             )
             Text(
