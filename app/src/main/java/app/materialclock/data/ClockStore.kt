@@ -139,19 +139,6 @@ class ClockStore(private val context: Context) {
         val KEY_PRESETS = stringPreferencesKey("timerPresets")
         val KEY_NEXT_ID = longPreferencesKey("nextId")
 
-        val KEY_SILENCE = intPreferencesKey("silenceAfter")
-        val KEY_SNOOZE = intPreferencesKey("snooze")
-        val KEY_WEEK_START = stringPreferencesKey("weekStart")
-        val KEY_SECONDS = booleanPreferencesKey("showSeconds")
-        val KEY_HOUR_FORMAT = stringPreferencesKey("hourFormat")
-        val KEY_TIMER_SOUND = stringPreferencesKey("timerSound")
-        val KEY_TIMER_VIBRATE = booleanPreferencesKey("timerVibrate")
-        val KEY_DYNAMIC = booleanPreferencesKey("dynamicColor")
-        val KEY_PALETTE = stringPreferencesKey("palette")
-        val KEY_DARK = stringPreferencesKey("darkMode")
-        val KEY_AMOLED = booleanPreferencesKey("amoled")
-        val KEY_ONE_HAND = booleanPreferencesKey("oneHand")
-
         val SEED_ALARMS = listOf(
             Alarm(1, LocalTime.of(6, 40), "Gym", setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)),
             Alarm(2, LocalTime.of(7, 15), "Work", Alarm.WEEKDAYS),
@@ -242,6 +229,7 @@ private fun encodeAlarms(list: List<Alarm>) = JSONArray().apply {
                 .apply { a.soundUri?.let { put("sound", it) } }
                 .apply { a.snoozedUntilMillis?.let { put("snoozed", it) } }
                 .apply { a.groupId?.let { put("group", it) } }
+                .apply { a.pinnedAt?.let { put("pinnedAt", it) } }
         )
     }
 }.toString()
@@ -261,6 +249,7 @@ private fun parseAlarms(s: String): List<Alarm> = runCatching {
             soundUri = o.optString("sound").takeIf { it.isNotEmpty() },
             snoozedUntilMillis = o.optLong("snoozed").takeIf { it > 0L },
             groupId = o.optLong("group", -1L).takeIf { it > 0L },
+            pinnedAt = o.optLong("pinnedAt", 0L).takeIf { it > 0L },
         )
     }
 }.getOrDefault(emptyList())
