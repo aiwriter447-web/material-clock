@@ -1,5 +1,6 @@
 package app.materialclock.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -7,7 +8,11 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +27,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.AlarmOff
+import androidx.compose.material.icons.outlined.AlarmOn
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.GroupRemove
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +85,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AlarmsScreen(
     alarms: List<Alarm>,
@@ -79,22 +93,52 @@ fun AlarmsScreen(
     weekStart: WeekStart,
     onToggle: (Long) -> Unit,
     onToggleGroup: (Long, Boolean) -> Unit,
+    onTogglePin: (Long) -> Unit,
     onEdit: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit,
+    onDeleteSelected: (Set<Long>, Set<Long>) -> Unit,
+    onSetEnabledSelected: (Set<Long>, Set<Long>, Boolean) -> Unit,
+    onUngroupSelected: (Set<Long>, Set<Long>) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    val order = remember(weekStart) {
-        weekStart.order(systemFirstDay())
-    }
-
+    val order = remember(weekStart) { weekStart.order(systemFirstDay()) }
     val context = LocalContext.current
-    val is24Hour = remember(context) {
-        android.text.format.DateFormat.is24HourFormat(context)
+    val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
+    val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
+    
+    var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
+    
+    var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
+    val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
+    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = inSelectionMode) {
+        selectedAlarms = emptySet()
+        selectedGroups = emptySet()
     }
 
-    val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
-    var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
+    if (showBatchDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteConfirm = false },
+            title = { Text("Delete Items") },
+            text = { Text("Are you sure you want to delete the selected ${selectedAlarms.size} alarms and ${selectedGroups.size} groups?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteSelected(selectedAlarms, selectedGroups)
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                        showBatchDeleteConfirm = false
+                    }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     alarmToDelete?.let { alarm ->
         AlertDialog(
@@ -107,111 +151,225 @@ fun AlarmsScreen(
                         onDelete(alarm)
                         alarmToDelete = null
                     }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { alarmToDelete = null }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { alarmToDelete = null }) { Text("Cancel") }
             }
         )
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item(key = "upcoming-alarm-text", contentType = "upcoming") {
-            val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
-            AnimatedVisibility(
-                visible = upcomingInfo != null,
-                enter = expandVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeIn(tween(400)),
-                exit = shrinkVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeOut(tween(400))
-            ) {
-                if (upcomingInfo != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 6.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = upcomingInfo.first,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = upcomingInfo.second,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (groups.isNotEmpty()) {
-            item(key = "group-cards", contentType = "groups") {
-                GroupCardsSection(
-                    groups = groups,
-                    byGroup = byGroup,
-                    onToggleGroup = onToggleGroup,
-                )
-            }
-        }
-
-        items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
-            val dismissState = rememberSwipeToDismissBoxState(
-                confirmValueChange = { value ->
-                    when (value) {
-                        SwipeToDismissBoxValue.EndToStart -> {
-                            alarmToDelete = alarm
-                            false
-                        }
-                        else -> false
-                    }
-                }
-            )
-
-            SwipeToDismissBox(
-                state = dismissState,
-                enableDismissFromStartToEnd = false,
-                enableDismissFromEndToStart = true,
-                modifier = Modifier.animateItem(),
-                backgroundContent = {
-                    val direction = dismissState.dismissDirection
-                    if (direction == SwipeToDismissBoxValue.EndToStart) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-                            modifier = Modifier.fillMaxSize(),
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "upcoming-alarm-text", contentType = "upcoming") {
+                val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
+                AnimatedVisibility(
+                    visible = upcomingInfo != null,
+                    enter = expandVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeIn(tween(400)),
+                    exit = shrinkVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeOut(tween(400))
+                ) {
+                    if (upcomingInfo != null) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 6.dp),
+                            horizontalAlignment = Alignment.Start
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                                contentAlignment = Alignment.CenterEnd
+                            Text(
+                                text = upcomingInfo.first,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = upcomingInfo.second,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (groups.isNotEmpty()) {
+                item(key = "group-cards", contentType = "groups") {
+                    GroupCardsSection(
+                        groups = groups,
+                        byGroup = byGroup,
+                        selectedGroups = selectedGroups,
+                        inSelectionMode = inSelectionMode,
+                        onToggleGroup = onToggleGroup,
+                        onToggleGroupSelect = { groupId ->
+                            selectedGroups = if (groupId in selectedGroups) selectedGroups - groupId else selectedGroups + groupId
+                        }
+                    )
+                }
+            }
+
+            items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
+                val isSelected = alarm.id in selectedAlarms
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (inSelectionMode) return@rememberSwipeToDismissBoxState false
+                        when (value) {
+                            SwipeToDismissBoxValue.EndToStart -> {
+                                alarmToDelete = alarm
+                                false
+                            }
+                            SwipeToDismissBoxValue.StartToEnd -> {
+                                onTogglePin(alarm.id)
+                                false
+                            }
+                            else -> false
+                        }
+                    },
+                    positionalThreshold = { totalDistance -> totalDistance * 0.25f }
+                )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = !inSelectionMode,
+                    enableDismissFromEndToStart = !inSelectionMode,
+                    modifier = Modifier.animateItem(),
+                    backgroundContent = {
+                        val direction = dismissState.dismissDirection
+                        if (direction == SwipeToDismissBoxValue.EndToStart) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(ROW_CORNER_RADIUS),
+                                modifier = Modifier.fillMaxSize(),
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Delete",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(28.dp)
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                        } else if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                            val isPinned = alarm.pinnedAt != null
+                            Surface(
+                                color = if (isPinned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(ROW_CORNER_RADIUS),
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin,
+                                        contentDescription = if (isPinned) "Unpin" else "Pin",
+                                        tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
                             }
                         }
                     }
+                ) {
+                    AlarmRow(
+                        alarm = alarm,
+                        order = order,
+                        is24Hour = is24Hour,
+                        isSelected = isSelected,
+                        inSelectionMode = inSelectionMode,
+                        onToggle = { onToggle(alarm.id) },
+                        onEdit = { onEdit(alarm) },
+                        onToggleSelect = {
+                            selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
+                        }
+                    )
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = inSelectionMode,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = contentPadding.calculateBottomPadding() + 8.dp)
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 8.dp,
+                modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                AlarmRow(
-                    alarm = alarm,
-                    order = order,
-                    is24Hour = is24Hour,
-                    onToggle = { onToggle(alarm.id) },
-                    onEdit = { onEdit(alarm) },
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val allSelected = selectedAlarms.size == alarms.size && selectedGroups.size == groups.size
+                    
+                    TextButton(onClick = {
+                        if (allSelected) {
+                            selectedAlarms = emptySet()
+                            selectedGroups = emptySet()
+                        } else {
+                            selectedAlarms = alarms.map { it.id }.toSet()
+                            selectedGroups = groups.map { it.id }.toSet()
+                        }
+                    }) {
+                        Icon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (allSelected) "Unselect" else "Select All")
+                    }
+
+                    TextButton(onClick = { 
+                        onSetEnabledSelected(selectedAlarms, selectedGroups, true) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Outlined.AlarmOn, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Turn On")
+                    }
+
+                    TextButton(onClick = { 
+                        onSetEnabledSelected(selectedAlarms, selectedGroups, false) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Outlined.AlarmOff, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Turn Off")
+                    }
+
+                    TextButton(onClick = { 
+                        onUngroupSelected(selectedAlarms, selectedGroups) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Outlined.GroupRemove, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Ungroup")
+                    }
+
+                    TextButton(
+                        onClick = { showBatchDeleteConfirm = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Delete")
+                    }
+                }
             }
         }
     }
@@ -271,7 +429,10 @@ private val GROUP_CARD_CORNER = 22.dp
 private fun GroupCardsSection(
     groups: List<AlarmGroup>,
     byGroup: Map<Long?, List<Alarm>>,
+    selectedGroups: Set<Long>,
+    inSelectionMode: Boolean,
     onToggleGroup: (Long, Boolean) -> Unit,
+    onToggleGroupSelect: (Long) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
@@ -284,12 +445,16 @@ private fun GroupCardsSection(
             ) {
                 pair.forEach { group ->
                     val groupAlarms = byGroup[group.id].orEmpty()
+                    val isSelected = group.id in selectedGroups
                     GroupCard(
                         group = group,
                         total = groupAlarms.size,
                         armed = groupAlarms.count { it.enabled },
                         checked = groupAlarms.isNotEmpty() && groupAlarms.all { it.enabled },
+                        isSelected = isSelected,
+                        inSelectionMode = inSelectionMode,
                         onToggle = { onToggleGroup(group.id, it) },
+                        onToggleSelect = { onToggleGroupSelect(group.id) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -299,30 +464,29 @@ private fun GroupCardsSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GroupCard(
     group: AlarmGroup,
     total: Int,
     armed: Int,
     checked: Boolean,
+    isSelected: Boolean,
+    inSelectionMode: Boolean,
     onToggle: (Boolean) -> Unit,
+    onToggleSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val container = if (checked) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-    val ink = if (checked) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
     Surface(
         color = container,
         shape = RoundedCornerShape(GROUP_CARD_CORNER),
-        modifier = modifier,
+        modifier = modifier.combinedClickable(
+            onClick = { if (inSelectionMode) onToggleSelect() else onToggle(!checked) },
+            onLongClick = { onToggleSelect() }
+        ),
     ) {
         Column(Modifier.padding(GROUP_CARD_PADDING)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -334,7 +498,11 @@ private fun GroupCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Switch(checked = checked, onCheckedChange = onToggle)
+                Switch(
+                    checked = checked, 
+                    onCheckedChange = { if (!inSelectionMode) onToggle(it) },
+                    enabled = !inSelectionMode
+                )
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -363,18 +531,22 @@ private val ROW_TIME_GAP = 8.dp
 private val ROW_TIME_CAP = 104.dp
 private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlarmRow(
     alarm: Alarm,
     order: List<DayOfWeek>,
     is24Hour: Boolean,
+    isSelected: Boolean,
+    inSelectionMode: Boolean,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
+    onToggleSelect: () -> Unit,
 ) {
     val enabled = alarm.enabled
-    val container = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val ink = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    val numeralWeight = if (enabled) ClockFace.WEIGHT_ON else ClockFace.WEIGHT_OFF
+    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val numeralWeight = if (enabled || isSelected) ClockFace.WEIGHT_ON else ClockFace.WEIGHT_OFF
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
@@ -384,7 +556,10 @@ private fun AlarmRow(
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
+        modifier = Modifier.fillMaxWidth().combinedClickable(
+            onClick = { if (inSelectionMode) onToggleSelect() else onEdit() },
+            onLongClick = { onToggleSelect() }
+        ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
@@ -394,13 +569,25 @@ private fun AlarmRow(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Top,
             ) {
-                Text(
-                    text = displayLabel,
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                    color = labelColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = displayLabel,
+                        style = MaterialTheme.typography.titleMediumEmphasized,
+                        color = labelColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (alarm.pinnedAt != null) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Filled.PushPin,
+                            contentDescription = "Pinned",
+                            tint = ink,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
@@ -421,7 +608,8 @@ private fun AlarmRow(
                 Spacer(modifier = Modifier.height(8.dp))
                 Switch(
                     checked = enabled,
-                    onCheckedChange = { onToggle() },
+                    onCheckedChange = { if (!inSelectionMode) onToggle() },
+                    enabled = !inSelectionMode,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = container,
                         checkedTrackColor = ink,
