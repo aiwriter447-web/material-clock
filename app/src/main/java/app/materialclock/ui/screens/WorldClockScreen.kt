@@ -1,6 +1,5 @@
 package app.materialclock.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -23,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
@@ -35,11 +33,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -70,7 +64,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 128
+private const val ROW_HEIGHT_DP = 100 
 
 @Composable
 fun WorldClockScreen(
@@ -88,21 +82,13 @@ fun WorldClockScreen(
         HourFormat.H24 -> true
     }
     val measurer = rememberTextMeasurer()
-    val context = LocalContext.current
-    
-    // Manage pinned cities
-    var pinnedZones by rememberSaveable { mutableStateOf(emptySet<String>()) }
-    val sortedCities = remember(cities, pinnedZones) {
-        cities.sortedByDescending { it.zone.id in pinnedZones }
-    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            // Bug fix: Use Crossfade to prevent visual jumps while settings are loading
             Crossfade(
                 targetState = settings.style,
                 animationSpec = tween(500),
@@ -120,7 +106,7 @@ fun WorldClockScreen(
                     )
                 } else {
                     CityDial(
-                        cities = sortedCities,
+                        cities = cities,
                         nowUtcMillis = nowUtcMillis,
                         measurer = measurer,
                         modifier = Modifier
@@ -132,29 +118,14 @@ fun WorldClockScreen(
             }
         }
         
-        items(sortedCities, key = { it.zone.id }) { city ->
-            val isPinned = city.zone.id in pinnedZones
-            
+        // Pin logic completely removed, iterating directly through the standard cities list
+        items(cities, key = { it.zone.id }) { city ->
             CityRow(
                 city = city,
                 home = home,
                 nowUtcMillis = nowUtcMillis,
                 use24h = use24h,
                 showSeconds = settings.showSeconds,
-                isPinned = isPinned,
-                onPinToggle = {
-                    if (isPinned) {
-                        pinnedZones = pinnedZones - city.zone.id
-                        Toast.makeText(context, "City unpinned", Toast.LENGTH_SHORT).show()
-                    } else {
-                        if (pinnedZones.size < 3) {
-                            pinnedZones = pinnedZones + city.zone.id
-                            Toast.makeText(context, "City pinned to top", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Maximum 3 cities can be pinned", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                },
                 onRemove = { onRemove(city) },
                 modifier = Modifier.animateItem(),
             )
@@ -190,13 +161,18 @@ private fun HomeDigitalClock(
         Row(verticalAlignment = Alignment.Bottom) {
             Numerals(text = timeText, capHeight = 110.dp, color = ink, width = ClockFace.CONDENSED, weight = ClockFace.WEIGHT_ON, tracking = ClockFace.CONDENSED_TRACKING)
             if (!use24h) {
-                Spacer(Modifier.width(8.dp))
-                CapText(text = meridiem, capHeight = 28.dp, color = ink, tracking = ClockFace.CONDENSED_TRACKING, modifier = Modifier.padding(bottom = 12.dp))
+                Spacer(Modifier.width(12.dp)) 
+                CapText(text = meridiem, capHeight = 36.dp, color = ink, tracking = ClockFace.CONDENSED_TRACKING, modifier = Modifier.padding(bottom = 8.dp))
             }
         }
         Spacer(Modifier.height(16.dp))
-        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEE, d MMM yyyy").withZone(home) }
-        Text(text = formatter.format(instant), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val formatter = remember(home) { DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home) }
+        Text(
+            text = formatter.format(instant), 
+            style = MaterialTheme.typography.titleMedium, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold // Date is now properly bolded
+        )
     }
 }
 
@@ -254,26 +230,23 @@ private fun CityRow(
     nowUtcMillis: Long,
     use24h: Boolean,
     showSeconds: Boolean,
-    isPinned: Boolean,
-    onPinToggle: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
     
-    val clock = buildString {
+    val timeOnly = buildString {
         if (use24h) append("%02d:%02d".format(local.hour, local.minute))
-        else append("%d:%02d".format((local.hour % 12).takeIf { it != 0 } ?: 12, local.minute))
+        else append("%02d:%02d".format((local.hour % 12).takeIf { it != 0 } ?: 12, local.minute))
         if (showSeconds) append(":%02d".format(local.second))
-        if (!use24h) append(if (local.hour < 12) "am" else "pm")
     }
+    val amPmString = if (!use24h) (if (local.hour < 12) "am" else "pm") else ""
 
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.EndToStart -> { onRemove(); false }
-                SwipeToDismissBoxValue.StartToEnd -> { onPinToggle(); false }
                 else -> false
             }
         }
@@ -282,38 +255,19 @@ private fun CityRow(
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
-        enableDismissFromStartToEnd = true, // LTR enabled for pin
-        enableDismissFromEndToStart = true, // RTL enabled for delete
+        enableDismissFromStartToEnd = false, // Left to right gesture (Pin) completely removed
+        enableDismissFromEndToStart = true,  // Right to left gesture (Delete) kept active
         backgroundContent = {
             val direction = state.dismissDirection
-            val alignment = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                else -> Alignment.Center
-            }
-            val icon = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.PushPin
-                SwipeToDismissBoxValue.EndToStart -> Icons.Outlined.Delete
-                else -> Icons.Outlined.Delete
-            }
-            val bgColor = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                else -> Color.Transparent
-            }
-            val iconColor = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.onSecondaryContainer
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
-                else -> Color.Transparent
-            }
-
-            Surface(
-                color = bgColor,
-                shape = RoundedCornerShape(percent = 50),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(ROW_HEIGHT_DP.dp),
-            ) {
-                Box(Modifier.fillMaxSize().padding(horizontal = 32.dp), contentAlignment = alignment) {
-                    Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
+            if (direction == SwipeToDismissBoxValue.EndToStart) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(ROW_HEIGHT_DP.dp),
+                ) {
+                    Box(Modifier.fillMaxSize().padding(horizontal = 32.dp), contentAlignment = Alignment.CenterEnd) {
+                        Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(28.dp))
+                    }
                 }
             }
         },
@@ -325,54 +279,63 @@ private fun CityRow(
                 .semantics { customActions = listOf(CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }) },
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     color = if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.primaryContainer,
                     shape = CircleShape,
-                    modifier = Modifier.size(51.dp),
+                    modifier = Modifier.size(52.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
                             contentDescription = if (night) "night" else "daytime",
                             tint = if (night) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(26.dp),
                         )
                     }
                 }
                 Column(
-                    modifier = Modifier.weight(1f).padding(start = 9.6.dp),
+                    modifier = Modifier.weight(1f).padding(start = 16.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            city.city,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (isPinned) {
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.Filled.PushPin, contentDescription = "Pinned", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                        }
-                    }
                     Text(
-                        "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} | ${city.utcCode(nowUtcMillis)}",
+                        text = city.city,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} |\n${city.utcCode(nowUtcMillis)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
-                Text(
-                    clock,
-                    style = if (showSeconds) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.headlineMediumEmphasized,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                )
+                
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = timeOnly,
+                        style = if (showSeconds) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
+                    if (amPmString.isNotEmpty()) {
+                        Text(
+                            text = amPmString,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
     }
