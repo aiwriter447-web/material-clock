@@ -7,7 +7,12 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,14 +22,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Settings 
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -104,17 +107,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
 
-        // Pager State for Swipe Gestures
-        val pagerState = rememberPagerState(
-            initialPage = Tab.entries.indexOf(tab).takeIf { it >= 0 } ?: 0,
-            pageCount = { Tab.entries.size }
-        )
-
-        // Sync Tab Dock to Pager Swipe
-        LaunchedEffect(pagerState.targetPage) {
-            tab = Tab.entries[pagerState.targetPage]
-        }
-
         LaunchedEffect(tab) {
             if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 val result = snackbar.showSnackbar(
@@ -165,8 +157,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 text = tab.label,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.SemiBold, 
-                                // Padding exactly as requested
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
@@ -206,16 +197,17 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             )
 
           Box(Modifier.fillMaxSize()) {
-            // Replaced AnimatedContent with HorizontalPager for smooth swipe gestures
-            HorizontalPager(
-                state = pagerState,
+            AnimatedContent(
+                targetState = tab,
+                transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
+                label = "tab",
                 modifier = Modifier.graphicsLayer {
                     scaleX = curtainScale
                     scaleY = curtainScale
                     transformOrigin = TransformOrigin(0.5f, 1f)
-                }
-            ) { page ->
-                when (Tab.entries[page]) {
+                },
+            ) { current ->
+                when (current) {
                     Tab.ALARMS -> {
                         val alarms by vm.alarms.collectAsStateWithLifecycle()
                         val groups by vm.groups.collectAsStateWithLifecycle()
@@ -296,13 +288,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             ClockDock(
                 destinations = Tab.entries,
                 selected = tab,
-                onSelect = { newTab -> 
-                    tab = newTab
-                    scope.launch {
-                        // Smoothly scroll pager to the tapped dock item
-                        pagerState.animateScrollToPage(Tab.entries.indexOf(newTab))
-                    }
-                },
+                onSelect = { tab = it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
