@@ -85,19 +85,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 20.dp
-
-/**
- * How long post-launch work (the notification-permission dialog, the exact-alarm reminder
- * snackbar) waits before firing.
- *
- * Both used to run inside a `LaunchedEffect` keyed on the very first composition -- exactly
- * when the tab's entrance animation (fade/scale) and the dock's spring-in are also mid-flight.
- * A system permission dialog is a whole new window; creating it steals frames from the
- * Choreographer right as those animations are running, which is what showed up as visible
- * jank/jitter on cold open (worse at 120Hz, since the per-frame budget is smaller and a stall
- * eats a larger fraction of it). Waiting until the opening animation has settled removes that
- * collision without changing anything the user actually sees or does.
- */
 private const val OPEN_SETTLE_DELAY_MS = 400L
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
@@ -110,8 +97,14 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
 @Composable
 fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
+        if (!isLoaded) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {}
+            return@ClockTheme
+        }
+
         var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
@@ -262,6 +255,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                     if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
                                 }
                             },
+                            onTogglePin = { city -> vm.togglePinCity(city.zone) },
                             contentPadding = edgeToEdgeWithFab,
                         )
                     }
