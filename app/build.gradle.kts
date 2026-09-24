@@ -74,8 +74,8 @@ android {
             // everything else's unused code) uncut — the R8/resource pass below is what release
             // was already getting. `isDebuggable` stays implicit-true for a `debug` buildType, so
             // this does not turn the build into something that can't be attached to or logged.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
