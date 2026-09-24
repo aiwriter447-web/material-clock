@@ -1,5 +1,13 @@
 package app.materialclock.ui.screens
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.rounded.FolderSpecial
+import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -82,7 +92,6 @@ fun AlarmsScreen(
     }
 
     val context = LocalContext.current
-
     val is24Hour = remember(context) {
         android.text.format.DateFormat.is24HourFormat(context)
     }
@@ -90,7 +99,6 @@ fun AlarmsScreen(
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
 
-    // Delete Confirmation Dialog
     alarmToDelete?.let { alarm ->
         AlertDialog(
             onDismissRequest = { alarmToDelete = null },
@@ -119,27 +127,33 @@ fun AlarmsScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Upcoming Alarm Text Section - designed as two lines
         item(key = "upcoming-alarm-text") {
             val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
-            if (upcomingInfo != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.Start // Left aligned according to the UI
-                ) {
-                    Text(
-                        text = upcomingInfo.first,
-                        style = MaterialTheme.typography.titleMedium, // Easy-to-read size
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = upcomingInfo.second,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary, // To make the date stand out
-                    )
+            // Smooth fluid animation for opening and closing text
+            AnimatedVisibility(
+                visible = upcomingInfo != null,
+                enter = expandVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeIn(tween(400)),
+                exit = shrinkVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeOut(tween(400))
+            ) {
+                if (upcomingInfo != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = upcomingInfo.first,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = upcomingInfo.second,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -157,40 +171,67 @@ fun AlarmsScreen(
         items(alarms, key = { it.id }) { alarm ->
             val dismissState = rememberSwipeToDismissBoxState(
                 confirmValueChange = { value ->
-                    if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
-                        alarmToDelete = alarm
-                        false
-                    } else false
+                    when (value) {
+                        SwipeToDismissBoxValue.EndToStart -> {
+                            alarmToDelete = alarm
+                            false
+                        }
+                        SwipeToDismissBoxValue.StartToEnd -> {
+                            if (alarm.enabled) {
+                                Toast.makeText(context, "Alarm snoozed", Toast.LENGTH_SHORT).show()
+                            } else {
+                                onEdit(alarm)
+                            }
+                            false
+                        }
+                        else -> false
+                    }
                 }
             )
 
             SwipeToDismissBox(
                 state = dismissState,
-                enableDismissFromStartToEnd = true,
-                enableDismissFromEndToStart = true,
+                enableDismissFromStartToEnd = true, // LTR enabled for snooze/group
+                enableDismissFromEndToStart = true, // RTL enabled for delete
+                modifier = Modifier.animateItem(
+                    placementSpec = tween(400, easing = FastOutSlowInEasing) // Fluid landing
+                ),
                 backgroundContent = {
-                    val alignment = when (dismissState.dismissDirection) {
+                    val direction = dismissState.dismissDirection
+                    val alignment = when (direction) {
                         SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
                         SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
                         else -> Alignment.Center
                     }
+                    
+                    val icon = when (direction) {
+                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) Icons.Rounded.Snooze else Icons.Rounded.FolderSpecial
+                        SwipeToDismissBoxValue.EndToStart -> Icons.Outlined.Delete
+                        else -> Icons.Outlined.Delete
+                    }
+                    
+                    val bgColor = when (direction) {
+                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
+                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                        else -> Color.Transparent
+                    }
+                    
+                    val iconColor = when (direction) {
+                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
+                        else -> Color.Transparent
+                    }
+
                     Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
+                        color = bgColor,
                         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 24.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                             contentAlignment = alignment
                         ) {
-                            Icon(
-                                Icons.Outlined.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(28.dp),
-                            )
+                            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
                         }
                     }
                 }
@@ -207,7 +248,6 @@ fun AlarmsScreen(
     }
 }
 
-// New function: now returns a Pair (two separate strings) so the UI can display two lines
 private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): Pair<String, String>? {
     val activeAlarms = alarms.filter { it.enabled }
     if (activeAlarms.isEmpty()) return null
@@ -242,18 +282,14 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): Pair<String, Strin
     val hours = minDuration.toHours()
     val minutes = minDuration.toMinutes() % 60
 
-    // Date formatting
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM, h:mm a")
-    val formattedDate = nextAlarmTime.format(formatter)
-        .replace("AM", "am")
-        .replace("PM", "pm")
+    val formattedDate = nextAlarmTime.format(formatter).replace("AM", "am").replace("PM", "pm")
 
     val durationString = buildString {
         append("Alarm in ")
         if (hours > 0) append("$hours hours ")
         append("$minutes minutes")
     }
-
     return Pair(durationString, formattedDate)
 }
 
@@ -350,10 +386,6 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Row Dimensions */
-/* -------------------------------------------------------------------------- */
-
 private val ROW_HORIZONTAL_PADDING = 16.dp
 private val ROW_VERTICAL_PADDING = 10.dp
 private val ROW_CORNER_RADIUS = 24.dp
@@ -371,25 +403,9 @@ private fun AlarmRow(
     onEdit: () -> Unit,
 ) {
     val enabled = alarm.enabled
-
-    val container = if (enabled) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-
-    val ink = if (enabled) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    val numeralWeight = if (enabled) {
-        ClockFace.WEIGHT_ON
-    } else {
-        ClockFace.WEIGHT_OFF
-    }
-
+    val container = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val ink = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val numeralWeight = if (enabled) ClockFace.WEIGHT_ON else ClockFace.WEIGHT_OFF
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
@@ -399,17 +415,10 @@ private fun AlarmRow(
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onEdit),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = ROW_HORIZONTAL_PADDING,
-                    vertical = ROW_VERTICAL_PADDING,
-                ),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
@@ -427,20 +436,9 @@ private fun AlarmRow(
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
                 if (is24Hour) {
-                    RowTime24(
-                        hour = alarm.time.hour,
-                        minute = alarm.time.minute,
-                        ink = ink,
-                        weight = numeralWeight,
-                    )
+                    RowTime24(hour = alarm.time.hour, minute = alarm.time.minute, ink = ink, weight = numeralWeight)
                 } else {
-                    RowTime12(
-                        hour12 = hour12,
-                        minute = alarm.time.minute,
-                        meridiem = meridiem,
-                        ink = ink,
-                        weight = numeralWeight,
-                    )
+                    RowTime12(hour12 = hour12, minute = alarm.time.minute, meridiem = meridiem, ink = ink, weight = numeralWeight)
                 }
             }
 
@@ -450,14 +448,8 @@ private fun AlarmRow(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
             ) {
-                DayLetters(
-                    alarm = alarm,
-                    order = order,
-                    ink = ink,
-                )
-
+                DayLetters(alarm = alarm, order = order, ink = ink)
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Switch(
                     checked = enabled,
                     onCheckedChange = { onToggle() },
@@ -480,12 +472,7 @@ private fun AlarmRow(
 }
 
 @Composable
-private fun RowTime24(
-    hour: Int,
-    minute: Int,
-    ink: Color,
-    weight: Int,
-) {
+private fun RowTime24(hour: Int, minute: Int, ink: Color, weight: Int) {
     Numerals(
         text = "%02d:%02d".format(hour, minute),
         capHeight = ROW_TIME_CAP,
@@ -497,44 +484,18 @@ private fun RowTime24(
 }
 
 @Composable
-private fun RowTime12(
-    hour12: Int,
-    minute: Int,
-    meridiem: String,
-    ink: Color,
-    weight: Int,
-) {
-    Row(
-        verticalAlignment = Alignment.Bottom,
-    ) {
+private fun RowTime12(hour12: Int, minute: Int, meridiem: String, ink: Color, weight: Int) {
+    Row(verticalAlignment = Alignment.Bottom) {
         Numerals(
-            text = "%02d".format(hour12),
-            capHeight = ROW_TIME_CAP,
-            color = ink,
-            width = ClockFace.CONDENSED,
-            weight = weight,
-            tracking = ClockFace.CONDENSED_TRACKING,
+            text = "%02d".format(hour12), capHeight = ROW_TIME_CAP, color = ink, width = ClockFace.CONDENSED, weight = weight, tracking = ClockFace.CONDENSED_TRACKING
         )
-
         Spacer(modifier = Modifier.width(ROW_TIME_GAP))
-
         Numerals(
-            text = "%02d".format(minute),
-            capHeight = ROW_TIME_CAP,
-            color = ink,
-            width = ClockFace.CONDENSED,
-            weight = weight,
-            tracking = ClockFace.CONDENSED_TRACKING,
+            text = "%02d".format(minute), capHeight = ROW_TIME_CAP, color = ink, width = ClockFace.CONDENSED, weight = weight, tracking = ClockFace.CONDENSED_TRACKING
         )
-
         Spacer(modifier = Modifier.width(ROW_TIME_GAP))
-
         CapText(
-            text = meridiem,
-            capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION,
-            color = ink,
-            tracking = ClockFace.CONDENSED_TRACKING,
-            modifier = Modifier.padding(bottom = 6.dp)
+            text = meridiem, capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION, color = ink, tracking = ClockFace.CONDENSED_TRACKING, modifier = Modifier.padding(bottom = 6.dp)
         )
     }
 }
@@ -547,40 +508,16 @@ private const val DAY_WEIGHT_ON = 700
 private const val DAY_WEIGHT_OFF = 400
 
 @Composable
-private fun DayLetters(
-    alarm: Alarm,
-    order: List<DayOfWeek>,
-    ink: Color,
-) {
+private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    val bold = remember { ClockFace.capitals(DAY_CAP, ClockFace.CONDENSED, weight = DAY_WEIGHT_ON) }
+    val light = remember { ClockFace.capitals(DAY_CAP, ClockFace.CONDENSED, weight = DAY_WEIGHT_OFF) }
 
-    val bold = remember {
-        ClockFace.capitals(
-            DAY_CAP,
-            ClockFace.CONDENSED,
-            weight = DAY_WEIGHT_ON,
-        )
-    }
-
-    val light = remember {
-        ClockFace.capitals(
-            DAY_CAP,
-            ClockFace.CONDENSED,
-            weight = DAY_WEIGHT_OFF,
-        )
-    }
-
-    val text = remember(
-        alarm.days,
-        alarm.isOneShot,
-        order,
-        ink,
-    ) {
+    val text = remember(alarm.days, alarm.isOneShot, order, ink) {
         buildAnnotatedString {
             order.forEach { day ->
                 val active = !alarm.isOneShot && day in alarm.days
-
                 withStyle(
                     SpanStyle(
                         fontFamily = if (active) bold.fontFamily else light.fontFamily,
@@ -593,24 +530,11 @@ private fun DayLetters(
         }
     }
 
-    val letterSpacing = with(density) {
-        (DAY_TRACKING / bold.fontSize.toDp()).em
-    }
-
+    val letterSpacing = with(density) { (DAY_TRACKING / bold.fontSize.toDp()).em }
     val style = bold.copy(letterSpacing = letterSpacing)
-
-    val measuredWidth = measurer
-        .measure(text = text, style = style)
-        .size.width
-
+    val measuredWidth = measurer.measure(text = text, style = style).size.width
     val targetWidth = with(density) { DAY_BLOCK_WIDTH.toPx() }
-
     val scaleX = if (measuredWidth > 0) targetWidth / measuredWidth else 1f
 
-    StretchedCaps(
-        text = text,
-        style = style,
-        capHeight = DAY_CAP,
-        scaleX = scaleX,
-    )
+    StretchedCaps(text = text, style = style, capHeight = DAY_CAP, scaleX = scaleX)
 }
