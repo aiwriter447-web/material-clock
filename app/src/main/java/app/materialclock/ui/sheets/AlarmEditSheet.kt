@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -76,28 +77,6 @@ import java.time.LocalTime
 import java.time.format.TextStyle
 import java.util.Locale
 
-/**
- * Add and edit are the same sheet.
- *
- * The only difference is whether Delete is offered, so making them two screens would mean
- * maintaining two copies of a time picker, a day row and a ringtone picker to save one boolean.
- * A new alarm arrives as an [Alarm] with `id == 0`, which the view model reads as "insert".
- *
- * ## It fits, and it does not scroll
- *
- * Everything is on one screen. A form that scrolls is a form where you cannot see what you are
- * about to save, and inside a sheet the scroll also fights the drag gesture that closes it.
- * Fitting cost three things: the dial is scaled (see [Scaled]); the section headers are gone,
- * since a row of weekday letters and a ringtone name do not need to be told what they are; and
- * there is no sheet title, because the sheet *is* the thing you tapped, so naming it is redundant.
- *
- * ## Saving
- *
- * Editing is live. Anything but Cancel commits: the Save button, dragging the sheet down, tapping
- * the scrim. That is how every settings screen on the phone behaves. A modal form that throws
- * away work because you dismissed it the wrong way is a trap. Cancel is the explicit discard, and
- * it is the only one.
- */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmEditSheet(
@@ -118,14 +97,9 @@ fun AlarmEditSheet(
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
     var discard by remember(initial.id) { mutableStateOf(false) }
-    // Dial by default; a tap on the keyboard icon swaps the dial for two typed fields below the
-    // same live readout, for anyone who'd rather punch in a time than drag to it.
+    
     var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
 
-    // The name a "+ New group" dialog just created, held only until that group shows up in
-    // [groups] — the group itself is born in the view model, asynchronously, so there is no id to
-    // select the moment the dialog closes. Matching by name against the next emission is what lets
-    // creating a group and landing on it feel like one action instead of two.
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(groups) {
         pendingNewGroupName?.let { pending ->
@@ -139,20 +113,9 @@ fun AlarmEditSheet(
     val timeState = rememberTimePickerState(
         initialHour = initial.time.hour,
         initialMinute = initial.time.minute,
-        // The system's own 12/24 preference, not the app's world-clock one: that setting belongs to
-        // another tab, and a picker disagreeing with every other picker on the phone is a bug.
         is24Hour = android.text.format.DateFormat.is24HourFormat(context),
     )
 
-    /**
-     * Every exit but Cancel runs this — `explicit` is true only for the Save button itself.
-     *
-     * For an alarm that already exists, any dismissal commits (see the class doc) — that is the
-     * whole point of "live editing". But a brand-new alarm (`onDelete == null`, the same signal
-     * the caller uses to decide whether to offer Delete) has nothing on disk yet, so there is no
-     * "current state" for an accidental scrim-tap or a stray touch on the + button to preserve —
-     * only an explicit Save should bring it into being.
-     */
     fun commitAndClose(explicit: Boolean = false) {
         if (!discard && (explicit || onDelete != null)) {
             onSave(
@@ -160,10 +123,6 @@ fun AlarmEditSheet(
                     time = LocalTime.of(timeState.hour, timeState.minute),
                     label = label.trim(),
                     days = days,
-                    // Not a hardcoded `true`. Dismissing the sheet by scrim-tap, drag-down or back
-                    // still commits (see the class doc), so this has to be the alarm's *own* state
-                    // or opening an off alarm just to look at it, then closing it any way but
-                    // Cancel, silently switches it on.
                     enabled = initial.enabled,
                     vibrate = vibrate,
                     soundUri = soundUri,
@@ -184,17 +143,10 @@ fun AlarmEditSheet(
                 @Suppress("DEPRECATION")
                 result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
             }
-            // A null pick is "Silent", which is a legitimate choice and must be distinguishable
-            // from "unset". Storing the literal string keeps that difference in one nullable field.
             soundUri = picked?.toString() ?: SILENT
         }
     }
 
-    // Handled explicitly rather than left to the sheet's own back-dismiss: on this alpha build of
-    // material3 (1.5.0-alpha25), a gesture back was reported to leave the sheet's dismissal
-    // untraceable through the normal onDismissRequest path. Owning it here — same commitAndClose
-    // logic scrim-tap uses, so a new alarm still cannot be saved by leaving rather than choosing
-    // Save — means the outcome does not depend on that library internal at all.
     BackHandler { commitAndClose() }
 
     ModalBottomSheet(
@@ -204,31 +156,13 @@ fun AlarmEditSheet(
     ) {
         Column(Modifier.padding(bottom = 20.dp)) {
 
-            // The field and the dial are composed separately, rather than letting `TimePicker`
-            // draw both.
-            //
-            // Two reasons. `TimePicker` puts a fixed spacer between its display and its dial that
-            // no parameter reaches, and its selector boxes are a hard 96 x 80 dp from
-            // `TimeSelectorContainerWidth`/`Height`, which is the wrong shape entirely once the
-            // digits inside are half again as wide as they are tall. Building the field means the
-            // pills can be sized *by the numerals*, and means there is no gap to remove.
-            //
-            // The dial is still the library's own `ClockFace`, driven by the same `TimePickerState`
-            // through an `AnalogTimePickerState`, so dragging, snapping and the auto-advance from
-            // hour to minute are all unchanged.
             WideTimeField(state = timeState)
 
-            // Small, but not nothing: the field's pills and the dial's pill are the same shape in
-            // the same colour family, and with them touching they read as one container with a
-            // notch in it rather than as a readout above a picker.
             Spacer(Modifier.height(4.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.End,
             ) {
-                // The dial is the default and the one every other alarm app opens on, so this is a
-                // one-tap escape hatch rather than a second front door: same spot, same size,
-                // whichever mode you're not currently in.
                 IconButton(onClick = { manualEntry = !manualEntry }) {
                     Icon(
                         imageVector = if (manualEntry) Icons.Outlined.AccessTime else Icons.Outlined.Keyboard,
@@ -242,8 +176,6 @@ fun AlarmEditSheet(
                 PillDial(
                     state = timeState,
                     modifier = Modifier.padding(horizontal = EDGE),
-                    // Same courtesy the library's dial does: picking an hour moves you on to minutes,
-                    // because nobody sets an alarm for exactly o'clock and then stops.
                     onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
                 )
             }
@@ -274,10 +206,6 @@ fun AlarmEditSheet(
             )
 
             Spacer(Modifier.height(10.dp))
-            // Sound and vibrate are one decision (how this alarm gets your attention), so they
-            // are one line. Both sit on the same [EDGE] as the field above; the previous version
-            // used a ListItem for the sound, whose own 16 dp inset put it 8 dp out of line with
-            // everything else on the sheet.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -309,8 +237,6 @@ fun AlarmEditSheet(
                         style = MaterialTheme.typography.labelLargeEmphasized,
                     )
                 }
-                // State as shape, not only fill: the expressive toggle goes round → squircle when
-                // it is on, so it reads without relying on colour.
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
@@ -325,10 +251,6 @@ fun AlarmEditSheet(
             }
 
             Spacer(Modifier.height(18.dp))
-            // Same shape, different colour and width, which is the spec's "do" for a group of
-            // buttons, but the colour now says what each one *does*. An earlier version used
-            // `ButtonGroup`'s `clickableItem`, which renders every item identically and offers no
-            // colour parameter, so Delete and Save looked like the same decision.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -346,7 +268,6 @@ fun AlarmEditSheet(
                         Icon(Icons.Outlined.Delete, contentDescription = null, Modifier.size(20.dp))
                     }
                 }
-                // Outlined, because discarding is a retreat and should not compete for the eye.
                 OutlinedButton(
                     onClick = { discard = true; onDismiss() },
                     contentPadding = PaddingValues(horizontal = 12.dp),
@@ -368,18 +289,6 @@ fun AlarmEditSheet(
     }
 }
 
-/**
- * Hour and minute as two pills that **hug their digits**.
- *
- * The library's selector is a fixed 96 x 80 dp box, which is portrait, and portrait is the wrong
- * proportion for numerals that are half again as wide as they are tall. These are built from
- * [Numerals], whose box *is* its ink, so the pill is exactly the digits plus a constant padding:
- * short because the cap height is 30 dp, wide because `wdth` 151 makes each digit 1.55 x that.
- * Nothing is guessed and nothing is left over.
- *
- * Tapping a pill sets `TimePickerState.selection`, which is the same public property the library's
- * own display writes, so the dial follows without any wiring between them.
- */
 @Composable
 private fun WideTimeField(state: TimePickerState) {
     val hour = if (state.is24hour) state.hour else ((state.hour % 12).takeIf { it != 0 } ?: 12)
@@ -408,10 +317,6 @@ private fun WideTimeField(state: TimePickerState) {
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(10.dp))
-            // AM over PM has to come to exactly the pill's height, gap included, because the two
-            // columns sit side by side and any surplus reads as the meridiem being misaligned
-            // rather than as a generous gap. Both chip heights are therefore derived from the pill
-            // rather than set: whatever the digits' cap height becomes, this follows it.
             Column(verticalArrangement = Arrangement.spacedBy(MERIDIEM_GAP)) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
@@ -420,15 +325,6 @@ private fun WideTimeField(state: TimePickerState) {
     }
 }
 
-/**
- * The keyboard alternative to [PillDial].
- *
- * Two plain numeric fields standing in for the dial, wired to the same [TimePickerState] so the
- * live readout above and the dial (if you flip back to it) never disagree with what was typed.
- * Each field only commits a keystroke once it is a value the state can actually hold — a stray "0"
- * typed first for a 12-hour hour, or a "9" that would make a 12-hour hour read "19", is left
- * showing but not applied, rather than clamped out from under the person mid-keystroke.
- */
 @Composable
 private fun ManualTimeEntry(state: TimePickerState) {
     var hourText by remember(state.is24hour) {
@@ -537,22 +433,15 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
         shape = CircleShape,
         onClick = onClick,
     ) {
-        Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Text(text, style = MaterialTheme.typography.labelLargeEmphasized)
         }
     }
 }
 
-/**
- * The alarm's group, picked from a menu rather than typed, because it is a *choice among a short,
- * named list* — exactly what a menu is for, and exactly what free text (a second [OutlinedTextField]
- * duplicating [AlarmGroup.name]) would only invite typos into. "No group" is always the first item,
- * ahead of any group, because leaving an alarm ungrouped is the common case, not an edge one.
- *
- * "+ New group" opens a one-field dialog rather than routing away from the sheet entirely — this is
- * still deciding one alarm's own group, so leaving the sheet to manage groups as their own screen
- * would be a bigger detour than the decision deserves.
- */
 @Composable
 private fun GroupPicker(
     groups: List<AlarmGroup>,
@@ -630,36 +519,16 @@ private fun GroupPicker(
     }
 }
 
-/** One inset for every row in the sheet, so nothing is a pixel out of line with anything else. */
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
 private val FIELD_CAP = 30.dp
-private val FIELD_PAD_V = 14.dp
-/** The digits' ink plus its padding: [FieldPill]'s height, and the one the meridiem must match. */
+private val FIELD_PAD_V = 16.dp // Fixed: Increased padding to avoid AM/PM vertical squishing
 private val FIELD_PILL_H = FIELD_CAP + FIELD_PAD_V * 2
 private val MERIDIEM_GAP = 4.dp
 private val MERIDIEM_CHIP_H = (FIELD_PILL_H - MERIDIEM_GAP) / 2
 
-
-/**
- * Digits wider than they are tall.
- *
- * `wdth` 151 is the top of Google Sans Flex's width axis. Paired with a cap height well under the
- * advance it produces numerals that read as *set into* a wide pill rather than dropped into one.
- * That is the opposite of the ultra-condensed 25 the alarm grid uses, and deliberately so: the
- * grid is a wall of numerals and this is one field.
- */
-
-
-/** The literal stored for a deliberately silent alarm, as distinct from "never chose one". */
 const val SILENT = "silent"
 
-/**
- * How much of the screen a sheet may take.
- *
- * The remainder is what makes it legible as a sheet rather than a screen: you can see what you came
- * from, and dragging down is obviously the way back.
- */
 const val SHEET_MAX_FRACTION = 0.88f
 
 @Composable
@@ -676,13 +545,6 @@ private fun ringtoneName(uri: String?): String {
     }
 }
 
-/**
- * Seven day toggles.
- *
- * [ToggleButton] is the M3 Expressive control for exactly this case, a persistent on/off whose
- * *shape* changes with state, not only its fill. Its default shape set is the round-to-squircle
- * pair, which is the tactic that makes a selected day readable without relying on colour alone.
- */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) {
@@ -707,6 +569,5 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
     }
 }
 
-/** The locale's own first day, used when the setting says "system default". */
 fun systemFirstDay(): DayOfWeek =
     java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
