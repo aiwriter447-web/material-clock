@@ -1,6 +1,5 @@
 package app.materialclock.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -28,8 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.rounded.FolderSpecial
-import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -176,14 +173,7 @@ fun AlarmsScreen(
                             alarmToDelete = alarm
                             false
                         }
-                        SwipeToDismissBoxValue.StartToEnd -> {
-                            if (alarm.enabled) {
-                                Toast.makeText(context, "Alarm snoozed", Toast.LENGTH_SHORT).show()
-                            } else {
-                                onEdit(alarm)
-                            }
-                            false
-                        }
+                        // Left-to-right swipe (StartToEnd) completely removed
                         else -> false
                     }
                 }
@@ -191,47 +181,32 @@ fun AlarmsScreen(
 
             SwipeToDismissBox(
                 state = dismissState,
-                enableDismissFromStartToEnd = true, // LTR enabled for snooze/group
-                enableDismissFromEndToStart = true, // RTL enabled for delete
+                enableDismissFromStartToEnd = false, // Disabled the LTR swipe gesture here
+                enableDismissFromEndToStart = true,  // Kept RTL swipe for Delete
                 modifier = Modifier.animateItem(
-                    placementSpec = tween(400, easing = FastOutSlowInEasing) // Fluid landing
+                    placementSpec = tween(400, easing = FastOutSlowInEasing)
                 ),
                 backgroundContent = {
                     val direction = dismissState.dismissDirection
-                    val alignment = when (direction) {
-                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                        else -> Alignment.Center
-                    }
                     
-                    val icon = when (direction) {
-                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) Icons.Rounded.Snooze else Icons.Rounded.FolderSpecial
-                        SwipeToDismissBoxValue.EndToStart -> Icons.Outlined.Delete
-                        else -> Icons.Outlined.Delete
-                    }
-                    
-                    val bgColor = when (direction) {
-                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
-                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                        else -> Color.Transparent
-                    }
-                    
-                    val iconColor = when (direction) {
-                        SwipeToDismissBoxValue.StartToEnd -> if (alarm.enabled) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
-                        else -> Color.Transparent
-                    }
-
-                    Surface(
-                        color = bgColor,
-                        shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                            contentAlignment = alignment
+                    // Only render the delete background when swiping right-to-left
+                    if (direction == SwipeToDismissBoxValue.EndToStart) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(ROW_CORNER_RADIUS),
+                            modifier = Modifier.fillMaxSize(),
                         ) {
-                            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
                     }
                 }
