@@ -1,11 +1,7 @@
 package app.materialclock.ui.screens
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -33,10 +29,7 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -83,7 +75,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 100 
+private const val ROW_HEIGHT_DP = 104
 
 @Composable
 fun WorldClockScreen(
@@ -91,9 +83,11 @@ fun WorldClockScreen(
     home: ZoneId,
     nowUtcMillis: Long,
     settings: WorldClockSettings,
+    inSelectionMode: Boolean,
+    selectedCities: Set<ZoneId>,
     onRemove: (WorldCity) -> Unit,
     onTogglePin: (WorldCity) -> Unit,
-    onDeleteSelected: (Set<ZoneId>) -> Unit,
+    onToggleSelect: (ZoneId) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -105,34 +99,6 @@ fun WorldClockScreen(
     
     val measurer = rememberTextMeasurer()
     var cityToDelete by remember { mutableStateOf<WorldCity?>(null) }
-    
-    var selectedCities by remember { mutableStateOf(emptySet<ZoneId>()) }
-    val inSelectionMode = selectedCities.isNotEmpty()
-    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = inSelectionMode) {
-        selectedCities = emptySet()
-    }
-
-    if (showBatchDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showBatchDeleteConfirm = false },
-            title = { Text("Delete Cities") },
-            text = { Text("Are you sure you want to delete the selected ${selectedCities.size} cities?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteSelected(selectedCities)
-                        selectedCities = emptySet()
-                        showBatchDeleteConfirm = false
-                    }
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
 
     cityToDelete?.let { city ->
         AlertDialog(
@@ -201,55 +167,9 @@ fun WorldClockScreen(
                     inSelectionMode = inSelectionMode,
                     onDeleteRequest = { cityToDelete = city },
                     onTogglePin = { onTogglePin(city) },
-                    onToggleSelect = {
-                        selectedCities = if (isSelected) selectedCities - city.zone else selectedCities + city.zone
-                    },
+                    onToggleSelect = { onToggleSelect(city.zone) },
                     modifier = Modifier.animateItem(),
                 )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = inSelectionMode,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = contentPadding.calculateBottomPadding() + 8.dp)
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = 8.dp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val allSelected = selectedCities.size == cities.size
-                    TextButton(
-                        onClick = {
-                            selectedCities = if (allSelected) emptySet() else cities.map { it.zone }.toSet()
-                        }
-                    ) {
-                        Icon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (allSelected) "Unselect" else "Select All")
-                    }
-                    
-                    TextButton(
-                        onClick = { showBatchDeleteConfirm = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete")
-                    }
-                }
             }
         }
     }
@@ -456,6 +376,7 @@ private fun CityRow(
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
+    val inst = Instant.ofEpochMilli(nowUtcMillis)
     
     val timeOnly = buildString {
         if (use24h) {
@@ -584,10 +505,11 @@ private fun CityRow(
                     }
                 }
                 
+                // 4-Line Adaptive Info Column
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 16.dp),
+                        .weight(1f) // Ensures texts never overlap with the right time element
+                        .padding(start = 16.dp, end = 8.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -611,21 +533,35 @@ private fun CityRow(
                         }
                     }
                     Text(
-                        text = city.country.ifBlank { city.region },
+                        text = "${city.country.ifBlank { city.region }} |",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    val diffSeconds = city.zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
+                    val offsetLabel = if (diffSeconds == 0) {
+                        "Local Time Zone |"
+                    } else {
+                        val absSec = kotlin.math.abs(diffSeconds)
+                        val h = absSec / 3600
+                        val m = (absSec % 3600) / 60
+                        val dir = if (diffSeconds > 0) "Ahead" else "Behind"
+                        val hStr = if (h > 0) "$h hours " else ""
+                        val mStr = if (m > 0) "$m Minutes " else ""
+                        "$hStr$mStr$dir |".trimStart()
+                    }
+                    
+                    Text(
+                        text = offsetLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = city.offsetLabel(home, nowUtcMillis),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = city.utcCode(nowUtcMillis),
+                        text = "${city.utcCode(nowUtcMillis)} |",
                         style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -633,13 +569,14 @@ private fun CityRow(
                     )
                 }
                 
+                // Bold Time Column
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         text = timeOnly,
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold, 
                             fontFeatureSettings = "tnum"
                         ), 
