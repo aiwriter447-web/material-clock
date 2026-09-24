@@ -176,16 +176,19 @@ private fun HomeDigitalClock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            // Replaced custom 'Numerals' with standard bold Text for Google Clock style
+        Row {
+            // Updated to FontWeight.Medium and added baseline alignment to fix the layout
             Text(
                 text = timeText,
                 style = TextStyle(
                     fontSize = 86.sp,
-                    fontWeight = FontWeight.ExtraBold, // Thick, large font 
+                    fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 ),
-                color = ink
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.alignByBaseline()
             )
             if (!use24h) {
                 Spacer(Modifier.width(8.dp)) 
@@ -193,11 +196,13 @@ private fun HomeDigitalClock(
                     text = meridiem,
                     style = TextStyle(
                         fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         letterSpacing = 1.sp
                     ),
                     color = ink,
-                    modifier = Modifier.padding(bottom = 12.dp) // Bottom aligned matching baseline
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.alignByBaseline()
                 )
             }
         }
