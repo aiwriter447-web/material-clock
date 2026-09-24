@@ -82,6 +82,7 @@ data class WorldCity(
     val city: String,
     val region: String,
     val country: String = "",
+    val pinnedAt: Long? = null,
 ) {
     fun timeAt(nowUtcMillis: Long): ZonedDateTime =
         java.time.Instant.ofEpochMilli(nowUtcMillis).atZone(zone)
