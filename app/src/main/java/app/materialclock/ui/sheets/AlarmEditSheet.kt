@@ -317,7 +317,7 @@ private fun WideTimeField(state: TimePickerState) {
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(MERIDIEM_GAP)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
             }
@@ -380,7 +380,7 @@ private fun ManualTimeEntry(state: TimePickerState) {
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(MERIDIEM_GAP)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
             }
@@ -416,10 +416,11 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+// FIXED: MeridiemChip now has fixed static height and width, avoiding overlaps
 @Composable
 private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.height(MERIDIEM_CHIP_H),
+        modifier = Modifier.height(38.dp).width(54.dp), 
         color = if (selected) {
             MaterialTheme.colorScheme.tertiaryContainer
         } else {
@@ -434,7 +435,7 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
         onClick = onClick,
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(text, style = MaterialTheme.typography.labelLargeEmphasized)
@@ -522,10 +523,7 @@ private fun GroupPicker(
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
 private val FIELD_CAP = 30.dp
-private val FIELD_PAD_V = 16.dp // Fixed: Increased padding to avoid AM/PM vertical squishing
-private val FIELD_PILL_H = FIELD_CAP + FIELD_PAD_V * 2
-private val MERIDIEM_GAP = 4.dp
-private val MERIDIEM_CHIP_H = (FIELD_PILL_H - MERIDIEM_GAP) / 2
+private val FIELD_PAD_V = 16.dp
 
 const val SILENT = "silent"
 
