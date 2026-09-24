@@ -229,8 +229,12 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             weekStart = settings.alarms.weekStart,
                             onToggle = vm::toggleAlarm,
                             onToggleGroup = vm::toggleGroup,
+                            onTogglePin = vm::togglePinAlarm,
                             onEdit = { editing = it },
                             onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
+                            onDeleteSelected = vm::deleteSelectedAlarms,
+                            onSetEnabledSelected = vm::setAlarmsEnabledState,
+                            onUngroupSelected = vm::ungroupSelectedAlarms,
                             contentPadding = body,
                         )
                     }
@@ -256,6 +260,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 }
                             },
                             onTogglePin = { city -> vm.togglePinCity(city.zone) },
+                            onDeleteSelected = vm::deleteSelectedCities,
                             contentPadding = edgeToEdgeWithFab,
                         )
                     }
