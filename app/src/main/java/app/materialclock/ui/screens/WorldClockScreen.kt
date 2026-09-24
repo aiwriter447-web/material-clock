@@ -396,7 +396,8 @@ private fun CityRow(
                 }
                 else -> false
             }
-        }
+        },
+        positionalThreshold = { totalDistance -> totalDistance * 0.25f } // Triggers fast with a short swipe
     )
 
     SwipeToDismissBox(
@@ -517,7 +518,7 @@ private fun CityRow(
                         text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} |\n${city.utcCode(nowUtcMillis)}",
                         style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 3, // Allowed 3 lines so UTC code never gets cut off
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 2.dp)
                     )
