@@ -143,10 +143,17 @@ object Notifications {
         val remaining = timer.remaining(now)
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
-            // setColor alone (no setColorized) tints the small icon and the Now Bar / status-bar
-            // chip pill, without painting the expanded notification card's whole background --
-            // that colorized-card look read as a stray blue gradient on the card, so it's off.
+            // setColorized(true) is required here: removing it (tried once) broke Now Bar
+            // promotion on real-device testing, even though Google's own Live Update docs list
+            // "must NOT setColorized" as a requirement -- that appears not to hold on this OEM
+            // skin in practice, and a working promoted notification matters more than chasing
+            // the documented-but-untrue-here rule. notification_accent itself is a neutral gray
+            // (#5F5F63 light / #C8C6CA dark, see notification_colors.xml) -- it is not blue. The
+            // blue card seen in the "Live notifications" flyout is the OEM's own system styling
+            // for colorized/promoted notifications, applied on top of the app's chosen color, not
+            // a color this app is choosing. See the class doc / PR history for the back-and-forth.
             .setColor(context.getColor(R.color.notification_accent))
+            .setColorized(true)
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
@@ -207,8 +214,9 @@ object Notifications {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
-            // setColor alone -- no colorized card background. See buildTimer for why.
+            // setColorized(true) restored -- see buildTimer for why.
             .setColor(context.getColor(R.color.notification_accent))
+            .setColorized(true)
             .setContentTitle("Stopwatch")
             .setOngoing(true)
             .setSilent(true)
