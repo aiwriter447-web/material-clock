@@ -8,9 +8,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-/**
- * One alarm.
- */
 data class Alarm(
     val id: Long,
     val time: LocalTime,
@@ -21,6 +18,7 @@ data class Alarm(
     val soundUri: String? = null,
     val snoozedUntilMillis: Long? = null,
     val groupId: Long? = null,
+    val pinnedAt: Long? = null,
 ) {
     val isOneShot: Boolean get() = days.isEmpty()
 
@@ -56,9 +54,6 @@ data class Alarm(
     }
 }
 
-/**
- * A named bucket of alarms — "Morning", "Night shift"
- */
 data class AlarmGroup(val id: Long, val name: String)
 
 fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
@@ -74,9 +69,6 @@ fun humanUntil(from: ZonedDateTime, to: ZonedDateTime): String {
     }
 }
 
-/**
- * A city on the world clock.
- */
 data class WorldCity(
     val zone: ZoneId,
     val city: String,
@@ -124,14 +116,8 @@ data class WorldCity(
 
 enum class TimerState { IDLE, RUNNING, PAUSED, FINISHED }
 
-/**
- * A named, reusable timer length.
- */
 data class TimerPreset(val id: Long, val name: String, val totalSeconds: Int)
 
-/**
- * A countdown.
- */
 data class ClockTimer(
     val id: Long,
     val label: String,
@@ -155,9 +141,6 @@ data class ClockTimer(
 
 data class Lap(val index: Int, val split: Duration, val total: Duration)
 
-/**
- * The stopwatch.
- */
 data class Stopwatch(
     val running: Boolean = false,
     val startedAtElapsed: Long = 0L,
