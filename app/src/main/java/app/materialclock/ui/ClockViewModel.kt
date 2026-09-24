@@ -74,7 +74,9 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.alarms
             .map { list ->
                 list.sortedWith(
-                    compareByDescending<Alarm> { it.enabled }
+                    compareByDescending<Alarm> { it.pinnedAt != null }
+                        .thenByDescending { it.pinnedAt ?: 0L }
+                        .thenByDescending { it.enabled }
                         .thenBy { it.time }
                 )
             }
@@ -148,6 +150,42 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.putAlarms(store.alarmsNow().filterNot { it.id == id })
     }
 
+    fun togglePinAlarm(id: Long) = viewModelScope.launch {
+        val next = store.alarmsNow().map {
+            if (it.id == id) {
+                it.copy(pinnedAt = if (it.pinnedAt != null) null else System.currentTimeMillis())
+            } else it
+        }
+        store.putAlarms(next)
+    }
+
+    fun deleteSelectedAlarms(alarmIds: Set<Long>, groupIds: Set<Long>) = viewModelScope.launch {
+        alarmIds.forEach { AlarmScheduler.cancel(ctx, it) }
+        store.putAlarms(store.alarmsNow().filterNot { it.id in alarmIds || it.groupId in groupIds })
+        store.putGroups(store.groupsNow().filterNot { it.id in groupIds })
+    }
+
+    fun setAlarmsEnabledState(alarmIds: Set<Long>, groupIds: Set<Long>, enabled: Boolean) = viewModelScope.launch {
+        val next = store.alarmsNow().map { alarm ->
+            if (alarm.id in alarmIds || alarm.groupId in groupIds) {
+                alarm.copy(enabled = enabled, snoozedUntilMillis = null)
+            } else alarm
+        }
+        store.putAlarms(next)
+        next.filter { it.id in alarmIds || it.groupId in groupIds }.forEach { a ->
+            if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+        }
+    }
+
+    fun ungroupSelectedAlarms(alarmIds: Set<Long>, groupIds: Set<Long>) = viewModelScope.launch {
+        val next = store.alarmsNow().map { alarm ->
+            if (alarm.id in alarmIds || alarm.groupId in groupIds) {
+                alarm.copy(groupId = null)
+            } else alarm
+        }
+        store.putAlarms(next)
+    }
+
     fun addGroup(name: String) = viewModelScope.launch {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@launch
@@ -186,6 +224,10 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeCity(zone: ZoneId) = viewModelScope.launch {
         store.putCities(store.cities.first().filterNot { it.zone == zone })
+    }
+
+    fun deleteSelectedCities(zones: Set<ZoneId>) = viewModelScope.launch {
+        store.putCities(store.cities.first().filterNot { it.zone in zones })
     }
 
     fun togglePinCity(zone: ZoneId) = viewModelScope.launch {
