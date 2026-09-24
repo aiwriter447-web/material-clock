@@ -64,7 +64,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 100 
+// Adjusted row height slightly to accommodate the stacked AM/PM layout cleanly
+private const val ROW_HEIGHT_DP = 110 
 
 @Composable
 fun WorldClockScreen(
@@ -86,9 +87,10 @@ fun WorldClockScreen(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp), // Added extra breathing room between cards
     ) {
         item {
+            // The Global Header (Primary Clock)
             Crossfade(
                 targetState = settings.style,
                 animationSpec = tween(500),
@@ -118,7 +120,7 @@ fun WorldClockScreen(
             }
         }
         
-        // Pin logic completely removed, iterating directly through the standard cities list
+        // The Dynamic World Clock Cards
         items(cities, key = { it.zone.id }) { city ->
             CityRow(
                 city = city,
@@ -154,30 +156,50 @@ private fun HomeDigitalClock(
     }
 
     Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = 32.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Numerals(text = timeText, capHeight = 110.dp, color = ink, width = ClockFace.CONDENSED, weight = ClockFace.WEIGHT_ON, tracking = ClockFace.CONDENSED_TRACKING)
+        // Aligned Top so the AM/PM descriptor centers with the top of the large numerals
+        Row(verticalAlignment = Alignment.Top) {
+            Numerals(
+                text = timeText, 
+                capHeight = 110.dp, 
+                color = ink, 
+                width = ClockFace.CONDENSED, 
+                weight = ClockFace.WEIGHT_ON, 
+                tracking = ClockFace.CONDENSED_TRACKING
+            )
             if (!use24h) {
                 Spacer(Modifier.width(12.dp)) 
-                CapText(text = meridiem, capHeight = 36.dp, color = ink, tracking = ClockFace.CONDENSED_TRACKING, modifier = Modifier.padding(bottom = 8.dp))
+                CapText(
+                    text = meridiem, 
+                    capHeight = 36.dp, 
+                    color = ink, 
+                    tracking = ClockFace.CONDENSED_TRACKING, 
+                    modifier = Modifier.padding(top = 16.dp) // Pushed slightly down to align visually with top edge
+                )
             }
         }
-        Spacer(Modifier.height(16.dp))
+        
+        // Extra breathing room below the local time hero section
+        Spacer(Modifier.height(24.dp))
+        
         val formatter = remember(home) { DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home) }
         Text(
             text = formatter.format(instant), 
             style = MaterialTheme.typography.titleMedium, 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold // Date is now properly bolded
+            fontWeight = FontWeight.Medium // Set to medium weight per design specs
         )
     }
 }
 
 @Composable
 private fun CityDial(cities: List<WorldCity>, nowUtcMillis: Long, measurer: TextMeasurer, modifier: Modifier = Modifier) {
+    // Canvas clock face implementation remains mostly identical, keeping performance optimal
     val face = MaterialTheme.colorScheme.surfaceContainerHighest
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
@@ -255,15 +277,19 @@ private fun CityRow(
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
-        enableDismissFromStartToEnd = false, // Left to right gesture (Pin) completely removed
-        enableDismissFromEndToStart = true,  // Right to left gesture (Delete) kept active
+        enableDismissFromStartToEnd = false, 
+        enableDismissFromEndToStart = true, 
         backgroundContent = {
             val direction = state.dismissDirection
             if (direction == SwipeToDismissBoxValue.EndToStart) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(percent = 50),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(ROW_HEIGHT_DP.dp),
+                    // Updated to 24.dp for consistent soft-card look when swiping
+                    shape = RoundedCornerShape(24.dp), 
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(ROW_HEIGHT_DP.dp),
                 ) {
                     Box(Modifier.fillMaxSize().padding(horizontal = 32.dp), contentAlignment = Alignment.CenterEnd) {
                         Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(28.dp))
@@ -274,14 +300,21 @@ private fun CityRow(
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(percent = 50),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(ROW_HEIGHT_DP.dp)
+            // Implemented the requested 24.dp corner radius for the Card UI pattern
+            shape = RoundedCornerShape(24.dp), 
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(ROW_HEIGHT_DP.dp)
                 .semantics { customActions = listOf(CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }) },
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // The Status Icon (Sun/Moon conditional rendering)
                 Surface(
                     color = if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.primaryContainer,
                     shape = CircleShape,
@@ -296,34 +329,49 @@ private fun CityRow(
                         )
                     }
                 }
+                
+                // The Location Meta Data (Strict typography stack)
                 Column(
-                    modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 16.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         text = city.city,
-                        style = MaterialTheme.typography.titleMedium,
+                        // Boldest and largest for hierarchy
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), 
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} |\n${city.utcCode(nowUtcMillis)}",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)}",
+                        // Smaller, muted text
+                        style = MaterialTheme.typography.bodyMedium, 
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    Text(
+                        text = city.utcCode(nowUtcMillis),
+                        // Even smaller text for standardized UTC
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 
+                // The Target Time (Right-aligned, am/pm stacked neatly underneath)
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = timeOnly,
-                        style = if (showSeconds) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                        style = if (showSeconds) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                     )
