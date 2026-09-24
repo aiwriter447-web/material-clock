@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -146,11 +148,15 @@ fun WorldClockScreen(
 /**
  * Displays the current home time in a large digital format, bold and large like Google Clock.
  *
- * NOTE: only change from the previous version is inside this function -- the Row is
- * now centered (Arrangement.Center) and the font size shrinks a bit in 12-hour mode
- * (since it has an AM/PM suffix), so the line always fits on one row instead of
- * wrapping / clipping off the right edge of the screen.
+ * The time + AM/PM row is width-aware: it measures how wide "time + AM/PM" would be
+ * at the ideal font size and compares that to the actual space available. If it
+ * doesn't fit -- e.g. 12-hour mode with seconds on ("01:04:25 AM"), or a narrower
+ * phone -- both the time and the meridiem are scaled down together (never below
+ * MIN_CLOCK_SCALE) so the row always fits on a single line and AM/PM never
+ * wraps or clips off-screen, regardless of the showSeconds/use24h combination.
  */
+private const val MIN_CLOCK_SCALE = 0.45f
+
 @Composable
 private fun HomeDigitalClock(
     home: ZoneId,
@@ -174,9 +180,9 @@ private fun HomeDigitalClock(
         }
     }
 
-    // Smaller base size when the AM/PM suffix is shown, so time + suffix always fit on one line.
-    val timeFontSize = if (use24h) 86.sp else 68.sp
-    val meridiemFontSize = 26.sp
+    // Ideal (uncapped) sizes -- scaled down together only if they don't fit.
+    val idealTimeSize = 86.sp
+    val idealMeridiemSize = 32.sp
 
     Column(
         modifier = modifier
@@ -185,37 +191,47 @@ private fun HomeDigitalClock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            // Updated to FontWeight.Medium and added baseline alignment to fix the layout
-            Text(
-                text = timeText,
-                style = TextStyle(
-                    fontSize = timeFontSize,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.sp
-                ),
-                color = ink,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.alignByBaseline()
-            )
-            if (!use24h) {
-                Spacer(Modifier.width(8.dp)) 
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val measurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            val availableWidthPx = with(density) { maxWidth.toPx() }
+            val gapPx = with(density) { 8.dp.toPx() }
+
+            val timeStyle = TextStyle(fontSize = idealTimeSize, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+            val meridiemStyle = TextStyle(fontSize = idealMeridiemSize, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+
+            val timeWidthPx = measurer.measure(timeText, timeStyle, maxLines = 1, softWrap = false).size.width.toFloat()
+            val meridiemWidthPx = if (!use24h) {
+                measurer.measure(meridiem, meridiemStyle, maxLines = 1, softWrap = false).size.width.toFloat()
+            } else 0f
+            val totalWidthPx = timeWidthPx + (if (!use24h) gapPx + meridiemWidthPx else 0f)
+
+            val rawScale = if (totalWidthPx > availableWidthPx) availableWidthPx / totalWidthPx else 1f
+            val scale = rawScale.coerceIn(MIN_CLOCK_SCALE, 1f)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
                 Text(
-                    text = meridiem,
-                    style = TextStyle(
-                        fontSize = meridiemFontSize,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.sp
-                    ),
+                    text = timeText,
+                    style = timeStyle.copy(fontSize = (idealTimeSize.value * scale).sp),
                     color = ink,
                     maxLines = 1,
                     softWrap = false,
                     modifier = Modifier.alignByBaseline()
                 )
+                if (!use24h) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = meridiem,
+                        style = meridiemStyle.copy(fontSize = (idealMeridiemSize.value * scale).sp),
+                        color = ink,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                }
             }
         }
         
