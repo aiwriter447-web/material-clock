@@ -5,30 +5,49 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.AlarmOff
+import androidx.compose.material.icons.outlined.AlarmOn
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Deselect
+import androidx.compose.material.icons.outlined.GroupRemove
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.rounded.Settings 
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +58,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -51,6 +71,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -98,6 +119,10 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
 fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    
+    val selectedAlarms by vm.selectedAlarms.collectAsStateWithLifecycle()
+    val selectedGroups by vm.selectedGroups.collectAsStateWithLifecycle()
+    val selectedCities by vm.selectedCities.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
         if (!isLoaded) {
@@ -106,16 +131,43 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         }
 
         var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
+        
+        val inSelectionMode = when (tab) {
+            Tab.ALARMS -> selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
+            Tab.WORLD -> selectedCities.isNotEmpty()
+            else -> false
+        }
+        
+        val allSelected = when (tab) {
+            Tab.ALARMS -> {
+                val alarms by vm.alarms.collectAsStateWithLifecycle()
+                val groups by vm.groups.collectAsStateWithLifecycle()
+                selectedAlarms.size == alarms.size && selectedGroups.size == groups.size && alarms.isNotEmpty()
+            }
+            Tab.WORLD -> {
+                val cities by vm.cities.collectAsStateWithLifecycle()
+                selectedCities.size == cities.size && cities.isNotEmpty()
+            }
+            else -> false
+        }
+
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
         var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
+        var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+        
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
+        
+        BackHandler(enabled = inSelectionMode) {
+            vm.clearSelection()
+        }
 
         LaunchedEffect(tab) {
+            vm.clearSelection()
             if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 delay(OPEN_SETTLE_DELAY_MS)
                 val result = snackbar.showSnackbar(
@@ -153,6 +205,24 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 ask.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        
+        if (showBatchDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showBatchDeleteConfirm = false },
+                title = { Text("Delete Items") },
+                text = { Text("Are you sure you want to delete the selected items?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (tab == Tab.ALARMS) vm.deleteSelectedAlarms()
+                        else if (tab == Tab.WORLD) vm.deleteSelectedCities()
+                        showBatchDeleteConfirm = false
+                    }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
+                }
+            )
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -165,13 +235,34 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.secondaryContainer,
                         ) {
-                            Text(
-                                text = tab.label,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.SemiBold, 
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp)
+                            ) {
+                                Text(
+                                    text = tab.label,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                AnimatedVisibility(visible = inSelectionMode && (tab == Tab.ALARMS || tab == Tab.WORLD)) {
+                                    Row {
+                                        Spacer(Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll,
+                                            contentDescription = "Select All",
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null,
+                                                    onClick = { if (allSelected) vm.clearSelection() else if (tab == Tab.ALARMS) vm.selectAllAlarms() else vm.selectAllCities() }
+                                                )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     },
                     actions = {
@@ -227,14 +318,16 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             alarms = alarms,
                             groups = groups,
                             weekStart = settings.alarms.weekStart,
+                            inSelectionMode = inSelectionMode,
+                            selectedAlarms = selectedAlarms,
+                            selectedGroups = selectedGroups,
                             onToggle = vm::toggleAlarm,
                             onToggleGroup = vm::toggleGroup,
                             onTogglePin = vm::togglePinAlarm,
+                            onToggleSelect = vm::toggleAlarmSelection,
+                            onToggleGroupSelect = vm::toggleGroupSelection,
                             onEdit = { editing = it },
                             onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
-                            onDeleteSelected = vm::deleteSelectedAlarms,
-                            onSetEnabledSelected = vm::setAlarmsEnabledState,
-                            onUngroupSelected = vm::ungroupSelectedAlarms,
                             contentPadding = body,
                         )
                     }
@@ -248,6 +341,8 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             home = homeZone,
                             nowUtcMillis = now,
                             settings = settings.world,
+                            inSelectionMode = inSelectionMode,
+                            selectedCities = selectedCities,
                             onRemove = { city ->
                                 vm.removeCity(city.zone)
                                 scope.launch {
@@ -260,7 +355,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 }
                             },
                             onTogglePin = { city -> vm.togglePinCity(city.zone) },
-                            onDeleteSelected = vm::deleteSelectedCities,
+                            onToggleSelect = { vm.toggleCitySelection(it) },
                             contentPadding = edgeToEdgeWithFab,
                         )
                     }
@@ -303,10 +398,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 }
             }
 
-            ClockDock(
-                destinations = Tab.entries,
-                selected = tab,
-                onSelect = { tab = it },
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -322,11 +414,49 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                         } else {
                             base
                         }
-                    },
-            )
+                    }
+            ) {
+                ClockDock(
+                    destinations = Tab.entries,
+                    selected = tab,
+                    onSelect = { tab = it },
+                    modifier = Modifier.alpha(if (inSelectionMode) 0f else 1f)
+                )
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = inSelectionMode,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        tonalElevation = 3.dp,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (tab == Tab.ALARMS) {
+                                IconButton(onClick = { vm.setEnabledSelectedAlarms(true) }) { Icon(Icons.Outlined.AlarmOn, null) }
+                                IconButton(onClick = { vm.setEnabledSelectedAlarms(false) }) { Icon(Icons.Outlined.AlarmOff, null) }
+                                IconButton(onClick = { vm.ungroupSelectedAlarms() }) { Icon(Icons.Outlined.GroupRemove, null) }
+                                IconButton(onClick = { showBatchDeleteConfirm = true }) { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                            } else if (tab == Tab.WORLD) {
+                                IconButton(onClick = { vm.pinSelectedCities() }) { Icon(Icons.Filled.PushPin, null) }
+                                IconButton(onClick = { vm.unpinSelectedCities() }) { Icon(Icons.Outlined.PushPin, null) }
+                                IconButton(onClick = { showBatchDeleteConfirm = true }) { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                            }
+                        }
+                    }
+                }
+            }
 
             FloatingAddButton(
-                visible = tab == Tab.ALARMS || tab == Tab.WORLD,
+                visible = !inSelectionMode && (tab == Tab.ALARMS || tab == Tab.WORLD),
                 label = if (tab == Tab.WORLD) "Add city" else "Add alarm",
                 onClick = { if (tab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
                 modifier = Modifier
