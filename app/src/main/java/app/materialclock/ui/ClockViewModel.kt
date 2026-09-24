@@ -27,6 +27,7 @@ import app.materialclock.core.WorldCity
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -39,14 +40,6 @@ import java.time.Duration
 import java.time.LocalTime
 import java.time.ZoneId
 
-/**
- * A frame-paced clock, for anything that has to look continuous.
- *
- * `withFrameMillis` rather than a fixed `delay`: the stopwatch shows hundredths, and a counter
- * sampled on its own schedule beats against the display's refresh and visibly stutters. Tying the
- * read to Compose's own frame clock gives one sample per drawn frame, which is both the minimum
- * needed and the maximum useful. It also stops on its own when the composition leaves the screen.
- */
 @Composable
 fun rememberElapsedTicker(active: Boolean = true): State<Long> =
     produceState(initialValue = SystemClock.elapsedRealtime(), active) {
@@ -56,13 +49,6 @@ fun rememberElapsedTicker(active: Boolean = true): State<Long> =
         }
     }
 
-/**
- * A wall-clock ticker at [periodMillis].
- *
- * The world clock and the alarm list change once a second at most, and waking every frame to
- * re-derive six time zones would burn battery for nothing. It re-aligns to the second boundary
- * each tick so the displayed seconds turn over when they should rather than drifting.
- */
 @Composable
 fun rememberWallTicker(periodMillis: Long = 1000L): State<Long> =
     produceState(initialValue = System.currentTimeMillis(), periodMillis) {
@@ -73,31 +59,41 @@ fun rememberWallTicker(periodMillis: Long = 1000L): State<Long> =
         }
     }
 
-/**
- * The whole app's state, read from and written to [ClockStore].
- *
- * Nothing is held in memory as the source of truth. Every mutation writes the store and the flows
- * come back around. That is what makes a notification button and an on-screen button the same
- * operation, and what makes the app correct after being killed. The cost is one extra hop per
- * press, which for a clock is free.
- *
- * Scheduling is a *consequence* of a write, not a parallel path: `AlarmScheduler` and
- * `TimerScheduler` are called with the value that was just persisted, so the store and
- * `AlarmManager` cannot disagree.
- */
 class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     private val store = ClockStore(app)
     private val ctx get() = getApplication<Application>()
 
+    private val _isLoaded = MutableStateFlow(false)
+    val isLoaded: StateFlow<Boolean> = _isLoaded
+
     val settings: StateFlow<ClockSettings> =
         store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ClockSettings())
+        
     val alarms: StateFlow<List<Alarm>> =
-        store.alarms.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        store.alarms
+            .map { list ->
+                list.sortedWith(
+                    compareByDescending<Alarm> { it.enabled }
+                        .thenBy { it.time }
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            
     val groups: StateFlow<List<AlarmGroup>> =
         store.groups.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        
     val cities: StateFlow<List<WorldCity>> =
-        store.cities.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        store.cities
+            .map { list ->
+                list.sortedWith(
+                    compareByDescending<WorldCity> { it.pinnedAt != null }
+                        .thenByDescending { it.pinnedAt ?: 0L }
+                        .thenBy { it.city }
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            
     val timer: StateFlow<ClockTimer?> =
         store.timer.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val stopwatch: StateFlow<Stopwatch> =
@@ -105,13 +101,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     val presets: StateFlow<List<TimerPreset>> =
         store.presets.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /**
-     * The zone World Clock treats as "home". Reactive on [settings], because a fixed `val` here
-     * was the bug: it read [ZoneId.systemDefault] once at construction and then ignored
-     * [app.materialclock.data.WorldClockSettings.homeZoneOverride] forever after, no matter what
-     * the settings sheet said. An id that fails to parse (a zone the device no longer ships, say)
-     * falls back to the device zone rather than crashing the tab.
-     */
     val homeZone: StateFlow<ZoneId> = settings
         .map { it.world.homeZoneOverride }
         .distinctUntilChanged()
@@ -119,27 +108,17 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, ZoneId.systemDefault())
 
     init {
-        // The first run has never scheduled anything, and a reinstall wipes AlarmManager. Doing it
-        // on launch is cheap and covers both without a separate first-run flag.
         viewModelScope.launch {
+            store.settings.first()
+            _isLoaded.value = true
             Notifications.ensureChannels(ctx)
             AlarmScheduler.scheduleAll(ctx, store.alarmsNow())
         }
     }
 
-    /* ── Settings ───────────────────────────────────────────────────────────────────────────── */
-
-    /**
-     * Returns Unit, not the Job, so it can be passed where `((ClockSettings) -> ClockSettings) ->
-     * Unit` is expected. Nothing else has to be notified: silence-after, snooze length and the
-     * timer sound are all read from the store at the moment they are needed, by whichever receiver
-     * or service needs them.
-     */
     fun updateSettings(block: (ClockSettings) -> ClockSettings) {
         viewModelScope.launch { store.update(block) }
     }
-
-    /* ── Alarms ─────────────────────────────────────────────────────────────────────────────── */
 
     fun toggleAlarm(id: Long) = viewModelScope.launch {
         val next = store.alarmsNow().map {
@@ -151,7 +130,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Insert or replace. A null [Alarm.id] of 0 means "new", which is what the sheet sends. */
     fun saveAlarm(draft: Alarm) = viewModelScope.launch {
         val id = if (draft.id == 0L) store.nextId() else draft.id
         val alarm = draft.copy(id = id, snoozedUntilMillis = null)
@@ -161,7 +139,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             current + alarm
         }
-        store.putAlarms(next.sortedWith(compareBy({ it.time.hour }, { it.time.minute })))
+        store.putAlarms(next)
         AlarmScheduler.schedule(ctx, alarm)
     }
 
@@ -170,9 +148,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.putAlarms(store.alarmsNow().filterNot { it.id == id })
     }
 
-    /* ── Alarm groups ───────────────────────────────────────────────────────────────────────── */
-
-    /** Creates a new named group. Alarms are assigned to it afterward from the edit sheet. */
     fun addGroup(name: String) = viewModelScope.launch {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@launch
@@ -185,26 +160,15 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.putGroups(store.groupsNow().map { if (it.id == id) it.copy(name = trimmed) else it })
     }
 
-    /**
-     * Deleting a group does not delete its alarms — only the bucket. Each alarm that pointed at it
-     * falls back to [Alarm.groupId] `null`, which the list already renders as "no group" without a
-     * special case, the same way [app.materialclock.core.AlarmGroup]'s own doc explains an empty
-     * group needs none.
-     */
     fun deleteGroup(id: Long) = viewModelScope.launch {
         store.putGroups(store.groupsNow().filterNot { it.id == id })
         store.putAlarms(store.alarmsNow().map { if (it.groupId == id) it.copy(groupId = null) else it })
     }
 
-    /** Moves an alarm into [groupId] (or out of any group, if null) without touching anything else. */
     fun setAlarmGroup(alarmId: Long, groupId: Long?) = viewModelScope.launch {
         store.putAlarms(store.alarmsNow().map { if (it.id == alarmId) it.copy(groupId = groupId) else it })
     }
 
-    /**
-     * The one-tap arm/disarm the group header's own switch offers: every alarm in [groupId] gets
-     * [enabled] and is rescheduled or cancelled to match, the same as [toggleAlarm] does for one.
-     */
     fun toggleGroup(groupId: Long, enabled: Boolean) = viewModelScope.launch {
         val next = store.alarmsNow().map {
             if (it.groupId == groupId) it.copy(enabled = enabled, snoozedUntilMillis = null) else it
@@ -215,8 +179,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /* ── World clock ────────────────────────────────────────────────────────────────────────── */
-
     fun addCity(city: WorldCity) = viewModelScope.launch {
         val current = store.cities.first()
         if (current.none { it.zone == city.zone }) store.putCities(current + city)
@@ -226,13 +188,16 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         store.putCities(store.cities.first().filterNot { it.zone == zone })
     }
 
-    /* ── Timer ──────────────────────────────────────────────────────────────────────────────── */
+    fun togglePinCity(zone: ZoneId) = viewModelScope.launch {
+        val current = store.cities.first()
+        val next = current.map {
+            if (it.zone == zone) {
+                it.copy(pinnedAt = if (it.pinnedAt != null) null else System.currentTimeMillis())
+            } else it
+        }
+        store.putCities(next)
+    }
 
-    /**
-     * Digits fill from the right the way every phone keypad works: "2", "5" reads as 25 seconds,
-     * then a third digit pushes it into minutes. Kept in memory rather than the store, because a
-     * half-typed duration is not state worth surviving a reboot.
-     */
     var timerDigits: String by mutableStateOf("")
         private set
 
@@ -254,7 +219,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         timerDigits = timerDigits.dropLast(1)
     }
 
-    /** The winder. Sets whole minutes, which is what a spring-wound dial can actually express. */
     fun windToMinutes(minutes: Int) {
         timerDigits = if (minutes <= 0) "" else "%d%02d00".format(minutes / 60, minutes % 60).trimStart('0')
     }
@@ -275,7 +239,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         LiveUpdateService.ensureRunning(ctx)
     }
 
-    /** One-tap start from a saved preset — skips the keypad and [draftDuration] entirely. */
     fun startPreset(preset: TimerPreset) = viewModelScope.launch {
         if (preset.totalSeconds <= 0) return@launch
         val t = ClockTimer(
@@ -290,7 +253,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         LiveUpdateService.ensureRunning(ctx)
     }
 
-    /** `id == 0` is a new preset (mirrors how a new [Alarm] arrives); anything else edits in place. */
     fun savePreset(preset: TimerPreset) = viewModelScope.launch {
         val current = presets.value
         val next = if (preset.id == 0L) {
@@ -317,7 +279,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         if (next.state == TimerState.RUNNING) LiveUpdateService.ensureRunning(ctx)
     }
 
-    /** +10 s, the one adjustment a running timer needs. Extends the deadline, not a counter. */
     fun addTenSeconds() = viewModelScope.launch {
         val t = store.timerNow() ?: return@launch
         val next = when (t.state) {
@@ -337,8 +298,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         TimerScheduler.sync(ctx, null)
     }
 
-    /* ── Stopwatch ──────────────────────────────────────────────────────────────────────────── */
-
     fun toggleStopwatch() = viewModelScope.launch {
         val sw = store.stopwatch.first()
         val now = SystemClock.elapsedRealtime()
@@ -357,7 +316,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         if (!sw.running) return@launch
         val total = sw.elapsed(SystemClock.elapsedRealtime())
         val previous = sw.laps.firstOrNull()?.total ?: Duration.ZERO
-        // Newest first: the list is read from the top and the freshest lap is the one you took.
         val next = sw.copy(laps = listOf(Lap(sw.laps.size + 1, total.minus(previous), total)) + sw.laps)
         store.putStopwatch(next)
         Notifications.showStopwatch(ctx, next)
@@ -368,7 +326,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         Notifications.hideStopwatch(ctx)
     }
 
-    /** Seeds a brand-new alarm for the editor: the next round hour, on no particular days. */
     fun blankAlarm(): Alarm = Alarm(
         id = 0L,
         time = LocalTime.now().plusHours(1).withMinute(0).withSecond(0).withNano(0),
