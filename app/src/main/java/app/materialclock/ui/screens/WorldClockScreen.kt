@@ -47,18 +47,17 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
-import app.materialclock.ui.theme.CapText
-import app.materialclock.ui.theme.ClockFace
-import app.materialclock.ui.theme.Numerals
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -67,7 +66,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Constant for the height of each city row in the list to match the visual proportion
+// Constant for the height of each city row in the list
 private const val ROW_HEIGHT_DP = 100 
 
 /**
@@ -96,7 +95,7 @@ fun WorldClockScreen(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp), // Spacing between cards matches the image
+        verticalArrangement = Arrangement.spacedBy(8.dp), 
     ) {
         // Top Item: The main clock (Digital or Analog)
         item {
@@ -145,7 +144,7 @@ fun WorldClockScreen(
 }
 
 /**
- * Displays the current home time in a large digital format perfectly matching the target design.
+ * Displays the current home time in a large digital format, bold and large like Google Clock.
  */
 @Composable
 private fun HomeDigitalClock(
@@ -162,12 +161,9 @@ private fun HomeDigitalClock(
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
 
+    // Fixed string formatting to enforce a leading zero (%02d) for both 12-hour and 24-hour modes
     val timeText = buildString {
-        if (use24h) {
-            append(String.format(Locale.getDefault(), "%02d:%02d", hour, local.minute))
-        } else {
-            append(String.format(Locale.getDefault(), "%d:%02d", hour, local.minute))
-        }
+        append(String.format(Locale.getDefault(), "%02d:%02d", hour, local.minute))
         if (showSeconds) {
             append(String.format(Locale.getDefault(), ":%02d", local.second))
         }
@@ -181,22 +177,27 @@ private fun HomeDigitalClock(
         verticalArrangement = Arrangement.Center
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Numerals(
-                text = timeText, 
-                capHeight = 110.dp, 
-                color = ink, 
-                width = ClockFace.CONDENSED, 
-                weight = ClockFace.WEIGHT_ON, 
-                tracking = ClockFace.CONDENSED_TRACKING
+            // Replaced custom 'Numerals' with standard bold Text for Google Clock style
+            Text(
+                text = timeText,
+                style = TextStyle(
+                    fontSize = 86.sp,
+                    fontWeight = FontWeight.ExtraBold, // Thick, large font 
+                    letterSpacing = 1.sp
+                ),
+                color = ink
             )
             if (!use24h) {
-                Spacer(Modifier.width(12.dp)) 
-                CapText(
-                    text = meridiem, 
-                    capHeight = 36.dp, 
-                    color = ink, 
-                    tracking = ClockFace.CONDENSED_TRACKING, 
-                    modifier = Modifier.padding(bottom = 8.dp)
+                Spacer(Modifier.width(8.dp)) 
+                Text(
+                    text = meridiem,
+                    style = TextStyle(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = ink,
+                    modifier = Modifier.padding(bottom = 12.dp) // Bottom aligned matching baseline
                 )
             }
         }
@@ -323,7 +324,7 @@ private fun CityRow(
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
     
-    // Time formatted precisely as seen in the image (e.g. 10:40:20)
+    // Formatting handles leading zero properly for city rows as well
     val timeOnly = buildString {
         if (use24h) {
             append(String.format(Locale.getDefault(), "%02d:%02d", local.hour, local.minute))
@@ -385,7 +386,7 @@ private fun CityRow(
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(percent = 50), // Fully rounded ends (pill shape) matching the image
+            shape = RoundedCornerShape(percent = 50), 
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -400,7 +401,6 @@ private fun CityRow(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Circular Day / Night Icon Indicator
                 Surface(
                     color = if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.primaryContainer,
                     shape = CircleShape,
@@ -416,7 +416,6 @@ private fun CityRow(
                     }
                 }
                 
-                // City Name and Double-line Subtitle
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -431,7 +430,6 @@ private fun CityRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        // Matches design format: "United States | -12:30 h | \n UTC-07:00"
                         text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} |\n${city.utcCode(nowUtcMillis)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -441,14 +439,13 @@ private fun CityRow(
                     )
                 }
                 
-                // Right-aligned Time and am/pm Stack
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = timeOnly,
-                        style = MaterialTheme.typography.headlineSmall, // Prominent large text for time
+                        style = MaterialTheme.typography.headlineSmall, 
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                     )
