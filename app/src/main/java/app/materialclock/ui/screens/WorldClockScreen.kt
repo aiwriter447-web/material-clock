@@ -23,9 +23,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,9 +36,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -68,13 +75,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Constant for the height of each city row in the list
 private const val ROW_HEIGHT_DP = 100 
 
-/**
- * Main screen displaying the world clock.
- * It shows either a digital or analog clock at the top, followed by a list of cities.
- */
 @Composable
 fun WorldClockScreen(
     cities: List<WorldCity>,
@@ -82,10 +84,10 @@ fun WorldClockScreen(
     nowUtcMillis: Long,
     settings: WorldClockSettings,
     onRemove: (WorldCity) -> Unit,
+    onTogglePin: (WorldCity) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // Determine whether to use 24-hour or 12-hour format based on settings
     val use24h = when (settings.hourFormat) {
         HourFormat.SYSTEM -> android.text.format.DateFormat.is24HourFormat(LocalContext.current)
         HourFormat.H12 -> false
@@ -93,14 +95,37 @@ fun WorldClockScreen(
     }
     
     val measurer = rememberTextMeasurer()
+    var cityToDelete by remember { mutableStateOf<WorldCity?>(null) }
+
+    cityToDelete?.let { city ->
+        AlertDialog(
+            onDismissRequest = { cityToDelete = null },
+            title = { Text("Remove City") },
+            text = { Text("Are you sure you want to remove ${city.city} from your world clock?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemove(city)
+                        cityToDelete = null
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { cityToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp), 
     ) {
-        // Top Item: The main clock (Digital or Analog)
-        item {
+        item(key = "main-clock", contentType = "header") {
             Crossfade(
                 targetState = settings.style,
                 animationSpec = tween(durationMillis = 500),
@@ -130,31 +155,21 @@ fun WorldClockScreen(
             }
         }
         
-        // List of selected cities
-        items(cities, key = { it.zone.id }) { city ->
+        items(cities, key = { it.zone.id }, contentType = { "city" }) { city ->
             CityRow(
                 city = city,
                 home = home,
                 nowUtcMillis = nowUtcMillis,
                 use24h = use24h,
                 showSeconds = settings.showSeconds,
-                onRemove = { onRemove(city) },
+                onDeleteRequest = { cityToDelete = city },
+                onTogglePin = { onTogglePin(city) },
                 modifier = Modifier.animateItem(),
             )
         }
     }
 }
 
-/**
- * Displays the current home time in a large digital format, bold and large like Google Clock.
- *
- * The time + AM/PM row is width-aware: it measures how wide "time + AM/PM" would be
- * at the ideal font size and compares that to the actual space available. If it
- * doesn't fit -- e.g. 12-hour mode with seconds on ("01:04:25 AM"), or a narrower
- * phone -- both the time and the meridiem are scaled down together (never below
- * MIN_CLOCK_SCALE) so the row always fits on a single line and AM/PM never
- * wraps or clips off-screen, regardless of the showSeconds/use24h combination.
- */
 private const val MIN_CLOCK_SCALE = 0.45f
 
 @Composable
@@ -172,7 +187,6 @@ private fun HomeDigitalClock(
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
 
-    // Fixed string formatting to enforce a leading zero (%02d) for both 12-hour and 24-hour modes
     val timeText = buildString {
         append(String.format(Locale.getDefault(), "%02d:%02d", hour, local.minute))
         if (showSeconds) {
@@ -180,7 +194,6 @@ private fun HomeDigitalClock(
         }
     }
 
-    // Ideal (uncapped) sizes -- scaled down together only if they don't fit.
     val idealTimeSize = 86.sp
     val idealMeridiemSize = 32.sp
 
@@ -197,7 +210,12 @@ private fun HomeDigitalClock(
             val availableWidthPx = with(density) { maxWidth.toPx() }
             val gapPx = with(density) { 8.dp.toPx() }
 
-            val timeStyle = TextStyle(fontSize = idealTimeSize, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+            val timeStyle = TextStyle(
+                fontSize = idealTimeSize, 
+                fontWeight = FontWeight.Medium, 
+                letterSpacing = 1.sp, 
+                fontFeatureSettings = "tnum"
+            )
             val meridiemStyle = TextStyle(fontSize = idealMeridiemSize, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
 
             val timeWidthPx = measurer.measure(timeText, timeStyle, maxLines = 1, softWrap = false).size.width.toFloat()
@@ -237,7 +255,6 @@ private fun HomeDigitalClock(
         
         Spacer(Modifier.height(16.dp))
         
-        // Exact target date format: "Wednesday, 23 September 2026"
         val formatter = remember(home) { 
             DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home) 
         }
@@ -251,9 +268,6 @@ private fun HomeDigitalClock(
     }
 }
 
-/**
- * Displays an analog clock dial with pointers for different world cities.
- */
 @Composable
 private fun CityDial(
     cities: List<WorldCity>, 
@@ -340,9 +354,6 @@ private fun CityDial(
     }
 }
 
-/**
- * Displays a single city in the list with a layout exactly matching the target design.
- */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CityRow(
@@ -351,13 +362,13 @@ private fun CityRow(
     nowUtcMillis: Long,
     use24h: Boolean,
     showSeconds: Boolean,
-    onRemove: () -> Unit,
+    onDeleteRequest: () -> Unit,
+    onTogglePin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
     
-    // Formatting handles leading zero properly for city rows as well
     val timeOnly = buildString {
         if (use24h) {
             append(String.format(Locale.getDefault(), "%02d:%02d", local.hour, local.minute))
@@ -376,8 +387,12 @@ private fun CityRow(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.EndToStart -> { 
-                    onRemove() 
+                    onDeleteRequest() 
                     false 
+                }
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onTogglePin()
+                    false
                 }
                 else -> false
             }
@@ -387,7 +402,7 @@ private fun CityRow(
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
-        enableDismissFromStartToEnd = false, 
+        enableDismissFromStartToEnd = true, 
         enableDismissFromEndToStart = true,  
         backgroundContent = {
             val direction = state.dismissDirection
@@ -414,6 +429,30 @@ private fun CityRow(
                         )
                     }
                 }
+            } else if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                val isPinned = city.pinnedAt != null
+                Surface(
+                    color = if (isPinned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(ROW_HEIGHT_DP.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 32.dp), 
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Icon(
+                            imageVector = if (isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin, 
+                            contentDescription = if (isPinned) "Unpin" else "Pin", 
+                            tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer, 
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
             }
         },
     ) {
@@ -425,7 +464,7 @@ private fun CityRow(
                 .padding(horizontal = 16.dp)
                 .height(ROW_HEIGHT_DP.dp)
                 .semantics { 
-                    customActions = listOf(CustomAccessibilityAction("Remove ${city.city}") { onRemove(); true }) 
+                    customActions = listOf(CustomAccessibilityAction("Remove ${city.city}") { onDeleteRequest(); true }) 
                 },
         ) {
             Row(
@@ -455,16 +494,28 @@ private fun CityRow(
                         .padding(start = 16.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(
-                        text = city.city,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = city.city,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (city.pinnedAt != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Filled.PushPin,
+                                contentDescription = "Pinned",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                     Text(
                         text = "${city.country.ifBlank { city.region }} | ${city.offsetLabel(home, nowUtcMillis)} |\n${city.utcCode(nowUtcMillis)}",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -478,7 +529,7 @@ private fun CityRow(
                 ) {
                     Text(
                         text = timeOnly,
-                        style = MaterialTheme.typography.headlineSmall, 
+                        style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"), 
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                     )
