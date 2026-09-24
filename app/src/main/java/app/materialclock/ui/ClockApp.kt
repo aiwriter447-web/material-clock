@@ -81,9 +81,24 @@ import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 20.dp
+
+/**
+ * How long post-launch work (the notification-permission dialog, the exact-alarm reminder
+ * snackbar) waits before firing.
+ *
+ * Both used to run inside a `LaunchedEffect` keyed on the very first composition -- exactly
+ * when the tab's entrance animation (fade/scale) and the dock's spring-in are also mid-flight.
+ * A system permission dialog is a whole new window; creating it steals frames from the
+ * Choreographer right as those animations are running, which is what showed up as visible
+ * jank/jitter on cold open (worse at 120Hz, since the per-frame budget is smaller and a stall
+ * eats a larger fraction of it). Waiting until the opening animation has settled removes that
+ * collision without changing anything the user actually sees or does.
+ */
+private const val OPEN_SETTLE_DELAY_MS = 400L
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
     ALARMS("Alarms", Icons.Outlined.Alarm, Notifications.TAB_ALARMS),
@@ -109,6 +124,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
         LaunchedEffect(tab) {
             if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
+                delay(OPEN_SETTLE_DELAY_MS)
                 val result = snackbar.showSnackbar(
                     message = "Alarms need the \"Alarms & reminders\" permission to fire exactly on time",
                     actionLabel = "Enable",
@@ -139,7 +155,10 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-            LaunchedEffect(Unit) { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }
+            LaunchedEffect(Unit) {
+                delay(OPEN_SETTLE_DELAY_MS)
+                ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
 
         Scaffold(
