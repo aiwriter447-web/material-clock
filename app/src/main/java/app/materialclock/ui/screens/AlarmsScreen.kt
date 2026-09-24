@@ -1,6 +1,5 @@
 package app.materialclock.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -8,11 +7,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,21 +23,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.AlarmOff
-import androidx.compose.material.icons.outlined.AlarmOn
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.GroupRemove
 import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -91,14 +80,16 @@ fun AlarmsScreen(
     alarms: List<Alarm>,
     groups: List<AlarmGroup>,
     weekStart: WeekStart,
+    inSelectionMode: Boolean,
+    selectedAlarms: Set<Long>,
+    selectedGroups: Set<Long>,
     onToggle: (Long) -> Unit,
     onToggleGroup: (Long, Boolean) -> Unit,
     onTogglePin: (Long) -> Unit,
+    onToggleSelect: (Long) -> Unit,
+    onToggleGroupSelect: (Long) -> Unit,
     onEdit: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit,
-    onDeleteSelected: (Set<Long>, Set<Long>) -> Unit,
-    onSetEnabledSelected: (Set<Long>, Set<Long>, Boolean) -> Unit,
-    onUngroupSelected: (Set<Long>, Set<Long>) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -108,37 +99,6 @@ fun AlarmsScreen(
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
     
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
-    
-    var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
-    var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
-    val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
-    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = inSelectionMode) {
-        selectedAlarms = emptySet()
-        selectedGroups = emptySet()
-    }
-
-    if (showBatchDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showBatchDeleteConfirm = false },
-            title = { Text("Delete Items") },
-            text = { Text("Are you sure you want to delete the selected ${selectedAlarms.size} alarms and ${selectedGroups.size} groups?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteSelected(selectedAlarms, selectedGroups)
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                        showBatchDeleteConfirm = false
-                    }
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
 
     alarmToDelete?.let { alarm ->
         AlertDialog(
@@ -203,9 +163,7 @@ fun AlarmsScreen(
                         selectedGroups = selectedGroups,
                         inSelectionMode = inSelectionMode,
                         onToggleGroup = onToggleGroup,
-                        onToggleGroupSelect = { groupId ->
-                            selectedGroups = if (groupId in selectedGroups) selectedGroups - groupId else selectedGroups + groupId
-                        }
+                        onToggleGroupSelect = onToggleGroupSelect
                     )
                 }
             }
@@ -285,90 +243,8 @@ fun AlarmsScreen(
                         inSelectionMode = inSelectionMode,
                         onToggle = { onToggle(alarm.id) },
                         onEdit = { onEdit(alarm) },
-                        onToggleSelect = {
-                            selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
-                        }
+                        onToggleSelect = { onToggleSelect(alarm.id) }
                     )
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = inSelectionMode,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = contentPadding.calculateBottomPadding() + 8.dp)
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = 8.dp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val allSelected = selectedAlarms.size == alarms.size && selectedGroups.size == groups.size
-                    
-                    TextButton(onClick = {
-                        if (allSelected) {
-                            selectedAlarms = emptySet()
-                            selectedGroups = emptySet()
-                        } else {
-                            selectedAlarms = alarms.map { it.id }.toSet()
-                            selectedGroups = groups.map { it.id }.toSet()
-                        }
-                    }) {
-                        Icon(if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (allSelected) "Unselect" else "Select All")
-                    }
-
-                    TextButton(onClick = { 
-                        onSetEnabledSelected(selectedAlarms, selectedGroups, true) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Outlined.AlarmOn, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Turn On")
-                    }
-
-                    TextButton(onClick = { 
-                        onSetEnabledSelected(selectedAlarms, selectedGroups, false) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Outlined.AlarmOff, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Turn Off")
-                    }
-
-                    TextButton(onClick = { 
-                        onUngroupSelected(selectedAlarms, selectedGroups) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Outlined.GroupRemove, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Ungroup")
-                    }
-
-                    TextButton(
-                        onClick = { showBatchDeleteConfirm = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Delete")
-                    }
                 }
             }
         }
