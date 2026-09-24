@@ -31,22 +31,6 @@ import org.json.JSONObject
 
 private val Context.prefs: DataStore<Preferences> by preferencesDataStore("clock")
 
-/**
- * Everything that has to survive the process.
- *
- * Preferences DataStore rather than Room: the whole dataset is a handful of alarms, a handful of
- * cities and two dozen scalars, and none of it is queried; it is read once at start and written
- * whole. A database would add a schema, a migration story and a code generator to store what fits
- * in a few kilobytes of JSON.
- *
- * Alarms and cities are JSON *strings* inside the preference file, using `org.json`, which is in
- * the platform. Adding kotlinx-serialization for two record types would be a plugin, a dependency
- * and a compiler step to save about forty lines.
- *
- * Reads are cold flows. Writes are suspending and atomic per call, so a crash mid-write leaves the
- * previous state rather than half of the new one. For the alarm list that is the difference between
- * an alarm that does not ring and an alarm list that cannot be parsed.
- */
 class ClockStore(private val context: Context) {
 
     val settings: Flow<ClockSettings> = context.prefs.data.map { it.toSettings() }
@@ -67,7 +51,6 @@ class ClockStore(private val context: Context) {
         p[KEY_PRESETS]?.let(::parsePresets) ?: SEED_PRESETS
     }
 
-    /** A one-shot read, for the receivers and services that have no scope to collect in. */
     suspend fun settingsNow(): ClockSettings = settings.first()
     suspend fun alarmsNow(): List<Alarm> = alarms.first()
     suspend fun groupsNow(): List<AlarmGroup> = groups.first()
@@ -97,7 +80,6 @@ class ClockStore(private val context: Context) {
         context.prefs.edit { it[KEY_STOPWATCH] = encodeStopwatch(s) }
     }
 
-    /** Monotonic ids, so a rescheduled alarm never collides with a PendingIntent request code. */
     suspend fun nextId(): Long {
         var out = 0L
         context.prefs.edit { p ->
@@ -107,16 +89,6 @@ class ClockStore(private val context: Context) {
         return out
     }
 
-    /* ── Widgets ────────────────────────────────────────────────────────────────────────── */
-
-    /**
-     * One key per widget id, not one blob holding them all.
-     *
-     * `DataStore.edit` is atomic per call but not across calls, and two config activities can be
-     * alive at once, whether that is two widgets dropped in quick succession or a reconfigure
-     * racing a pin callback. A shared map would lose the first write. Per-key also makes deletion
-     * a `remove` and the orphan sweep a prefix scan.
-     */
     fun widgetConfig(id: Int): Flow<WidgetConfig?> =
         context.prefs.data.map { p -> p[widgetKey(id)]?.let(::parseWidgetConfig) }
 
@@ -126,19 +98,10 @@ class ClockStore(private val context: Context) {
         context.prefs.edit { it[widgetKey(id)] = encodeWidgetConfig(config) }
     }
 
-    /**
-     * Also the cancelled-add path: a host that never gets `RESULT_OK` deletes the id and sends
-     * `onDeleted`, so one cleanup site covers both and the two cases need not be told apart.
-     */
     suspend fun deleteWidgetConfigs(ids: IntArray) {
         context.prefs.edit { p -> ids.forEach { p.remove(widgetKey(it)) } }
     }
 
-    /**
-     * Restore-from-backup remap. Every removal happens before any write, in one transaction,
-     * because an id may appear in both lists and a naive pairwise loop would delete what it just
-     * wrote.
-     */
     suspend fun remapWidgetConfigs(old: IntArray, new: IntArray) {
         context.prefs.edit { p ->
             val carried = old.map { p[widgetKey(it)] }
@@ -149,7 +112,6 @@ class ClockStore(private val context: Context) {
         }
     }
 
-    /** Safety net for records whose widget vanished without an `onDeleted` (a restore, a crash). */
     suspend fun sweepWidgetConfigs(liveIds: IntArray) {
         val live = liveIds.toHashSet()
         context.prefs.edit { p ->
@@ -203,8 +165,6 @@ class ClockStore(private val context: Context) {
         )
     }
 }
-
-/* ── Settings ⇄ preferences ─────────────────────────────────────────────────────────────────── */
 
 private fun Preferences.toSettings() = ClockSettings(
     alarms = AlarmSettings(
@@ -266,11 +226,8 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     this[booleanPreferencesKey("oneHand")] = s.theme.oneHandMode
 }
 
-/** Falls back rather than throwing: a preference file written by a newer build must not crash. */
 private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
     name?.let { runCatching { enumValueOf<E>(it) }.getOrNull() } ?: fallback
-
-/* ── JSON ───────────────────────────────────────────────────────────────────────────────────── */
 
 private fun encodeAlarms(list: List<Alarm>) = JSONArray().apply {
     list.forEach { a ->
@@ -308,8 +265,6 @@ private fun parseAlarms(s: String): List<Alarm> = runCatching {
     }
 }.getOrDefault(emptyList())
 
-/* ── Alarm groups ⇄ JSON ────────────────────────────────────────────────────────────────── */
-
 private fun encodeGroups(list: List<AlarmGroup>) = JSONArray().apply {
     list.forEach { g -> put(JSONObject().put("id", g.id).put("name", g.name)) }
 }.toString()
@@ -321,8 +276,6 @@ private fun parseGroups(s: String): List<AlarmGroup> = runCatching {
         AlarmGroup(id = o.getLong("id"), name = o.optString("name", ""))
     }
 }.getOrDefault(emptyList())
-
-/* ── Widget config ⇄ JSON ───────────────────────────────────────────────────────────────── */
 
 private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("v", 1)
@@ -349,13 +302,6 @@ private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("palette", c.palette.name)
     .toString()
 
-/**
- * Never null and never throws.
- *
- * This is parsed inside a `BroadcastReceiver` with a ten-second deadline and no UI. A record from a
- * newer build, or a truncated write, must come back as a plain working circle, because the
- * alternative is a widget the user can neither see nor repair.
- */
 private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
     val o = JSONObject(s)
     WidgetConfig(
@@ -390,7 +336,8 @@ private fun encodeCities(list: List<WorldCity>) = JSONArray().apply {
                 .put("zone", it.zone.id)
                 .put("city", it.city)
                 .put("region", it.region)
-                .put("country", it.country),
+                .put("country", it.country)
+                .apply { it.pinnedAt?.let { p -> put("pinnedAt", p) } }
         )
     }
 }.toString()
@@ -399,15 +346,13 @@ private fun parseCities(s: String): List<WorldCity> = runCatching {
     val arr = JSONArray(s)
     (0 until arr.length()).mapNotNull { i ->
         val o = arr.getJSONObject(i)
-        // A zone id can vanish between tzdb releases; drop the row rather than the whole list.
-        // `country` is `optString`, not `getString`: a row saved before this field existed has no
-        // key for it at all, and that is a missing value to fall back on, not a corrupt row to drop.
         runCatching {
             WorldCity(
                 ZoneId.of(o.getString("zone")),
                 o.getString("city"),
                 o.getString("region"),
                 o.optString("country", ""),
+                o.optLong("pinnedAt", 0L).takeIf { it > 0L }
             )
         }.getOrNull()
     }
@@ -480,7 +425,6 @@ private fun parsePresets(s: String): List<TimerPreset> = runCatching {
     }
 }.getOrDefault(SEED_PRESETS)
 
-// Ids below 100: [nextId] starts new ones at 100, so these can never collide with a user-made one.
 private val SEED_PRESETS = listOf(
     TimerPreset(id = 1L, name = "Study", totalSeconds = 25 * 60),
     TimerPreset(id = 2L, name = "Deep work", totalSeconds = 50 * 60),
