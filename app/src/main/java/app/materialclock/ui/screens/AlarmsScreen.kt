@@ -124,9 +124,8 @@ fun AlarmsScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "upcoming-alarm-text") {
+        item(key = "upcoming-alarm-text", contentType = "upcoming") {
             val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
-            // Smooth fluid animation for opening and closing text
             AnimatedVisibility(
                 visible = upcomingInfo != null,
                 enter = expandVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeIn(tween(400)),
@@ -156,7 +155,7 @@ fun AlarmsScreen(
         }
 
         if (groups.isNotEmpty()) {
-            item(key = "group-cards") {
+            item(key = "group-cards", contentType = "groups") {
                 GroupCardsSection(
                     groups = groups,
                     byGroup = byGroup,
@@ -165,7 +164,7 @@ fun AlarmsScreen(
             }
         }
 
-        items(alarms, key = { it.id }) { alarm ->
+        items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
             val dismissState = rememberSwipeToDismissBoxState(
                 confirmValueChange = { value ->
                     when (value) {
@@ -173,7 +172,6 @@ fun AlarmsScreen(
                             alarmToDelete = alarm
                             false
                         }
-                        // Left-to-right swipe (StartToEnd) completely removed
                         else -> false
                     }
                 }
@@ -181,15 +179,11 @@ fun AlarmsScreen(
 
             SwipeToDismissBox(
                 state = dismissState,
-                enableDismissFromStartToEnd = false, // Disabled the LTR swipe gesture here
-                enableDismissFromEndToStart = true,  // Kept RTL swipe for Delete
-                modifier = Modifier.animateItem(
-                    placementSpec = tween(400, easing = FastOutSlowInEasing)
-                ),
+                enableDismissFromStartToEnd = false,
+                enableDismissFromEndToStart = true,
+                modifier = Modifier.animateItem(),
                 backgroundContent = {
                     val direction = dismissState.dismissDirection
-                    
-                    // Only render the delete background when swiping right-to-left
                     if (direction == SwipeToDismissBoxValue.EndToStart) {
                         Surface(
                             color = MaterialTheme.colorScheme.errorContainer,
