@@ -145,6 +145,11 @@ fun WorldClockScreen(
 
 /**
  * Displays the current home time in a large digital format, bold and large like Google Clock.
+ *
+ * NOTE: only change from the previous version is inside this function -- the Row is
+ * now centered (Arrangement.Center) and the font size shrinks a bit in 12-hour mode
+ * (since it has an AM/PM suffix), so the line always fits on one row instead of
+ * wrapping / clipping off the right edge of the screen.
  */
 @Composable
 private fun HomeDigitalClock(
@@ -169,6 +174,10 @@ private fun HomeDigitalClock(
         }
     }
 
+    // Smaller base size when the AM/PM suffix is shown, so time + suffix always fit on one line.
+    val timeFontSize = if (use24h) 86.sp else 68.sp
+    val meridiemFontSize = 26.sp
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -176,12 +185,15 @@ private fun HomeDigitalClock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Row {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
             // Updated to FontWeight.Medium and added baseline alignment to fix the layout
             Text(
                 text = timeText,
                 style = TextStyle(
-                    fontSize = 86.sp,
+                    fontSize = timeFontSize,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 ),
@@ -195,7 +207,7 @@ private fun HomeDigitalClock(
                 Text(
                     text = meridiem,
                     style = TextStyle(
-                        fontSize = 32.sp,
+                        fontSize = meridiemFontSize,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.sp
                     ),
