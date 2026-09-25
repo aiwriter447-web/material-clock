@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Palette.CONCEPT's dark-mode tertiary — the lighter tonal step of the same alarm coral, for
-     contrast against a dark card instead of the light one's deeper tone. -->
-<resources>
-    <color name="notification_accent">#FB7B88</color>
-</resources>
