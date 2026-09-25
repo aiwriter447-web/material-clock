@@ -30,13 +30,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.AlarmOff
 import androidx.compose.material.icons.rounded.AlarmOn
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Deselect
 import androidx.compose.material.icons.rounded.GroupRemove
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -78,10 +79,6 @@ import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.sheets.systemFirstDay
-import app.materialclock.ui.theme.CapText
-import app.materialclock.ui.theme.ClockFace
-import app.materialclock.ui.theme.Numerals
-import app.materialclock.ui.theme.StretchedCaps
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDateTime
@@ -226,16 +223,16 @@ fun AlarmsScreen(
                         when (value) {
                             SwipeToDismissBoxValue.EndToStart -> {
                                 alarmToDelete = alarm
-                                false
+                                false 
                             }
                             SwipeToDismissBoxValue.StartToEnd -> {
                                 onTogglePin(alarm.id)
-                                false
+                                false 
                             }
                             else -> false
                         }
                     },
-                    positionalThreshold = { totalDistance -> totalDistance * 0.25f }
+                    positionalThreshold = { totalDistance -> totalDistance * 0.5f } 
                 )
 
                 SwipeToDismissBox(
@@ -275,7 +272,7 @@ fun AlarmsScreen(
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     Icon(
-                                        imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Filled.PushPin,
+                                        imageVector = Icons.Rounded.PushPin,
                                         contentDescription = if (isPinned) "Unpin" else "Pin",
                                         tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(28.dp)
@@ -488,7 +485,7 @@ private fun GroupCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = group.name,
-                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -518,12 +515,9 @@ private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 }
 
 private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 10.dp
+private val ROW_VERTICAL_PADDING = 16.dp
 private val ROW_CORNER_RADIUS = 24.dp
-private val ROW_LABEL_TO_TIME = 0.dp
-private val ROW_TIME_GAP = 8.dp
-private val ROW_TIME_CAP = 104.dp
-private const val ROW_MERIDIEM_CAP_FRACTION = 0.30f
+private val ROW_LABEL_TO_TIME = 8.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -540,7 +534,6 @@ private fun AlarmRow(
     val enabled = alarm.enabled
     val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    val numeralWeight = if (enabled || isSelected) ClockFace.WEIGHT_ON else ClockFace.WEIGHT_OFF
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
@@ -566,7 +559,7 @@ private fun AlarmRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = displayLabel,
-                        style = MaterialTheme.typography.titleMediumEmphasized,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = labelColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -575,7 +568,7 @@ private fun AlarmRow(
                     if (alarm.pinnedAt != null) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
-                            imageVector = Icons.Filled.PushPin,
+                            imageVector = Icons.Rounded.PushPin,
                             contentDescription = "Pinned",
                             tint = ink,
                             modifier = Modifier.size(16.dp)
@@ -585,10 +578,30 @@ private fun AlarmRow(
                 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
+                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
+                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+
                 if (is24Hour) {
-                    RowTime24(hour = alarm.time.hour, minute = alarm.time.minute, ink = ink, weight = numeralWeight)
+                    Text(
+                        text = "%02d:%02d".format(alarm.time.hour, alarm.time.minute),
+                        style = timeStyle,
+                        color = ink
+                    )
                 } else {
-                    RowTime12(hour12 = hour12, minute = alarm.time.minute, meridiem = meridiem, ink = ink, weight = numeralWeight)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "%02d:%02d".format(hour12, alarm.time.minute),
+                            style = timeStyle,
+                            color = ink
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = meridiem,
+                            style = amPmStyle,
+                            color = ink,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
                 }
             }
 
@@ -599,7 +612,7 @@ private fun AlarmRow(
                 verticalArrangement = Arrangement.Top,
             ) {
                 DayLetters(alarm = alarm, order = order, ink = ink)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Switch(
                     checked = enabled,
                     onCheckedChange = { if (!inSelectionMode) onToggle() },
@@ -623,69 +636,26 @@ private fun AlarmRow(
 }
 
 @Composable
-private fun RowTime24(hour: Int, minute: Int, ink: Color, weight: Int) {
-    Numerals(
-        text = "%02d:%02d".format(hour, minute),
-        capHeight = ROW_TIME_CAP,
-        color = ink,
-        width = ClockFace.CONDENSED,
-        weight = weight,
-        tracking = ClockFace.CONDENSED_TRACKING,
-    )
-}
-
-@Composable
-private fun RowTime12(hour12: Int, minute: Int, meridiem: String, ink: Color, weight: Int) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Numerals(
-            text = "%02d".format(hour12), capHeight = ROW_TIME_CAP, color = ink, width = ClockFace.CONDENSED, weight = weight, tracking = ClockFace.CONDENSED_TRACKING
-        )
-        Spacer(modifier = Modifier.width(ROW_TIME_GAP))
-        Numerals(
-            text = "%02d".format(minute), capHeight = ROW_TIME_CAP, color = ink, width = ClockFace.CONDENSED, weight = weight, tracking = ClockFace.CONDENSED_TRACKING
-        )
-        Spacer(modifier = Modifier.width(ROW_TIME_GAP))
-        CapText(
-            text = meridiem, capHeight = ROW_TIME_CAP * ROW_MERIDIEM_CAP_FRACTION, color = ink, tracking = ClockFace.CONDENSED_TRACKING, modifier = Modifier.padding(bottom = 6.dp)
-        )
-    }
-}
-
-private val DAY_CAP = 23.dp
-private val DAY_BLOCK_WIDTH = 91.dp
-private val DAY_TRACKING = 2.2.dp
-
-private const val DAY_WEIGHT_ON = 700
-private const val DAY_WEIGHT_OFF = 400
-
-@Composable
 private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color) {
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    val bold = remember { ClockFace.capitals(DAY_CAP, ClockFace.CONDENSED, weight = DAY_WEIGHT_ON) }
-    val light = remember { ClockFace.capitals(DAY_CAP, ClockFace.CONDENSED, weight = DAY_WEIGHT_OFF) }
-
     val text = remember(alarm.days, alarm.isOneShot, order, ink) {
         buildAnnotatedString {
             order.forEach { day ->
                 val active = !alarm.isOneShot && day in alarm.days
                 withStyle(
                     SpanStyle(
-                        fontFamily = if (active) bold.fontFamily else light.fontFamily,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                         color = if (active) ink else ink.copy(alpha = 0.30f),
                     )
                 ) {
-                    append(day.name.take(1))
+                    append(day.name.take(1) + " ")
                 }
             }
         }
     }
 
-    val letterSpacing = with(density) { (DAY_TRACKING / bold.fontSize.toDp()).em }
-    val style = bold.copy(letterSpacing = letterSpacing)
-    val measuredWidth = measurer.measure(text = text, style = style).size.width
-    val targetWidth = with(density) { DAY_BLOCK_WIDTH.toPx() }
-    val scaleX = if (measuredWidth > 0) targetWidth / measuredWidth else 1f
-
-    StretchedCaps(text = text, style = style, capHeight = DAY_CAP, scaleX = scaleX)
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        maxLines = 1
+    )
 }
