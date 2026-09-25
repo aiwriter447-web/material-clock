@@ -36,7 +36,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +61,9 @@ import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
 private const val RING_SIZE_DP = 300
+
+// Enum to track which timer column is currently selected by the user
+enum class TimerSegment { HOURS, MINUTES, SECONDS }
 
 @Composable
 fun TimersScreen(
@@ -89,19 +95,17 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onWind, onStart, presets, onStartPreset, onEditPreset, onAddPreset)
+            SetTimer(draft, onDigit, onStart, presets, onStartPreset, onEditPreset, onAddPreset)
         }
     }
 }
 
-/* ── Setting (Updated with Segmented Display & Pill Shapes) ────────────────────────────────── */
+/* ── Setting (Smart Segmented Input Router) ────────────────────────────────── */
 
 @Composable
 private fun SetTimer(
     draft: Duration,
     onDigit: (Char) -> Unit,
-    onBackspace: () -> Unit,
-    onWind: (Int) -> Unit,
     onStart: () -> Unit,
     presets: List<TimerPreset>,
     onStartPreset: (TimerPreset) -> Unit,
@@ -109,10 +113,46 @@ private fun SetTimer(
     onAddPreset: () -> Unit,
 ) {
     val total = draft.seconds
-    val hh = "%02d".format(total / 3600)
-    val mm = "%02d".format((total % 3600) / 60)
-    val ss = "%02d".format(total % 60)
     val armed = total > 0
+    
+    // Default focus is on Minutes for convenience
+    var activeSegment by remember { mutableStateOf(TimerSegment.MINUTES) }
+
+    // Smart UI-level digit router: Converts individual column clicks into the 6-digit sequence the backend expects
+    val handleDigit: (Char) -> Unit = { digit ->
+        var h = "%02d".format(total / 3600)
+        var m = "%02d".format((total % 3600) / 60)
+        var s = "%02d".format(total % 60)
+        
+        when (activeSegment) {
+            TimerSegment.HOURS -> h = h.last() + digit.toString()
+            TimerSegment.MINUTES -> m = m.last() + digit.toString()
+            TimerSegment.SECONDS -> s = s.last() + digit.toString()
+        }
+        
+        // Push all 6 digits to automatically force the ViewModel's state to match perfectly
+        val fullStr = h + m + s
+        fullStr.forEach { onDigit(it) }
+    }
+
+    val handleBackspace: () -> Unit = {
+        var h = "%02d".format(total / 3600)
+        var m = "%02d".format((total % 3600) / 60)
+        var s = "%02d".format(total % 60)
+        
+        when (activeSegment) {
+            TimerSegment.HOURS -> h = "0" + h.first()
+            TimerSegment.MINUTES -> m = "0" + m.first()
+            TimerSegment.SECONDS -> s = "0" + s.first()
+        }
+        
+        val fullStr = h + m + s
+        fullStr.forEach { onDigit(it) }
+    }
+
+    val handleClearAll: () -> Unit = {
+        "000000".forEach { onDigit(it) }
+    }
 
     Column(
         modifier = Modifier
@@ -120,21 +160,23 @@ private fun SetTimer(
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Pushed the display down slightly for better visual balance since slider is gone
         Spacer(Modifier.height(32.dp)) 
         
-        // New Segmented Display with h, m, s labels
         DraftReadout(
-            hh = hh, 
-            mm = mm, 
-            ss = ss,
-            onClear = { onWind(0) } 
+            hh = "%02d".format(total / 3600), 
+            mm = "%02d".format((total % 3600) / 60), 
+            ss = "%02d".format(total % 60),
+            activeSegment = activeSegment,
+            onSegmentSelected = { activeSegment = it }
         )
         
         Spacer(Modifier.height(42.dp))
         
-        // Keypad with integrated 'C' button
-        Keypad(onDigit = onDigit, onBackspace = onBackspace, onClearAll = { onWind(0) })
+        Keypad(
+            onDigit = handleDigit, 
+            onBackspace = handleBackspace, 
+            onClearAll = handleClearAll
+        )
         
         Spacer(Modifier.height(24.dp))
         
@@ -170,7 +212,6 @@ private fun PresetRow(
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
         item {
-            // Updated Add Button to match Pill Shape and dark mode color consistency
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -197,8 +238,8 @@ private fun PresetRow(
 private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
     val minutes = preset.totalSeconds / 60
     Surface(
-        shape = CircleShape, // Changed from large to CircleShape for Pill design
-        color = MaterialTheme.colorScheme.primaryContainer, // Vibrant in dark mode
+        shape = CircleShape, 
+        color = MaterialTheme.colorScheme.primaryContainer, 
         modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         Column(
@@ -220,55 +261,59 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 }
 
 @Composable
-private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit) {
-    val cap = 56.dp
-    val labelStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+private fun DraftReadout(
+    hh: String, 
+    mm: String, 
+    ss: String, 
+    activeSegment: TimerSegment,
+    onSegmentSelected: (TimerSegment) -> Unit
+) {
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
-    val activeColor = MaterialTheme.colorScheme.onSurface
     
-    // Logic to highlight active parts (right to left)
-    val totalStr = "$hh$mm$ss"
-    val isHActive = hh != "00"
-    val isMActive = isHActive || mm != "00"
-    val isSActive = isMActive || ss != "00"
-
     Row(
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null, // Hidden ripple for clean look
-                onClick = onClear // Tapping readout resets to let user re-type cleanly
-            )
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
     ) {
-        // Hours Column
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("h", style = labelStyle, color = if (isHActive) activeColor else inactiveColor)
-            Spacer(Modifier.height(4.dp))
-            Numerals(text = hh, capHeight = cap, color = if (isHActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-        }
+        SegmentColumn("Hours", hh, activeSegment == TimerSegment.HOURS) { onSegmentSelected(TimerSegment.HOURS) }
         
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(top = 18.dp))
         
-        // Minutes Column
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("m", style = labelStyle, color = if (isMActive) activeColor else inactiveColor)
-            Spacer(Modifier.height(4.dp))
-            Numerals(text = mm, capHeight = cap, color = if (isMActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-        }
+        SegmentColumn("Minutes", mm, activeSegment == TimerSegment.MINUTES) { onSegmentSelected(TimerSegment.MINUTES) }
         
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(top = 18.dp))
         
-        // Seconds Column
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("s", style = labelStyle, color = if (isSActive) activeColor else inactiveColor)
-            Spacer(Modifier.height(4.dp))
-            Numerals(text = ss, capHeight = cap, color = activeColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-        }
+        SegmentColumn("Seconds", ss, activeSegment == TimerSegment.SECONDS) { onSegmentSelected(TimerSegment.SECONDS) }
+    }
+}
+
+@Composable
+private fun SegmentColumn(label: String, value: String, isActive: Boolean, onClick: () -> Unit) {
+    val color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null, // Hidden ripple for clean look
+            onClick = onClick
+        )
+    ) {
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), 
+            color = color
+        )
+        Spacer(Modifier.height(4.dp))
+        Numerals(
+            text = value, 
+            capHeight = 56.dp, 
+            color = color, 
+            width = ClockFace.TIMER_WIDTH, 
+            weight = ClockFace.TIMER_WEIGHT, 
+            slashedZero = true
+        )
     }
 }
 
@@ -286,7 +331,6 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
         }
         // Bottom row with Clear, 0, and Backspace
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // New 'C' Clear Button
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onClearAll,
@@ -350,7 +394,7 @@ private fun KeyBox(
     }
 }
 
-/* ── Running (Consistent UI elements) ──────────────────────────────────────────────────────── */
+/* ── Running ──────────────────────────────────────────────────────── */
 
 @Composable
 private fun RunningTimer(
@@ -407,7 +451,6 @@ private fun RunningTimer(
                 waveSpeed = if (running) 28.dp else 0.dp,
             )
             
-            // Timer Digits + Target Bell Icon
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Numerals(
                     text = text,
