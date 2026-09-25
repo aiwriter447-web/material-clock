@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.AlarmOff
 import androidx.compose.material.icons.rounded.AlarmOn
 import androidx.compose.material.icons.rounded.Delete
@@ -46,13 +45,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,15 +60,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
@@ -108,8 +102,6 @@ fun AlarmsScreen(
     val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
     
-    var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
-    
     var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
     var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
     val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
@@ -141,25 +133,6 @@ fun AlarmsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    alarmToDelete?.let { alarm ->
-        AlertDialog(
-            onDismissRequest = { alarmToDelete = null },
-            title = { Text("Delete Alarm") },
-            text = { Text("Are you sure you want to delete this alarm?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete(alarm)
-                        alarmToDelete = null
-                    }
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { alarmToDelete = null }) { Text("Cancel") }
             }
         )
     }
@@ -217,84 +190,21 @@ fun AlarmsScreen(
 
             items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
                 val isSelected = alarm.id in selectedAlarms
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = { value ->
-                        if (inSelectionMode) return@rememberSwipeToDismissBoxState false
-                        when (value) {
-                            SwipeToDismissBoxValue.EndToStart -> {
-                                alarmToDelete = alarm
-                                false 
-                            }
-                            SwipeToDismissBoxValue.StartToEnd -> {
-                                onTogglePin(alarm.id)
-                                false 
-                            }
-                            else -> false
-                        }
+                
+                // Swipe gesture removed completely as requested
+                AlarmRow(
+                    alarm = alarm,
+                    order = order,
+                    is24Hour = is24Hour,
+                    isSelected = isSelected,
+                    inSelectionMode = inSelectionMode,
+                    onToggle = { onToggle(alarm.id) },
+                    onEdit = { onEdit(alarm) },
+                    onToggleSelect = {
+                        selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
                     },
-                    positionalThreshold = { totalDistance -> totalDistance * 0.5f } 
+                    modifier = Modifier.animateItem()
                 )
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    enableDismissFromStartToEnd = !inSelectionMode,
-                    enableDismissFromEndToStart = !inSelectionMode,
-                    modifier = Modifier.animateItem(),
-                    backgroundContent = {
-                        val direction = dismissState.dismissDirection
-                        if (direction == SwipeToDismissBoxValue.EndToStart) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-                        } else if (direction == SwipeToDismissBoxValue.StartToEnd) {
-                            val isPinned = alarm.pinnedAt != null
-                            Surface(
-                                color = if (isPinned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.PushPin,
-                                        contentDescription = if (isPinned) "Unpin" else "Pin",
-                                        tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    AlarmRow(
-                        alarm = alarm,
-                        order = order,
-                        is24Hour = is24Hour,
-                        isSelected = isSelected,
-                        inSelectionMode = inSelectionMode,
-                        onToggle = { onToggle(alarm.id) },
-                        onEdit = { onEdit(alarm) },
-                        onToggleSelect = {
-                            selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
-                        }
-                    )
-                }
             }
         }
 
@@ -530,6 +440,7 @@ private fun AlarmRow(
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onToggleSelect: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val enabled = alarm.enabled
     val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
@@ -543,7 +454,7 @@ private fun AlarmRow(
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-        modifier = Modifier.fillMaxWidth().combinedClickable(
+        modifier = modifier.fillMaxWidth().combinedClickable(
             onClick = { if (inSelectionMode) onToggleSelect() else onEdit() },
             onLongClick = { onToggleSelect() }
         ),
@@ -655,7 +566,8 @@ private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color) {
 
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        // Font size increased and spacing widened for better readability
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, letterSpacing = 2.sp), 
         maxLines = 1
     )
 }
