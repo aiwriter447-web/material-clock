@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.Icons.Rounded.Delete
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -96,7 +96,7 @@ fun PresetEditSheet(
             ) {
                 if (onDelete != null) {
                     IconButton(onClick = { onDelete(initial.id); onDismiss() }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = "Delete preset")
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete preset")
                     }
                 }
                 Spacer(Modifier.weight(1f))
