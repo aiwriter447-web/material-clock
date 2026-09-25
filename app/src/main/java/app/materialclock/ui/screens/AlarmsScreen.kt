@@ -1,5 +1,6 @@
 package app.materialclock.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -7,6 +8,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,12 +31,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.AlarmOff
+import androidx.compose.material.icons.rounded.AlarmOn
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.GroupRemove
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
@@ -43,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -63,6 +76,7 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
+import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.sheets.systemFirstDay
 import app.materialclock.ui.theme.CapText
 import app.materialclock.ui.theme.ClockFace
@@ -80,16 +94,15 @@ fun AlarmsScreen(
     alarms: List<Alarm>,
     groups: List<AlarmGroup>,
     weekStart: WeekStart,
-    inSelectionMode: Boolean,
-    selectedAlarms: Set<Long>,
-    selectedGroups: Set<Long>,
+    onSelectionChange: (Boolean) -> Unit,
     onToggle: (Long) -> Unit,
     onToggleGroup: (Long, Boolean) -> Unit,
     onTogglePin: (Long) -> Unit,
-    onToggleSelect: (Long) -> Unit,
-    onToggleGroupSelect: (Long) -> Unit,
     onEdit: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit,
+    onDeleteSelected: (Set<Long>, Set<Long>) -> Unit,
+    onSetEnabledSelected: (Set<Long>, Set<Long>, Boolean) -> Unit,
+    onUngroupSelected: (Set<Long>, Set<Long>) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +112,41 @@ fun AlarmsScreen(
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
     
     var alarmToDelete by remember { mutableStateOf<Alarm?>(null) }
+    
+    var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
+    val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
+    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(inSelectionMode) {
+        onSelectionChange(inSelectionMode)
+    }
+
+    BackHandler(enabled = inSelectionMode) {
+        selectedAlarms = emptySet()
+        selectedGroups = emptySet()
+    }
+
+    if (showBatchDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteConfirm = false },
+            title = { Text("Delete Items") },
+            text = { Text("Are you sure you want to delete the selected ${selectedAlarms.size} alarms and ${selectedGroups.size} groups?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteSelected(selectedAlarms, selectedGroups)
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                        showBatchDeleteConfirm = false
+                    }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     alarmToDelete?.let { alarm ->
         AlertDialog(
@@ -163,7 +211,9 @@ fun AlarmsScreen(
                         selectedGroups = selectedGroups,
                         inSelectionMode = inSelectionMode,
                         onToggleGroup = onToggleGroup,
-                        onToggleGroupSelect = onToggleGroupSelect
+                        onToggleGroupSelect = { groupId ->
+                            selectedGroups = if (groupId in selectedGroups) selectedGroups - groupId else selectedGroups + groupId
+                        }
                     )
                 }
             }
@@ -225,7 +275,7 @@ fun AlarmsScreen(
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     Icon(
-                                        imageVector = if (isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin,
+                                        imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Filled.PushPin,
                                         contentDescription = if (isPinned) "Unpin" else "Pin",
                                         tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(28.dp)
@@ -243,8 +293,78 @@ fun AlarmsScreen(
                         inSelectionMode = inSelectionMode,
                         onToggle = { onToggle(alarm.id) },
                         onEdit = { onEdit(alarm) },
-                        onToggleSelect = { onToggleSelect(alarm.id) }
+                        onToggleSelect = {
+                            selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
+                        }
                     )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = inSelectionMode,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 20.dp) 
+        ) {
+            val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    colors = if (dark) {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors(
+                            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+                    },
+                    expandedShadowElevation = 6.dp,
+                    modifier = Modifier.height(DOCK_HEIGHT),
+                ) {
+                    val allSelected = selectedAlarms.size == alarms.size && selectedGroups.size == groups.size
+                    IconButton(onClick = {
+                        if (allSelected) {
+                            selectedAlarms = emptySet()
+                            selectedGroups = emptySet()
+                        } else {
+                            selectedAlarms = alarms.map { it.id }.toSet()
+                            selectedGroups = groups.map { it.id }.toSet()
+                        }
+                    }) {
+                        Icon(if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll, contentDescription = "Select All")
+                    }
+                    IconButton(onClick = { 
+                        onSetEnabledSelected(selectedAlarms, selectedGroups, true) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.AlarmOn, contentDescription = "Turn On")
+                    }
+                    IconButton(onClick = { 
+                        onSetEnabledSelected(selectedAlarms, selectedGroups, false) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.AlarmOff, contentDescription = "Turn Off")
+                    }
+                    IconButton(onClick = { 
+                        onUngroupSelected(selectedAlarms, selectedGroups) 
+                        selectedAlarms = emptySet()
+                        selectedGroups = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.GroupRemove, contentDescription = "Ungroup")
+                    }
+                    IconButton(onClick = { showBatchDeleteConfirm = true }) {
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -382,9 +502,7 @@ private fun GroupCard(
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupCount(icon = Icons.Outlined.Alarm, count = total, ink = ink)
-                Spacer(Modifier.width(16.dp))
-                GroupCount(icon = Icons.Filled.Alarm, count = armed, ink = ink)
+                GroupCount(icon = Icons.Filled.Alarm, count = total, ink = ink)
             }
         }
     }
