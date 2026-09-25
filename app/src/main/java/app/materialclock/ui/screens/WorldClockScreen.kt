@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Delete
@@ -47,11 +46,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,15 +59,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -114,7 +105,6 @@ fun WorldClockScreen(
     }
     
     val measurer = rememberTextMeasurer()
-    var cityToDelete by remember { mutableStateOf<WorldCity?>(null) }
     
     var selectedCities by remember { mutableStateOf(emptySet<ZoneId>()) }
     val inSelectionMode = selectedCities.isNotEmpty()
@@ -144,25 +134,6 @@ fun WorldClockScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    cityToDelete?.let { city ->
-        AlertDialog(
-            onDismissRequest = { cityToDelete = null },
-            title = { Text("Remove City") },
-            text = { Text("Are you sure you want to remove ${city.city} from your world clock?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onRemove(city)
-                        cityToDelete = null
-                    }
-                ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { cityToDelete = null }) { Text("Cancel") }
             }
         )
     }
@@ -205,6 +176,8 @@ fun WorldClockScreen(
             
             items(cities, key = { it.zone.id }, contentType = { "city" }) { city ->
                 val isSelected = city.zone in selectedCities
+                
+                // Swipe gesture removed completely as requested
                 CityRow(
                     city = city,
                     home = home,
@@ -213,8 +186,6 @@ fun WorldClockScreen(
                     showSeconds = settings.showSeconds,
                     isSelected = isSelected,
                     inSelectionMode = inSelectionMode,
-                    onDeleteRequest = { cityToDelete = city },
-                    onTogglePin = { onTogglePin(city) },
                     onToggleSelect = {
                         selectedCities = if (isSelected) selectedCities - city.zone else selectedCities + city.zone
                     },
@@ -314,7 +285,8 @@ private fun HomeDigitalClock(
         ) {
             Text(
                 text = timeText,
-                style = TextStyle(
+                // Applied Alarm Tile typography structure and settings with fixed size
+                style = MaterialTheme.typography.displayMedium.copy(
                     fontSize = 76.sp, 
                     fontWeight = FontWeight.Medium, 
                     letterSpacing = 1.sp, 
@@ -328,9 +300,10 @@ private fun HomeDigitalClock(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = meridiem,
-                    style = TextStyle(
+                    // Applied Alarm Tile AM/PM typography structure with fixed size
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontSize = 32.sp, 
-                        fontWeight = FontWeight.Bold, // Made bold as requested
+                        fontWeight = FontWeight.Bold, 
                         letterSpacing = 1.sp
                     ),
                     color = ink,
@@ -442,7 +415,7 @@ private fun CityDial(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CityRow(
     city: WorldCity,
@@ -452,8 +425,6 @@ private fun CityRow(
     showSeconds: Boolean,
     isSelected: Boolean,
     inSelectionMode: Boolean,
-    onDeleteRequest: () -> Unit,
-    onTogglePin: () -> Unit,
     onToggleSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -488,192 +459,113 @@ private fun CityRow(
         "${hStr}${mStr}$dir"
     }
 
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (inSelectionMode) return@rememberSwipeToDismissBoxState false
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> { 
-                    onDeleteRequest() 
-                    false 
-                }
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    onTogglePin()
-                    false
-                }
-                else -> false
-            }
-        },
-        positionalThreshold = { totalDistance -> totalDistance * 0.5f } // Increased threshold to stop jitter
-    )
-
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        enableDismissFromStartToEnd = !inSelectionMode, 
-        enableDismissFromEndToStart = !inSelectionMode,  
-        backgroundContent = {
-            val direction = state.dismissDirection
-            if (direction == SwipeToDismissBoxValue.EndToStart) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(percent = 50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(ROW_HEIGHT_DP.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 32.dp), 
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete, 
-                            contentDescription = "Delete", 
-                            tint = MaterialTheme.colorScheme.onErrorContainer, 
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            } else if (direction == SwipeToDismissBoxValue.StartToEnd) {
-                val isPinned = city.pinnedAt != null
-                Surface(
-                    color = if (isPinned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(percent = 50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(ROW_HEIGHT_DP.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 32.dp), 
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.PushPin, // Expressive Material 3 pin
-                            contentDescription = if (isPinned) "Unpin" else "Pin", 
-                            tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer, 
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        },
+    val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface 
+    
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(percent = 50), 
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(ROW_HEIGHT_DP.dp)
+            .combinedClickable(
+                onClick = { if (inSelectionMode) onToggleSelect() },
+                onLongClick = { onToggleSelect() }
+            )
     ) {
-        val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface // Consistent ink for selected
-        
-        Surface(
-            color = containerColor,
-            shape = RoundedCornerShape(percent = 50), 
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(ROW_HEIGHT_DP.dp)
-                .combinedClickable(
-                    onClick = { if (inSelectionMode) onToggleSelect() },
-                    onLongClick = { onToggleSelect() }
-                )
-                .semantics { 
-                    customActions = listOf(CustomAccessibilityAction("Remove ${city.city}") { onDeleteRequest(); true }) 
-                },
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Surface(
+                color = if (isSelected) MaterialTheme.colorScheme.primary else if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.secondaryContainer,
+                shape = CircleShape,
+                modifier = Modifier.size(52.dp),
             ) {
-                Surface(
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.secondaryContainer,
-                    shape = CircleShape,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
+                        contentDescription = if (night) "night" else "daytime",
+                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (night) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+            
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp, end = 8.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = city.city,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (city.pinnedAt != null) {
+                        Spacer(Modifier.width(6.dp))
                         Icon(
-                            imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
-                            contentDescription = if (night) "night" else "daytime",
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (night) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(26.dp),
+                            imageVector = Icons.Rounded.PushPin,
+                            contentDescription = "Pinned",
+                            tint = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
-                
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 16.dp, end = 8.dp),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = city.city,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = contentColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        if (city.pinnedAt != null) {
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Rounded.PushPin,
-                                contentDescription = "Pinned",
-                                tint = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+                Text(
+                    text = "${city.country.ifBlank { city.region }} |",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "$diffString |",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, 
+                    modifier = Modifier.basicMarquee() 
+                )
+                Text(
+                    text = "${city.utcCode(nowUtcMillis)} |",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                    color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = timeOnly,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold, 
+                        fontFeatureSettings = "tnum"
+                    ), 
+                    color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                if (amPmString.isNotEmpty()) {
                     Text(
-                        text = "${city.country.ifBlank { city.region }} |",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "$diffString |",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, // basicMarquee prevents truncation and slowly scrolls text
-                        modifier = Modifier.basicMarquee() 
-                    )
-                    Text(
-                        text = "${city.utcCode(nowUtcMillis)} |",
-                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = timeOnly,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold, 
-                            fontFeatureSettings = "tnum"
-                        ), 
+                        text = amPmString,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         softWrap = false,
                     )
-                    if (amPmString.isNotEmpty()) {
-                        Text(
-                            text = amPmString,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
                 }
             }
         }
