@@ -170,14 +170,15 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     title = {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            // COLOR FIX: Changed to primaryContainer so it stays vibrant in dark mode
+                            color = MaterialTheme.colorScheme.primaryContainer, 
                         ) {
                             Text(
                                 text = tab.label,
                                 style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.SemiBold, 
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                fontWeight = FontWeight.Bold, 
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     },
