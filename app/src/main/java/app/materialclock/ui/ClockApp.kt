@@ -5,49 +5,59 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.AlarmOff
-import androidx.compose.material.icons.outlined.AlarmOn
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Deselect
-import androidx.compose.material.icons.outlined.GroupRemove
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.rounded.Settings 
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.HourglassBottom
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,7 +68,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -71,17 +80,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.materialclock.alarm.AlarmScheduler
@@ -105,6 +119,11 @@ import app.materialclock.ui.theme.ClockTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+val DOCK_HEIGHT = 72.dp
+private val ITEM_HEIGHT = 56.dp
+private val ICON_SIZE = 25.dp
+private val FAB_SIZE = DOCK_HEIGHT
+private val FAB_CORNER = 24.dp
 private val DOCK_CLEARANCE = 20.dp
 private const val OPEN_SETTLE_DELAY_MS = 400L
 
@@ -115,14 +134,11 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
     STOPWATCH("Stopwatch", Icons.Outlined.Timer, Notifications.TAB_STOPWATCH),
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
-    
-    val selectedAlarms by vm.selectedAlarms.collectAsStateWithLifecycle()
-    val selectedGroups by vm.selectedGroups.collectAsStateWithLifecycle()
-    val selectedCities by vm.selectedCities.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
         if (!isLoaded) {
@@ -131,43 +147,18 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         }
 
         var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
-        
-        val inSelectionMode = when (tab) {
-            Tab.ALARMS -> selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
-            Tab.WORLD -> selectedCities.isNotEmpty()
-            else -> false
-        }
-        
-        val allSelected = when (tab) {
-            Tab.ALARMS -> {
-                val alarms by vm.alarms.collectAsStateWithLifecycle()
-                val groups by vm.groups.collectAsStateWithLifecycle()
-                selectedAlarms.size == alarms.size && selectedGroups.size == groups.size && alarms.isNotEmpty()
-            }
-            Tab.WORLD -> {
-                val cities by vm.cities.collectAsStateWithLifecycle()
-                selectedCities.size == cities.size && cities.isNotEmpty()
-            }
-            else -> false
-        }
-
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
         var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
-        var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+        var selectionActive by remember { mutableStateOf(false) } 
         
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
-        
-        BackHandler(enabled = inSelectionMode) {
-            vm.clearSelection()
-        }
 
         LaunchedEffect(tab) {
-            vm.clearSelection()
             if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 delay(OPEN_SETTLE_DELAY_MS)
                 val result = snackbar.showSnackbar(
@@ -205,24 +196,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 ask.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        
-        if (showBatchDeleteConfirm) {
-            AlertDialog(
-                onDismissRequest = { showBatchDeleteConfirm = false },
-                title = { Text("Delete Items") },
-                text = { Text("Are you sure you want to delete the selected items?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (tab == Tab.ALARMS) vm.deleteSelectedAlarms()
-                        else if (tab == Tab.WORLD) vm.deleteSelectedCities()
-                        showBatchDeleteConfirm = false
-                    }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
-                }
-            )
-        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -235,34 +208,13 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.secondaryContainer,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp)
-                            ) {
-                                Text(
-                                    text = tab.label,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                AnimatedVisibility(visible = inSelectionMode && (tab == Tab.ALARMS || tab == Tab.WORLD)) {
-                                    Row {
-                                        Spacer(Modifier.width(8.dp))
-                                        Icon(
-                                            imageVector = if (allSelected) Icons.Outlined.Deselect else Icons.Outlined.SelectAll,
-                                            contentDescription = "Select All",
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .clickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
-                                                    indication = null,
-                                                    onClick = { if (allSelected) vm.clearSelection() else if (tab == Tab.ALARMS) vm.selectAllAlarms() else vm.selectAllCities() }
-                                                )
-                                        )
-                                    }
-                                }
-                            }
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.SemiBold, 
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
                     },
                     actions = {
@@ -318,16 +270,15 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             alarms = alarms,
                             groups = groups,
                             weekStart = settings.alarms.weekStart,
-                            inSelectionMode = inSelectionMode,
-                            selectedAlarms = selectedAlarms,
-                            selectedGroups = selectedGroups,
+                            onSelectionChange = { selectionActive = it },
                             onToggle = vm::toggleAlarm,
                             onToggleGroup = vm::toggleGroup,
                             onTogglePin = vm::togglePinAlarm,
-                            onToggleSelect = vm::toggleAlarmSelection,
-                            onToggleGroupSelect = vm::toggleGroupSelection,
                             onEdit = { editing = it },
                             onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
+                            onDeleteSelected = vm::deleteSelectedAlarms,
+                            onSetEnabledSelected = vm::setAlarmsEnabledState,
+                            onUngroupSelected = vm::ungroupSelectedAlarms,
                             contentPadding = body,
                         )
                     }
@@ -341,8 +292,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             home = homeZone,
                             nowUtcMillis = now,
                             settings = settings.world,
-                            inSelectionMode = inSelectionMode,
-                            selectedCities = selectedCities,
+                            onSelectionChange = { selectionActive = it },
                             onRemove = { city ->
                                 vm.removeCity(city.zone)
                                 scope.launch {
@@ -355,7 +305,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 }
                             },
                             onTogglePin = { city -> vm.togglePinCity(city.zone) },
-                            onToggleSelect = { vm.toggleCitySelection(it) },
+                            onDeleteSelected = vm::deleteSelectedCities,
                             contentPadding = edgeToEdgeWithFab,
                         )
                     }
@@ -398,65 +348,37 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 }
             }
 
-            Box(
+            AnimatedVisibility(
+                visible = !selectionActive,
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = DOCK_CLEARANCE)
-                    .onGloballyPositioned { coords ->
-                        with(density) { dockHeight = coords.size.height.toDp() }
-                    }
-                    .let { base ->
-                        if (settings.theme.oneHandMode) {
-                            base.pointerInput(Unit) {
-                                detectTapGestures(onLongPress = { curtainDown = !curtainDown })
-                            }
-                        } else {
-                            base
-                        }
-                    }
             ) {
                 ClockDock(
                     destinations = Tab.entries,
                     selected = tab,
                     onSelect = { tab = it },
-                    modifier = Modifier.alpha(if (inSelectionMode) 0f else 1f)
-                )
-
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = inSelectionMode,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.matchParentSize()
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        tonalElevation = 3.dp,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (tab == Tab.ALARMS) {
-                                IconButton(onClick = { vm.setEnabledSelectedAlarms(true) }) { Icon(Icons.Outlined.AlarmOn, null) }
-                                IconButton(onClick = { vm.setEnabledSelectedAlarms(false) }) { Icon(Icons.Outlined.AlarmOff, null) }
-                                IconButton(onClick = { vm.ungroupSelectedAlarms() }) { Icon(Icons.Outlined.GroupRemove, null) }
-                                IconButton(onClick = { showBatchDeleteConfirm = true }) { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                            } else if (tab == Tab.WORLD) {
-                                IconButton(onClick = { vm.pinSelectedCities() }) { Icon(Icons.Filled.PushPin, null) }
-                                IconButton(onClick = { vm.unpinSelectedCities() }) { Icon(Icons.Outlined.PushPin, null) }
-                                IconButton(onClick = { showBatchDeleteConfirm = true }) { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                            }
+                    modifier = Modifier
+                        .onGloballyPositioned { coords ->
+                            with(density) { dockHeight = coords.size.height.toDp() }
                         }
-                    }
-                }
+                        .let { base ->
+                            if (settings.theme.oneHandMode) {
+                                base.pointerInput(Unit) {
+                                    detectTapGestures(onLongPress = { curtainDown = !curtainDown })
+                                }
+                            } else {
+                                base
+                            }
+                        },
+                )
             }
 
             FloatingAddButton(
-                visible = !inSelectionMode && (tab == Tab.ALARMS || tab == Tab.WORLD),
+                visible = !selectionActive && (tab == Tab.ALARMS || tab == Tab.WORLD),
                 label = if (tab == Tab.WORLD) "Add city" else "Add alarm",
                 onClick = { if (tab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
                 modifier = Modifier
@@ -528,5 +450,169 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                 Tab.STOPWATCH -> StopwatchSettingsSheet(settings, vm::updateSettings) { showSettings = false }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ClockDock(
+    destinations: List<Tab>,
+    selected: Tab,
+    onSelect: (Tab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            colors = if (dark) {
+                FloatingToolbarDefaults.standardFloatingToolbarColors(
+                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+            },
+            expandedShadowElevation = 6.dp,
+            collapsedShadowElevation = 6.dp,
+            modifier = Modifier.selectableGroup().height(DOCK_HEIGHT),
+        ) {
+            destinations.forEach { d ->
+                DockItem(tab = d, selected = d == selected, dark = dark, onClick = { onSelect(d) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    
+    val targetContainer = when {
+        !selected -> Color.Transparent
+        dark -> scheme.primary
+        else -> scheme.surfaceContainer
+    }
+    val targetContent = when {
+        !selected -> scheme.onSurfaceVariant
+        dark -> scheme.onPrimary
+        else -> scheme.onSurface
+    }
+
+    val containerColor by animateColorAsState(
+        targetValue = targetContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "containerColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = targetContent,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "contentColor"
+    )
+
+    val activeIcon = remember(tab) {
+        when (tab) {
+            Tab.ALARMS -> Icons.Rounded.Alarm
+            Tab.WORLD -> Icons.Rounded.Public
+            Tab.TIMERS -> Icons.Rounded.HourglassBottom
+            Tab.STOPWATCH -> Icons.Rounded.Timer
+        }
+    }
+    val currentIcon = if (selected) activeIcon else tab.icon
+
+    Row(
+        modifier = Modifier
+            .height(ITEM_HEIGHT)
+            .clip(RoundedCornerShape(24.dp))
+            .background(containerColor)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .defaultMinSize(minWidth = ITEM_HEIGHT)
+            .padding(horizontal = if (selected) 16.dp else 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        AnimatedContent(
+            targetState = currentIcon,
+            transitionSpec = {
+                (fadeIn(tween(150)) + scaleIn(initialScale = 0.6f, animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f)))
+                    .togetherWith(fadeOut(tween(150)) + scaleOut(targetScale = 0.6f, animationSpec = tween(150)))
+            },
+            label = "iconAnim"
+        ) { icon ->
+            Icon(
+                imageVector = icon,
+                contentDescription = if (selected) null else tab.label,
+                tint = contentColor,
+                modifier = Modifier.size(ICON_SIZE),
+            )
+        }
+        
+        AnimatedVisibility(
+            visible = selected,
+            enter = fadeIn(tween(150)) + expandHorizontally(
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+                clip = false
+            ),
+            exit = fadeOut(tween(100)) + shrinkHorizontally(
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = 600f),
+                clip = false
+            ),
+        ) {
+            Text(
+                text = tab.label,
+                style = MaterialTheme.typography.labelLargeEmphasized,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+            )
+        }
+    }
+}
+
+@Composable
+fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "addGrow")
+    
+    val glyph by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "addGlyph",
+    )
+    
+    val rotation by animateFloatAsState(
+        targetValue = if (visible) 0f else -90f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+        label = "addRotate"
+    )
+    
+    if (grow <= 0.001f) return
+
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = RoundedCornerShape(lerp(FAB_SIZE / 2, FAB_CORNER, grow)),
+        modifier = modifier
+            .size(FAB_SIZE)
+            .graphicsLayer { scaleX = grow; scaleY = grow },
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Add,
+            contentDescription = label,
+            modifier = Modifier
+                .size(28.dp)
+                .graphicsLayer { 
+                    scaleX = glyph 
+                    scaleY = glyph 
+                    alpha = glyph
+                    rotationZ = rotation 
+                },
+        )
     }
 }
