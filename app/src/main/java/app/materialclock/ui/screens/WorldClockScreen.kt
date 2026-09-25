@@ -1,7 +1,13 @@
 package app.materialclock.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +22,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,9 +36,17 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
@@ -40,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +65,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -67,6 +85,7 @@ import app.materialclock.core.WorldCity
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
+import app.materialclock.ui.DOCK_HEIGHT
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -75,19 +94,19 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 104
+private const val ROW_HEIGHT_DP = 104 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldClockScreen(
     cities: List<WorldCity>,
     home: ZoneId,
     nowUtcMillis: Long,
     settings: WorldClockSettings,
-    inSelectionMode: Boolean,
-    selectedCities: Set<ZoneId>,
+    onSelectionChange: (Boolean) -> Unit,
     onRemove: (WorldCity) -> Unit,
     onTogglePin: (WorldCity) -> Unit,
-    onToggleSelect: (ZoneId) -> Unit,
+    onDeleteSelected: (Set<ZoneId>) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +118,38 @@ fun WorldClockScreen(
     
     val measurer = rememberTextMeasurer()
     var cityToDelete by remember { mutableStateOf<WorldCity?>(null) }
+    
+    var selectedCities by remember { mutableStateOf(emptySet<ZoneId>()) }
+    val inSelectionMode = selectedCities.isNotEmpty()
+    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(inSelectionMode) {
+        onSelectionChange(inSelectionMode)
+    }
+
+    BackHandler(enabled = inSelectionMode) {
+        selectedCities = emptySet()
+    }
+
+    if (showBatchDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteConfirm = false },
+            title = { Text("Delete Cities") },
+            text = { Text("Are you sure you want to delete the selected ${selectedCities.size} cities?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteSelected(selectedCities)
+                        selectedCities = emptySet()
+                        showBatchDeleteConfirm = false
+                    }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     cityToDelete?.let { city ->
         AlertDialog(
@@ -167,15 +218,68 @@ fun WorldClockScreen(
                     inSelectionMode = inSelectionMode,
                     onDeleteRequest = { cityToDelete = city },
                     onTogglePin = { onTogglePin(city) },
-                    onToggleSelect = { onToggleSelect(city.zone) },
+                    onToggleSelect = {
+                        selectedCities = if (isSelected) selectedCities - city.zone else selectedCities + city.zone
+                    },
                     modifier = Modifier.animateItem(),
                 )
             }
         }
+
+        AnimatedVisibility(
+            visible = inSelectionMode,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 20.dp) 
+        ) {
+            val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    colors = if (dark) {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors(
+                            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+                    },
+                    expandedShadowElevation = 6.dp,
+                    modifier = Modifier.height(DOCK_HEIGHT),
+                ) {
+                    val allSelected = selectedCities.size == cities.size
+                    IconButton(onClick = {
+                        selectedCities = if (allSelected) emptySet() else cities.map { it.zone }.toSet()
+                    }) {
+                        Icon(if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll, contentDescription = "Select All")
+                    }
+                    IconButton(onClick = {
+                        selectedCities.forEach { z -> cities.find { it.zone == z }?.let { if (it.pinnedAt == null) onTogglePin(it) } }
+                        selectedCities = emptySet()
+                    }) {
+                        Icon(Icons.Rounded.PushPin, contentDescription = "Pin")
+                    }
+                    IconButton(onClick = {
+                        selectedCities.forEach { z -> cities.find { it.zone == z }?.let { if (it.pinnedAt != null) onTogglePin(it) } }
+                        selectedCities = emptySet()
+                    }) {
+                        Icon(Icons.Outlined.PushPin, contentDescription = "Unpin")
+                    }
+                    IconButton(onClick = { showBatchDeleteConfirm = true }) {
+                        Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
     }
 }
-
-private const val MIN_CLOCK_SCALE = 0.45f
 
 @Composable
 private fun HomeDigitalClock(
@@ -199,9 +303,6 @@ private fun HomeDigitalClock(
         }
     }
 
-    val idealTimeSize = 86.sp
-    val idealMeridiemSize = 32.sp
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -209,52 +310,37 @@ private fun HomeDigitalClock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val measurer = rememberTextMeasurer()
-            val density = LocalDensity.current
-            val availableWidthPx = with(density) { maxWidth.toPx() }
-            val gapPx = with(density) { 8.dp.toPx() }
-
-            val timeStyle = TextStyle(
-                fontSize = idealTimeSize, 
-                fontWeight = FontWeight.Medium, 
-                letterSpacing = 1.sp, 
-                fontFeatureSettings = "tnum"
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = timeText,
+                style = TextStyle(
+                    fontSize = 76.sp, 
+                    fontWeight = FontWeight.Medium, 
+                    letterSpacing = 1.sp, 
+                    fontFeatureSettings = "tnum"
+                ),
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
             )
-            val meridiemStyle = TextStyle(fontSize = idealMeridiemSize, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
-
-            val timeWidthPx = measurer.measure(timeText, timeStyle, maxLines = 1, softWrap = false).size.width.toFloat()
-            val meridiemWidthPx = if (!use24h) {
-                measurer.measure(meridiem, meridiemStyle, maxLines = 1, softWrap = false).size.width.toFloat()
-            } else 0f
-            val totalWidthPx = timeWidthPx + (if (!use24h) gapPx + meridiemWidthPx else 0f)
-
-            val rawScale = if (totalWidthPx > availableWidthPx) availableWidthPx / totalWidthPx else 1f
-            val scale = rawScale.coerceIn(MIN_CLOCK_SCALE, 1f)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
+            if (!use24h) {
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = timeText,
-                    style = timeStyle.copy(fontSize = (idealTimeSize.value * scale).sp),
+                    text = meridiem,
+                    style = TextStyle(
+                        fontSize = 32.sp, 
+                        fontWeight = FontWeight.Medium, 
+                        letterSpacing = 1.sp
+                    ),
                     color = ink,
                     maxLines = 1,
                     softWrap = false,
-                    modifier = Modifier.alignByBaseline()
+                    modifier = Modifier.padding(bottom = 14.dp) 
                 )
-                if (!use24h) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = meridiem,
-                        style = meridiemStyle.copy(fontSize = (idealMeridiemSize.value * scale).sp),
-                        color = ink,
-                        maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier.alignByBaseline()
-                    )
-                }
             }
         }
         
@@ -376,7 +462,6 @@ private fun CityRow(
 ) {
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
-    val inst = Instant.ofEpochMilli(nowUtcMillis)
     
     val timeOnly = buildString {
         if (use24h) {
@@ -391,6 +476,20 @@ private fun CityRow(
     }
     
     val amPmString = if (!use24h) (if (local.hour < 12) "am" else "pm") else ""
+
+    val inst = Instant.ofEpochMilli(nowUtcMillis)
+    val diffSeconds = city.zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
+    val diffString = if (diffSeconds == 0) {
+        "Local Time Zone"
+    } else {
+        val totalMins = kotlin.math.abs(diffSeconds) / 60
+        val h = totalMins / 60
+        val m = totalMins % 60
+        val dir = if (diffSeconds > 0) "Ahead" else "Behind"
+        val hStr = if (h > 0) "$h hours " else ""
+        val mStr = if (m > 0) "$m Minutes " else ""
+        "${hStr}${mStr}$dir"
+    }
 
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -505,10 +604,9 @@ private fun CityRow(
                     }
                 }
                 
-                // 4-Line Adaptive Info Column
                 Column(
                     modifier = Modifier
-                        .weight(1f) // Ensures texts never overlap with the right time element
+                        .weight(1f)
                         .padding(start = 16.dp, end = 8.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -534,28 +632,14 @@ private fun CityRow(
                     }
                     Text(
                         text = "${city.country.ifBlank { city.region }} |",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
-                    val diffSeconds = city.zone.rules.getOffset(inst).totalSeconds - home.rules.getOffset(inst).totalSeconds
-                    val offsetLabel = if (diffSeconds == 0) {
-                        "Local Time Zone |"
-                    } else {
-                        val absSec = kotlin.math.abs(diffSeconds)
-                        val h = absSec / 3600
-                        val m = (absSec % 3600) / 60
-                        val dir = if (diffSeconds > 0) "Ahead" else "Behind"
-                        val hStr = if (h > 0) "$h hours " else ""
-                        val mStr = if (m > 0) "$m Minutes " else ""
-                        "$hStr$mStr$dir |".trimStart()
-                    }
-                    
                     Text(
-                        text = offsetLabel,
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "$diffString |",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -569,14 +653,13 @@ private fun CityRow(
                     )
                 }
                 
-                // Bold Time Column
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = timeOnly,
-                        style = MaterialTheme.typography.headlineMedium.copy(
+                        style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Bold, 
                             fontFeatureSettings = "tnum"
                         ), 
