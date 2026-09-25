@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  This accent is genuinely under the app's control, not OS/OEM chrome -- a neutral gray was
+  This accent is genuinely under the app's control, not OS/OEM chrome — a neutral gray was
   tried here on a mistaken belief that it was, and on-device testing showed the colorized card
   rendering blue regardless of that gray, which read as proof it couldn't be changed. It wasn't
   OEM chrome: a colorized notification's background comes from setColor() in Notifications.kt,
@@ -9,8 +9,8 @@
   fell back to the device's own Material You accent (blue, on the device this was tested on)
   instead. The fix is a real, saturated color, not "no color".
 
-  This is Palette.CONCEPT's tertiary -- the coral pinned to "an armed alarm" in Palettes.kt's own
-  doc comment -- so the notification card, the status-bar chip, and the in-app alarm accent all
+  This is Palette.CONCEPT's tertiary — the coral pinned to "an armed alarm" in Palettes.kt's own
+  doc comment — so the notification card, the status-bar chip, and the in-app alarm accent all
   read as the same brand color instead of an unrelated device-picked one.
 -->
 <resources>
