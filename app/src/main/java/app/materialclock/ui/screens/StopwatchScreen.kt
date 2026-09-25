@@ -42,17 +42,17 @@ import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
 
 /**
- * Logic for generating 44 different colors
+ * Logic for generating 44 different vibrant colors
  */
 @Composable
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
-    // Divide 360 degrees into 44 parts to create 44 unique colors
     val hue = ((index - 1) * (360f / 44f)) % 360f 
     
-    val saturation = if (isDark) 0.5f else 0.7f
-    val lightnessBadge = if (isDark) 0.3f else 0.85f
-    val lightnessText = if (isDark) 0.9f else 0.2f
+    // Increased saturation and lightness for Dark mode to avoid dull/grey colors
+    val saturation = if (isDark) 0.75f else 0.7f
+    val lightnessBadge = if (isDark) 0.45f else 0.85f
+    val lightnessText = if (isDark) 0.95f else 0.2f
     
     val badgeBg = Color.hsl(hue, saturation, lightnessBadge)
     val badgeFg = Color.hsl(hue, saturation, lightnessText)
@@ -257,13 +257,13 @@ private fun StopwatchControls(
 private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
-private val IDLE_PADDING_H = 28.dp
+private val IDLE_PADDING_H = 48.dp // Increased width for the single Start button
 private val STACK_GAP = 35.dp
 private val READOUT_CAP = 66.dp
 private val GAP = 6.dp
-private val ROW_HEIGHT = 56.dp
-private val LAP_ROW_HEIGHT = 48.dp
-private val LAP_GAP = 4.dp
+private val ROW_HEIGHT = 76.dp // Increased height for all main buttons
+private val LAP_ROW_HEIGHT = 56.dp // Slightly increased for better touch target
+private val LAP_GAP = 6.dp
 
 @Composable
 private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
@@ -284,22 +284,24 @@ private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
         modifier = Modifier.fillMaxWidth().height(LAP_ROW_HEIGHT),
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(color = badgeBg, shape = CircleShape, modifier = Modifier.size(28.dp)) {
+            Surface(color = badgeBg, shape = CircleShape, modifier = Modifier.size(32.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         lap.index.toString(),
-                        style = MaterialTheme.typography.labelLargeEmphasized,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                         color = badgeFg,
                     )
                 }
             }
             Text(
                 "$m:$s.$cs",
-                style = MaterialTheme.typography.titleMediumEmphasized,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 color = timeColor,
                 modifier = Modifier.weight(1f),
             )
