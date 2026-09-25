@@ -236,6 +236,7 @@ object Notifications {
             .setColor(context.getColor(R.color.notification_accent))
             .setColorized(true)
             .setContentTitle("Stopwatch")
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
