@@ -5,7 +5,9 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +30,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import app.materialclock.core.ClockTimer
@@ -54,7 +57,6 @@ import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
-private const val WIND_MAX_MINUTES = 60
 private const val RING_SIZE_DP = 300
 
 @Composable
@@ -80,7 +82,9 @@ fun TimersScreen(
         targetState = timer != null,
         transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
         label = "timer-state",
-        modifier = modifier.fillMaxSize().padding(contentPadding),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(contentPadding),
     ) { running ->
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel)
@@ -90,7 +94,7 @@ fun TimersScreen(
     }
 }
 
-/* ── Setting ───────────────────────────────────────────────────────────────────────────────── */
+/* ── Setting (Updated with Segmented Display & Pill Shapes) ────────────────────────────────── */
 
 @Composable
 private fun SetTimer(
@@ -111,20 +115,29 @@ private fun SetTimer(
     val armed = total > 0
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(4.dp))
-        DraftReadout(hh, mm, ss)
-        Spacer(Modifier.height(22.dp))
-        Keypad(onDigit = onDigit, onBackspace = onBackspace)
-        Spacer(Modifier.height(10.dp))
-        Winder(
-            value = (total / 60).toInt().coerceAtMost(WIND_MAX_MINUTES),
-            range = 0..WIND_MAX_MINUTES,
-            onValueChange = onWind,
+        // Pushed the display down slightly for better visual balance since slider is gone
+        Spacer(Modifier.height(32.dp)) 
+        
+        // New Segmented Display with h, m, s labels
+        DraftReadout(
+            hh = hh, 
+            mm = mm, 
+            ss = ss,
+            onClear = { onWind(0) } 
         )
-        Spacer(Modifier.height(10.dp))
+        
+        Spacer(Modifier.height(42.dp))
+        
+        // Keypad with integrated 'C' button
+        Keypad(onDigit = onDigit, onBackspace = onBackspace, onClearAll = { onWind(0) })
+        
+        Spacer(Modifier.height(24.dp))
+        
         WidePill(
             text = "Start",
             icon = Icons.Rounded.PlayArrow,
@@ -133,8 +146,11 @@ private fun SetTimer(
             container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
             content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(14.dp))
+        
+        Spacer(Modifier.height(18.dp))
+        
         PresetRow(presets, onStartPreset, onEditPreset, onAddPreset)
+        
         Spacer(Modifier.height(10.dp))
     }
 }
@@ -154,10 +170,25 @@ private fun PresetRow(
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
         item {
-            AssistChip(
-                onClick = onAdd,
-                label = { Text("+ Add") },
-            )
+            // Updated Add Button to match Pill Shape and dark mode color consistency
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(onClick = onAdd)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "+ Add", 
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
         }
     }
 }
@@ -166,46 +197,83 @@ private fun PresetRow(
 private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
     val minutes = preset.totalSeconds / 60
     Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = CircleShape, // Changed from large to CircleShape for Pill design
+        color = MaterialTheme.colorScheme.primaryContainer, // Vibrant in dark mode
         modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 preset.name,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
                 "${minutes} min",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
             )
         }
     }
 }
 
 @Composable
-private fun DraftReadout(hh: String, mm: String, ss: String) {
-    val text = "$hh:$mm:$ss"
-    val firstReal = text.indexOfFirst { it in '1'..'9' }.let { if (it < 0) text.length - 1 else it }
+private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit) {
     val cap = 56.dp
+    val labelStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
+    val activeColor = MaterialTheme.colorScheme.onSurface
+    
+    // Logic to highlight active parts (right to left)
+    val totalStr = "$hh$mm$ss"
+    val isHActive = hh != "00"
+    val isMActive = isHActive || mm != "00"
+    val isSActive = isMActive || ss != "00"
+
     Row(
         verticalAlignment = Alignment.Bottom,
-        modifier = Modifier.clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null, // Hidden ripple for clean look
+                onClick = onClear // Tapping readout resets to let user re-type cleanly
+            )
+            .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
     ) {
-        if (firstReal > 0) {
-            Numerals(text = text.take(firstReal), capHeight = cap, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f), width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+        // Hours Column
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("h", style = labelStyle, color = if (isHActive) activeColor else inactiveColor)
+            Spacer(Modifier.height(4.dp))
+            Numerals(text = hh, capHeight = cap, color = if (isHActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
-        Numerals(text = text.drop(firstReal), capHeight = cap, color = MaterialTheme.colorScheme.onSurface, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+        
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        
+        // Minutes Column
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("m", style = labelStyle, color = if (isMActive) activeColor else inactiveColor)
+            Spacer(Modifier.height(4.dp))
+            Numerals(text = mm, capHeight = cap, color = if (isMActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+        }
+        
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        
+        // Seconds Column
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("s", style = labelStyle, color = if (isSActive) activeColor else inactiveColor)
+            Spacer(Modifier.height(4.dp))
+            Numerals(text = ss, capHeight = cap, color = activeColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+        }
     }
 }
 
 @Composable
-private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit) {
+private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll: () -> Unit) {
     val rows = listOf("123", "456", "789")
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -216,16 +284,36 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit) {
                 row.forEach { c -> DigitKey(c, onDigit, Modifier.weight(1f)) }
             }
         }
+        // Bottom row with Clear, 0, and Backspace
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Spacer(Modifier.weight(1f))
+            // New 'C' Clear Button
+            KeyBox(
+                modifier = Modifier.weight(1f),
+                onClick = onClearAll,
+                container = Color.Transparent,
+                label = "Clear All",
+            ) {
+                Text(
+                    "C", 
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), 
+                    color = MaterialTheme.colorScheme.error 
+                )
+            }
+            
             DigitKey('0', onDigit, Modifier.weight(1f))
+            
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onBackspace,
                 container = Color.Transparent,
                 label = "Delete",
             ) {
-                Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(26.dp))
+                Icon(
+                    Icons.AutoMirrored.Rounded.Backspace, 
+                    contentDescription = null, 
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    modifier = Modifier.size(26.dp)
+                )
             }
         }
     }
@@ -250,12 +338,19 @@ private fun KeyBox(
     label: String,
     content: @Composable () -> Unit,
 ) {
-    Surface(onClick = onClick, color = container, shape = CircleShape, modifier = modifier.height(58.dp).clearAndSetSemantics { contentDescription = label }) {
+    Surface(
+        onClick = onClick, 
+        color = container, 
+        shape = CircleShape, 
+        modifier = modifier
+            .height(58.dp)
+            .clearAndSetSemantics { contentDescription = label }
+    ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }
 }
 
-/* ── Running ───────────────────────────────────────────────────────────────────────────────── */
+/* ── Running (Consistent UI elements) ──────────────────────────────────────────────────────── */
 
 @Composable
 private fun RunningTimer(
@@ -292,7 +387,9 @@ private fun RunningTimer(
     }
 
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
@@ -346,6 +443,8 @@ private fun RunningTimer(
                     icon = if (running) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     onClick = onPauseResume,
                     height = 78.dp,
+                    container = if (running) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                    content = if (running) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             Box(Modifier.weight(1f)) {
