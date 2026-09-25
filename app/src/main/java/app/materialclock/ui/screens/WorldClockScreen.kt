@@ -10,10 +10,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LightMode
@@ -41,7 +40,6 @@ import androidx.compose.material.icons.rounded.Deselect
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -69,7 +67,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -333,7 +330,7 @@ private fun HomeDigitalClock(
                     text = meridiem,
                     style = TextStyle(
                         fontSize = 32.sp, 
-                        fontWeight = FontWeight.Medium, 
+                        fontWeight = FontWeight.Bold, // Made bold as requested
                         letterSpacing = 1.sp
                     ),
                     color = ink,
@@ -506,7 +503,7 @@ private fun CityRow(
                 else -> false
             }
         },
-        positionalThreshold = { totalDistance -> totalDistance * 0.25f }
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f } // Increased threshold to stop jitter
     )
 
     SwipeToDismissBox(
@@ -556,7 +553,7 @@ private fun CityRow(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Icon(
-                            imageVector = if (isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin, 
+                            imageVector = Icons.Rounded.PushPin, // Expressive Material 3 pin
                             contentDescription = if (isPinned) "Unpin" else "Pin", 
                             tint = if (isPinned) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer, 
                             modifier = Modifier.size(28.dp)
@@ -567,6 +564,7 @@ private fun CityRow(
         },
     ) {
         val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface // Consistent ink for selected
         
         Surface(
             color = containerColor,
@@ -615,7 +613,7 @@ private fun CityRow(
                             text = city.city,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = contentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -623,31 +621,31 @@ private fun CityRow(
                         if (city.pinnedAt != null) {
                             Spacer(Modifier.width(6.dp))
                             Icon(
-                                imageVector = Icons.Filled.PushPin,
+                                imageVector = Icons.Rounded.PushPin,
                                 contentDescription = "Pinned",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
+                                tint = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
                     Text(
                         text = "${city.country.ifBlank { city.region }} |",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "$diffString |",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, // basicMarquee prevents truncation and slowly scrolls text
+                        modifier = Modifier.basicMarquee() 
                     )
                     Text(
                         text = "${city.utcCode(nowUtcMillis)} |",
                         style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -663,7 +661,7 @@ private fun CityRow(
                             fontWeight = FontWeight.Bold, 
                             fontFeatureSettings = "tnum"
                         ), 
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         softWrap = false,
                     )
@@ -671,7 +669,7 @@ private fun CityRow(
                         Text(
                             text = amPmString,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
                             maxLines = 1,
                             softWrap = false,
                         )
