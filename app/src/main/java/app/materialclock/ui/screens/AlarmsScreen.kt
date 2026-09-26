@@ -29,7 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.AlarmOff
 import androidx.compose.material.icons.rounded.AlarmOn
 import androidx.compose.material.icons.rounded.Delete
@@ -348,10 +348,12 @@ private fun GroupCardsSection(
                 pair.forEach { group ->
                     val groupAlarms = byGroup[group.id].orEmpty()
                     val isSelected = group.id in selectedGroups
+                    val armedCount = groupAlarms.count { it.enabled }
+                    val unarmedCount = groupAlarms.size - armedCount
                     GroupCard(
                         group = group,
-                        total = groupAlarms.size,
-                        armed = groupAlarms.count { it.enabled },
+                        armedCount = armedCount,
+                        unarmedCount = unarmedCount,
                         checked = groupAlarms.isNotEmpty() && groupAlarms.all { it.enabled },
                         isSelected = isSelected,
                         inSelectionMode = inSelectionMode,
@@ -370,8 +372,8 @@ private fun GroupCardsSection(
 @Composable
 private fun GroupCard(
     group: AlarmGroup,
-    total: Int,
-    armed: Int,
+    armedCount: Int,
+    unarmedCount: Int,
     checked: Boolean,
     isSelected: Boolean,
     inSelectionMode: Boolean,
@@ -382,7 +384,7 @@ private fun GroupCard(
     val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val titleFontWeight = if (checked) FontWeight.Bold else FontWeight.Normal
+    val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
 
     Surface(
         color = container,
@@ -422,18 +424,24 @@ private fun GroupCard(
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupCount(icon = Icons.Filled.Alarm, count = total, ink = ink)
+                GroupCount(armed = armedCount, unarmed = unarmedCount, ink = ink)
             }
         }
     }
 }
 
 @Composable
-private fun GroupCount(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int, ink: Color) {
+private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.Alarm, contentDescription = "On Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(4.dp))
-        Text(count.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
+        Text(armed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
+        
+        Spacer(Modifier.width(12.dp))
+        
+        Icon(Icons.Rounded.AlarmOff, contentDescription = "Off Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(unarmed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
     }
 }
 
@@ -464,7 +472,9 @@ private fun AlarmRow(
     val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
     val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
     
-    val rowFontWeight = if (enabled) FontWeight.Bold else FontWeight.Normal
+    // Light bold ko Medium (500) kar diya gaya hai jisse bahut bold na lage. Off par Normal (400) rakha gaya hai.
+    val timeFontWeight = if (enabled) FontWeight.Medium else FontWeight.Normal
+    val titleFontWeight = if (enabled) FontWeight.SemiBold else FontWeight.Normal
 
     Surface(
         color = container,
@@ -485,7 +495,7 @@ private fun AlarmRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = displayLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = rowFontWeight),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = titleFontWeight),
                         color = labelColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -504,8 +514,8 @@ private fun AlarmRow(
                 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
-                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = rowFontWeight, fontFeatureSettings = "tnum")
-                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = rowFontWeight)
+                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = timeFontWeight, fontFeatureSettings = "tnum")
+                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = timeFontWeight)
 
                 if (is24Hour) {
                     Text(
