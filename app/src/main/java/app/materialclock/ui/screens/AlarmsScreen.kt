@@ -354,7 +354,8 @@ private fun GroupCardsSection(
                         group = group,
                         armedCount = armedCount,
                         unarmedCount = unarmedCount,
-                        checked = groupAlarms.isNotEmpty() && groupAlarms.all { it.enabled },
+                        // Fix: Agar ek bhi alarm on hai toh group toggle ON rahega
+                        checked = groupAlarms.any { it.enabled },
                         isSelected = isSelected,
                         inSelectionMode = inSelectionMode,
                         onToggle = { onToggleGroup(group.id, it) },
@@ -472,7 +473,6 @@ private fun AlarmRow(
     val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
     val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
     
-    // Light bold ko Medium (500) kar diya gaya hai jisse bahut bold na lage. Off par Normal (400) rakha gaya hai.
     val timeFontWeight = if (enabled) FontWeight.Medium else FontWeight.Normal
     val titleFontWeight = if (enabled) FontWeight.SemiBold else FontWeight.Normal
 
