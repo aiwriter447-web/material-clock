@@ -69,7 +69,6 @@ class AlarmReceiver : BroadcastReceiver() {
         store.putAlarms(cleared)
         val upcomingMinutes = store.settingsNow().alarms.upcomingNotificationMinutes
         cleared.firstOrNull { it.id == id }?.let { AlarmScheduler.schedule(context, it, upcomingMinutes) }
-        Notifications.refreshNextAlarmIndicator(context, cleared)
 
         ContextCompat.startForegroundService(
             context,
@@ -113,9 +112,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val store = ClockStore(context)
         Notifications.ensureChannels(context)
         val upcomingMinutes = store.settingsNow().alarms.upcomingNotificationMinutes
-        val alarms = store.alarmsNow()
-        AlarmScheduler.scheduleAll(context, alarms, upcomingMinutes)
-        Notifications.refreshNextAlarmIndicator(context, alarms)
+        AlarmScheduler.scheduleAll(context, store.alarmsNow(), upcomingMinutes)
         // A reboot resets elapsedRealtime, so any stored deadline is meaningless. Rebuild the
         // timer's notification from what survived and let the store's own clamp decide.
         store.timerNow()?.let { TimerScheduler.sync(context, it) }
