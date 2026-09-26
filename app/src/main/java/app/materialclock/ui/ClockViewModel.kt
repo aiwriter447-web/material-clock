@@ -69,7 +69,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     val settings: StateFlow<ClockSettings> =
         store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ClockSettings())
-        
+
     val alarms: StateFlow<List<Alarm>> =
         store.alarms
             .map { list ->
@@ -81,10 +81,10 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-            
+
     val groups: StateFlow<List<AlarmGroup>> =
         store.groups.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-        
+
     val cities: StateFlow<List<WorldCity>> =
         store.cities
             .map { list ->
@@ -95,7 +95,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-            
+
     val timer: StateFlow<ClockTimer?> =
         store.timer.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val stopwatch: StateFlow<Stopwatch> =
@@ -113,10 +113,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             store.settings.first()
             _isLoaded.value = true
-            Notifications.ensureChannels(ctx)
-            val alarms = store.alarmsNow()
-            AlarmScheduler.scheduleAll(ctx, alarms)
-            Notifications.refreshNextAlarmIndicator(ctx, alarms)
         }
     }
 
@@ -132,7 +128,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         next.firstOrNull { it.id == id }?.let { a ->
             if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, id)
         }
-        Notifications.refreshNextAlarmIndicator(ctx, next)
     }
 
     fun saveAlarm(draft: Alarm) = viewModelScope.launch {
@@ -146,14 +141,12 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putAlarms(next)
         AlarmScheduler.schedule(ctx, alarm)
-        Notifications.refreshNextAlarmIndicator(ctx, next)
     }
 
     fun deleteAlarm(id: Long) = viewModelScope.launch {
         AlarmScheduler.cancel(ctx, id)
         val next = store.alarmsNow().filterNot { it.id == id }
         store.putAlarms(next)
-        Notifications.refreshNextAlarmIndicator(ctx, next)
     }
 
     fun togglePinAlarm(id: Long) = viewModelScope.launch {
@@ -221,7 +214,6 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         next.filter { it.groupId == groupId }.forEach { a ->
             if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
         }
-        Notifications.refreshNextAlarmIndicator(ctx, next)
     }
 
     fun addCity(city: WorldCity) = viewModelScope.launch {
