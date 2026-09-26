@@ -177,7 +177,6 @@ fun WorldClockScreen(
             items(cities, key = { it.zone.id }, contentType = { "city" }) { city ->
                 val isSelected = city.zone in selectedCities
                 
-                // Swipe gesture removed completely as requested
                 CityRow(
                     city = city,
                     home = home,
@@ -271,6 +270,10 @@ private fun HomeDigitalClock(
         }
     }
 
+    val timeFontSize = if (showSeconds) 52.sp else 76.sp
+    val amPmFontSize = if (showSeconds) 24.sp else 32.sp
+    val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -285,9 +288,8 @@ private fun HomeDigitalClock(
         ) {
             Text(
                 text = timeText,
-                // Applied Alarm Tile typography structure and settings with fixed size
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = 76.sp, 
+                    fontSize = timeFontSize, 
                     fontWeight = FontWeight.Medium, 
                     letterSpacing = 1.sp, 
                     fontFeatureSettings = "tnum"
@@ -300,16 +302,15 @@ private fun HomeDigitalClock(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = meridiem,
-                    // Applied Alarm Tile AM/PM typography structure with fixed size
                     style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 32.sp, 
+                        fontSize = amPmFontSize, 
                         fontWeight = FontWeight.Bold, 
                         letterSpacing = 1.sp
                     ),
                     color = ink,
                     maxLines = 1,
                     softWrap = false,
-                    modifier = Modifier.padding(bottom = 14.dp) 
+                    modifier = Modifier.padding(bottom = amPmBottomPadding) 
                 )
             }
         }
