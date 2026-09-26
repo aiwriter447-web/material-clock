@@ -116,36 +116,40 @@ private fun SetTimer(
     val armed = total > 0
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxSize(), // Yahan se horizontal padding hata diya gaya hai taki rows edge tak ja sakein
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Labels upar shift karne ke liye spacing thodi kam ki
         Spacer(Modifier.height(8.dp)) 
         
         DraftReadout(
             hh = hh, 
             mm = mm, 
             ss = ss,
-            onClear = { onWind(0) } 
+            onClear = { onWind(0) },
+            modifier = Modifier.padding(horizontal = 20.dp) // Yahan padding add kiya
         )
         
-        // Keypad niche wapas position karne ke liye safe distance badhaya
         Spacer(Modifier.height(36.dp))
         
-        Keypad(onDigit = onDigit, onBackspace = onBackspace, onClearAll = { onWind(0) })
+        Keypad(
+            onDigit = onDigit, 
+            onBackspace = onBackspace, 
+            onClearAll = { onWind(0) },
+            modifier = Modifier.padding(horizontal = 20.dp) // Yahan padding add kiya
+        )
         
         Spacer(Modifier.height(24.dp))
         
-        WidePill(
-            text = "Start",
-            icon = Icons.Rounded.PlayArrow,
-            onClick = onStart,
-            height = 76.dp,
-            container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-            content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Box(modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+            WidePill(
+                text = "Start",
+                icon = Icons.Rounded.PlayArrow,
+                onClick = onStart,
+                height = 76.dp,
+                container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         
         Spacer(Modifier.height(18.dp))
         
@@ -165,6 +169,7 @@ private fun PresetRow(
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 20.dp) // Isse items edges par cut nahi honge aur smoothly fade honge
     ) {
         items(presets, key = { it.id }) { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
@@ -219,7 +224,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 }
 
 @Composable
-private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit) {
+private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
     val cap = 56.dp
     val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
@@ -232,14 +237,15 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
     Row(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.Center,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            // Yahan se .clip hata diya gaya hai jisse text ko katne se roka ja sake
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null, 
                 onClick = onClear 
             )
+            .padding(top = 8.dp, bottom = 8.dp) // Niche extra jagah di taki numbers easily fit ho jayein
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -267,10 +273,10 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
 }
 
 @Composable
-private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll: () -> Unit) {
+private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll: () -> Unit, modifier: Modifier = Modifier) {
     val rows = listOf("123", "456", "789")
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         rows.forEach { row ->
