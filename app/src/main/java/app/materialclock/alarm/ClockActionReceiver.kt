@@ -117,8 +117,6 @@ class ClockActionReceiver : BroadcastReceiver() {
             ?.let {
                 AlarmScheduler.schedule(context, it)
             }
-
-        Notifications.refreshNextAlarmIndicator(context, updated)
     }
 
     private suspend fun timerToggle(
