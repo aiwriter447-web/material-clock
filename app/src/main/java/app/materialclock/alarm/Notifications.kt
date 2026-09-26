@@ -159,7 +159,6 @@ object Notifications {
             // pick something for contrast and was falling back to the device's own Material You
             // accent instead, which is what actually produced the blue card seen before.
             .setColor(context.getColor(R.color.notification_accent))
-            .setColorized(true)
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
@@ -234,7 +233,6 @@ object Notifications {
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
             // setColorized(true) restored -- see buildTimer for why.
             .setColor(context.getColor(R.color.notification_accent))
-            .setColorized(true)
             .setContentTitle("Stopwatch")
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
