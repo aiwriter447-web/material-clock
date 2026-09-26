@@ -98,6 +98,7 @@ object Notifications {
             }
         )
 
+        // Timer notification channel.
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_TIMER,
@@ -106,9 +107,12 @@ object Notifications {
             ).apply {
                 description = "A running timer"
                 setSound(null, null)
+                lockscreenVisibility =
+                    android.app.Notification.VISIBILITY_PUBLIC
             }
         )
 
+        // Stopwatch notification channel.
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_STOPWATCH,
@@ -117,6 +121,8 @@ object Notifications {
             ).apply {
                 description = "A running stopwatch"
                 setSound(null, null)
+                lockscreenVisibility =
+                    android.app.Notification.VISIBILITY_PUBLIC
             }
         )
     }
@@ -477,6 +483,7 @@ object Notifications {
                 ClockActionReceiver::class.java,
             )
                 .setAction(action)
+                .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
                 .putExtra(
                     AlarmReceiver.EXTRA_ID,
                     id,
