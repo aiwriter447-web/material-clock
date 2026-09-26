@@ -191,7 +191,6 @@ fun AlarmsScreen(
             items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
                 val isSelected = alarm.id in selectedAlarms
                 
-                // Swipe gesture removed completely as requested
                 AlarmRow(
                     alarm = alarm,
                     order = order,
@@ -383,6 +382,8 @@ private fun GroupCard(
     val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
+    val titleFontWeight = if (checked) FontWeight.Bold else FontWeight.Normal
+
     Surface(
         color = container,
         shape = RoundedCornerShape(GROUP_CARD_CORNER),
@@ -395,7 +396,7 @@ private fun GroupCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = group.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = titleFontWeight),
                     color = ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -404,7 +405,19 @@ private fun GroupCard(
                 Switch(
                     checked = checked, 
                     onCheckedChange = { if (!inSelectionMode) onToggle(it) },
-                    enabled = !inSelectionMode
+                    enabled = !inSelectionMode,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = container,
+                        checkedTrackColor = ink,
+                        checkedBorderColor = Color.Transparent,
+                        uncheckedThumbColor = ink,
+                        uncheckedTrackColor = Color.Transparent,
+                        uncheckedBorderColor = ink,
+                        disabledCheckedThumbColor = container,
+                        disabledCheckedTrackColor = ink,
+                        disabledUncheckedThumbColor = ink,
+                        disabledUncheckedTrackColor = Color.Transparent,
+                    )
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -450,6 +463,8 @@ private fun AlarmRow(
 
     val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
     val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
+    
+    val rowFontWeight = if (enabled) FontWeight.Bold else FontWeight.Normal
 
     Surface(
         color = container,
@@ -470,7 +485,7 @@ private fun AlarmRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = displayLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = rowFontWeight),
                         color = labelColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -489,8 +504,8 @@ private fun AlarmRow(
                 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
-                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
-                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = rowFontWeight, fontFeatureSettings = "tnum")
+                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = rowFontWeight)
 
                 if (is24Hour) {
                     Text(
@@ -522,7 +537,7 @@ private fun AlarmRow(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
             ) {
-                DayLetters(alarm = alarm, order = order, ink = ink)
+                DayLetters(alarm = alarm, order = order, ink = ink, enabled = enabled)
                 Spacer(modifier = Modifier.height(16.dp))
                 Switch(
                     checked = enabled,
@@ -547,14 +562,15 @@ private fun AlarmRow(
 }
 
 @Composable
-private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color) {
-    val text = remember(alarm.days, alarm.isOneShot, order, ink) {
+private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color, enabled: Boolean) {
+    val text = remember(alarm.days, alarm.isOneShot, order, ink, enabled) {
         buildAnnotatedString {
             order.forEach { day ->
                 val active = !alarm.isOneShot && day in alarm.days
+                val isBold = enabled && active
                 withStyle(
                     SpanStyle(
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
                         color = if (active) ink else ink.copy(alpha = 0.30f),
                     )
                 ) {
@@ -566,7 +582,6 @@ private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color) {
 
     Text(
         text = text,
-        // Font size increased and spacing widened for better readability
         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, letterSpacing = 2.sp), 
         maxLines = 1
     )
