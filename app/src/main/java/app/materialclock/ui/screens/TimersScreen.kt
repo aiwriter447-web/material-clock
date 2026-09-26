@@ -121,7 +121,8 @@ private fun SetTimer(
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(16.dp)) 
+        // Labels upar shift karne ke liye spacing thodi kam ki
+        Spacer(Modifier.height(8.dp)) 
         
         DraftReadout(
             hh = hh, 
@@ -130,7 +131,8 @@ private fun SetTimer(
             onClear = { onWind(0) } 
         )
         
-        Spacer(Modifier.height(16.dp))
+        // Keypad niche wapas position karne ke liye safe distance badhaya
+        Spacer(Modifier.height(36.dp))
         
         Keypad(onDigit = onDigit, onBackspace = onBackspace, onClearAll = { onWind(0) })
         
