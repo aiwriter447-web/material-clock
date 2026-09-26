@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 
 /**
  * Keeps Timer and Stopwatch Live Update notifications fresh while they are
@@ -153,7 +154,7 @@ class LiveUpdateService : Service() {
 
     override fun onDestroy() {
         job?.cancel()
-        scope.coroutineContext.cancel()
+        scope.cancel()
         super.onDestroy()
     }
 
