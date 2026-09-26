@@ -18,7 +18,6 @@ import app.materialclock.core.TimerState
 import app.materialclock.core.clockFormat
 import app.materialclock.core.parts
 import app.materialclock.core.stopwatchParts
-import java.time.Duration
 import java.time.LocalDateTime
 
 /**
@@ -63,6 +62,7 @@ object Notifications {
     const val ID_RINGING = 1
     const val ID_TIMER = 2
     const val ID_STOPWATCH = 3
+
     /** Offset so an upcoming-alarm notice never collides with [ID_RINGING]/[ID_TIMER]/[ID_STOPWATCH]. */
     private const val ID_UPCOMING_BASE = 4_000
 
@@ -73,7 +73,11 @@ object Notifications {
         // No sound on the channel: the ringer plays its own looping audio, and a channel sound
         // would fire a second, one-shot copy over the top of it.
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ALARM, "Alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(
+                CHANNEL_ALARM,
+                "Alarms",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
                 description = "A ringing alarm"
                 setSound(null, null)
                 enableVibration(false)
@@ -81,21 +85,36 @@ object Notifications {
                 setBypassDnd(true)
             }
         )
+
         nm.createNotificationChannel(
             // DEFAULT, not HIGH: this is a heads-up notice, not the ring — it should announce
             // itself once and sit in the shade, not compete with the alarm channel's own urgency.
-            NotificationChannel(CHANNEL_UPCOMING, "Upcoming alarms", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            NotificationChannel(
+                CHANNEL_UPCOMING,
+                "Upcoming alarms",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
                 description = "A reminder before an alarm rings"
             }
         )
+
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_TIMER, "Timers", NotificationManager.IMPORTANCE_LOW).apply {
+            NotificationChannel(
+                CHANNEL_TIMER,
+                "Timers",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
                 description = "A running timer"
                 setSound(null, null)
             }
         )
+
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_STOPWATCH, "Stopwatch", NotificationManager.IMPORTANCE_LOW).apply {
+            NotificationChannel(
+                CHANNEL_STOPWATCH,
+                "Stopwatch",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
                 description = "A running stopwatch"
                 setSound(null, null)
             }
@@ -111,19 +130,45 @@ object Notifications {
      * turning the alarm off.
      */
     fun showUpcoming(context: Context, alarm: app.materialclock.core.Alarm) {
-        post(context, ID_UPCOMING_BASE + alarm.id.toInt(), buildUpcoming(context, alarm))
+        post(
+            context,
+            ID_UPCOMING_BASE + alarm.id.toInt(),
+            buildUpcoming(context, alarm),
+        )
     }
 
-    private fun buildUpcoming(context: Context, alarm: app.materialclock.core.Alarm): android.app.Notification {
+    private fun buildUpcoming(
+        context: Context,
+        alarm: app.materialclock.core.Alarm,
+    ): android.app.Notification {
         val is24 = android.text.format.DateFormat.is24HourFormat(context)
-        val hour = if (is24) alarm.time.hour else ((alarm.time.hour % 12).takeIf { it != 0 } ?: 12)
-        val meridiem = if (is24) "" else if (alarm.time.hour < 12) " AM" else " PM"
-        val timeText = "%d:%02d%s".format(hour, alarm.time.minute, meridiem)
+
+        val hour = if (is24) {
+            alarm.time.hour
+        } else {
+            ((alarm.time.hour % 12).takeIf { it != 0 } ?: 12)
+        }
+
+        val meridiem = if (is24) {
+            ""
+        } else if (alarm.time.hour < 12) {
+            " AM"
+        } else {
+            " PM"
+        }
+
+        val timeText = "%d:%02d%s".format(
+            hour,
+            alarm.time.minute,
+            meridiem,
+        )
+
         val title = if (alarm.label.isNotBlank()) {
             "\"${alarm.label}\" rings at $timeText"
         } else {
             "Alarm rings at $timeText"
         }
+
         return NotificationCompat.Builder(context, CHANNEL_UPCOMING)
             .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle(title)
@@ -137,28 +182,24 @@ object Notifications {
     /* ── Timer ──────────────────────────────────────────────────────────────────────────────── */
 
     fun showTimer(context: Context, timer: ClockTimer) {
-        post(context, ID_TIMER, buildTimer(context, timer))
+        post(
+            context,
+            ID_TIMER,
+            buildTimer(context, timer),
+        )
     }
 
     /** Split out of [showTimer] so [LiveUpdateService] can hand the same notification to `startForeground`. */
-    fun buildTimer(context: Context, timer: ClockTimer): android.app.Notification {
+    fun buildTimer(
+        context: Context,
+        timer: ClockTimer,
+    ): android.app.Notification {
         val running = timer.state == TimerState.RUNNING
         val now = SystemClock.elapsedRealtime()
         val remaining = timer.remaining(now)
+
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
-            // setColorized(true) is required here: removing it (tried once) broke Now Bar
-            // promotion on real-device testing, even though Google's own Live Update docs list
-            // "must NOT setColorized" as a requirement -- that appears not to hold on this OEM
-            // skin in practice, and a working promoted notification matters more than chasing
-            // the documented-but-untrue-here rule.
-            //
-            // notification_accent is Palette.CONCEPT's alarm coral (#B3263E light / #FB7B88 dark),
-            // not the neutral gray this comment used to describe -- see notification_colors.xml
-            // for why: a hue-less gray isn't "no color", the colorized-card algorithm still has to
-            // pick something for contrast and was falling back to the device's own Material You
-            // accent instead, which is what actually produced the blue card seen before.
-            .setColor(context.getColor(R.color.notification_accent))
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
@@ -172,17 +213,45 @@ object Notifications {
             .addAction(
                 0,
                 if (running) "Pause" else "Resume",
-                broadcast(context, ClockActionReceiver.ACTION_TIMER_TOGGLE, 20),
+                broadcast(
+                    context,
+                    ClockActionReceiver.ACTION_TIMER_TOGGLE,
+                    20,
+                ),
             )
-            .addAction(0, "+1 min", broadcast(context, ClockActionReceiver.ACTION_TIMER_ADD, 21))
-            .addAction(0, "Cancel", broadcast(context, ClockActionReceiver.ACTION_TIMER_CANCEL, 22))
+            .addAction(
+                0,
+                "+1 min",
+                broadcast(
+                    context,
+                    ClockActionReceiver.ACTION_TIMER_ADD,
+                    21,
+                ),
+            )
+            .addAction(
+                0,
+                "Cancel",
+                broadcast(
+                    context,
+                    ClockActionReceiver.ACTION_TIMER_CANCEL,
+                    22,
+                ),
+            )
             .setStyle(
                 // One segment the length of the whole timer; the filled point is how much of it
                 // has elapsed. [LiveUpdateService] is what keeps this moving every second instead
                 // of it being a snapshot — see that class's doc.
                 NotificationCompat.ProgressStyle()
-                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100)))
-                    .setProgress(timer.fractionLeft(now).let { (100 - (it * 100)).toInt() }.coerceIn(0, 100)),
+                    .setProgressSegments(
+                        listOf(
+                            NotificationCompat.ProgressStyle.Segment(100)
+                        )
+                    )
+                    .setProgress(
+                        timer.fractionLeft(now)
+                            .let { (100 - (it * 100)).toInt() }
+                            .coerceIn(0, 100)
+                    ),
             )
 
         if (running) {
@@ -197,42 +266,80 @@ object Notifications {
             // more useful at a glance than a bare "left" countdown, since the chronometer digits
             // above already show that.
             val is24h = android.text.format.DateFormat.is24HourFormat(context)
+
             val setMinutes = timer.total.toMinutes()
-            val durationLabel = if (setMinutes > 0) "$setMinutes m" else "${timer.total.seconds} s"
+
+            val durationLabel = if (setMinutes > 0) {
+                "$setMinutes m"
+            } else {
+                "${timer.total.seconds} s"
+            }
+
             val endInstant = LocalDateTime.now().plus(remaining)
-            val endHour = if (is24h) endInstant.hour else ((endInstant.hour % 12).takeIf { it != 0 } ?: 12)
-            val endMeridiem = if (is24h) "" else if (endInstant.hour < 12) " am" else " pm"
-            val endLabel = "%d:%02d%s".format(endHour, endInstant.minute, endMeridiem)
+
+            val endHour = if (is24h) {
+                endInstant.hour
+            } else {
+                ((endInstant.hour % 12).takeIf { it != 0 } ?: 12)
+            }
+
+            val endMeridiem = if (is24h) {
+                ""
+            } else if (endInstant.hour < 12) {
+                " am"
+            } else {
+                " pm"
+            }
+
+            val endLabel = "%d:%02d%s".format(
+                endHour,
+                endInstant.minute,
+                endMeridiem,
+            )
+
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
-                .setWhen(System.currentTimeMillis() + remaining.toMillis())
+                .setWhen(
+                    System.currentTimeMillis() + remaining.toMillis()
+                )
                 .setShowWhen(true)
                 .setContentText("$durationLabel / $endLabel")
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
-                .setContentText("Paused · ${timer.pausedRemaining.clockFormat()}")
+                .setContentText(
+                    "Paused · ${timer.pausedRemaining.clockFormat()}"
+                )
         }
+
         return b.build()
     }
 
     fun hideTimer(context: Context) {
-        NotificationManagerCompat.from(context).cancel(ID_TIMER)
+        NotificationManagerCompat
+            .from(context)
+            .cancel(ID_TIMER)
     }
 
     /* ── Stopwatch ──────────────────────────────────────────────────────────────────────────── */
 
     fun showStopwatch(context: Context, sw: Stopwatch) {
-        post(context, ID_STOPWATCH, buildStopwatch(context, sw))
+        post(
+            context,
+            ID_STOPWATCH,
+            buildStopwatch(context, sw),
+        )
     }
 
     /** Split out of [showStopwatch] so [LiveUpdateService] can hand the same notification to `startForeground`. */
-    fun buildStopwatch(context: Context, sw: Stopwatch): android.app.Notification {
+    fun buildStopwatch(
+        context: Context,
+        sw: Stopwatch,
+    ): android.app.Notification {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
+
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
-            // setColorized(true) restored -- see buildTimer for why.
-            .setColor(context.getColor(R.color.notification_accent))
             .setContentTitle("Stopwatch")
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
@@ -243,28 +350,44 @@ object Notifications {
             // default, with no .setStyle call) is a documented promotable style, so this was left
             // without a ProgressStyle at first — a stopwatch has no total to be a fraction of.
             // Testing showed otherwise: Timer (which has ProgressStyle) reached the Now Bar and
-            // Stopwatch (identical colorized/promoted flags, no ProgressStyle) did not. So this is
+            // Stopwatch (identical promoted flags, no ProgressStyle) did not. So this is
             // a segment representing the *current minute* rather than the open-ended total — an
             // indicator that fills and resets every 60 s, not a "percent complete" that doesn't
             // exist for a stopwatch — purely so the style itself matches Timer's.
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(elapsed.clockFormat(withHours = true))
+            .setShortCriticalText(
+                elapsed.clockFormat(withHours = true)
+            )
             .setStyle(
                 NotificationCompat.ProgressStyle()
-                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(60)))
-                    .setProgress((elapsed.seconds % 60).toInt()),
+                    .setProgressSegments(
+                        listOf(
+                            NotificationCompat.ProgressStyle.Segment(60)
+                        )
+                    )
+                    .setProgress(
+                        (elapsed.seconds % 60).toInt()
+                    ),
             )
             .addAction(
                 0,
                 if (sw.running) "Stop" else "Start",
-                broadcast(context, ClockActionReceiver.ACTION_SW_TOGGLE, 30),
+                broadcast(
+                    context,
+                    ClockActionReceiver.ACTION_SW_TOGGLE,
+                    30,
+                ),
             )
             .addAction(
                 0,
                 if (sw.running) "Lap" else "Reset",
                 broadcast(
                     context,
-                    if (sw.running) ClockActionReceiver.ACTION_SW_LAP else ClockActionReceiver.ACTION_SW_RESET,
+                    if (sw.running) {
+                        ClockActionReceiver.ACTION_SW_LAP
+                    } else {
+                        ClockActionReceiver.ACTION_SW_RESET
+                    },
                     31,
                 ),
             )
@@ -281,23 +404,41 @@ object Notifications {
             // at all. It is a snapshot from this repost, not a live tween: [LiveUpdateService]
             // reposts once a second, so the hundredths hold still between ticks rather than
             // spinning continuously the way a real stopwatch face would.
-            val lapText = sw.laps.firstOrNull()?.let { "Lap ${it.index} · ${it.split.clockFormat(withHours = true)}" }
+            val lapText = sw.laps.firstOrNull()?.let {
+                "Lap ${it.index} · ${it.split.clockFormat(withHours = true)}"
+            }
+
             val (p1, p2, p3) = elapsed.stopwatchParts()
-            val elapsedWithCentis = if (elapsed.toHours() > 0) "$p1:$p2:$p3" else "$p1:$p2.$p3"
+
+            val elapsedWithCentis = if (elapsed.toHours() > 0) {
+                "$p1:$p2:$p3"
+            } else {
+                "$p1:$p2.$p3"
+            }
+
             b.setUsesChronometer(true)
-                .setWhen(System.currentTimeMillis() - elapsed.toMillis())
+                .setWhen(
+                    System.currentTimeMillis() - elapsed.toMillis()
+                )
                 .setShowWhen(true)
-                .setContentText(lapText ?: elapsedWithCentis)
+                .setContentText(
+                    lapText ?: elapsedWithCentis
+                )
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
-                .setContentText(sw.accumulated.clockFormat(withHours = true))
+                .setContentText(
+                    sw.accumulated.clockFormat(withHours = true)
+                )
         }
+
         return b.build()
     }
 
     fun hideStopwatch(context: Context) {
-        NotificationManagerCompat.from(context).cancel(ID_STOPWATCH)
+        NotificationManagerCompat
+            .from(context)
+            .cancel(ID_STOPWATCH)
     }
 
     /* ── Plumbing ───────────────────────────────────────────────────────────────────────────── */
@@ -307,21 +448,39 @@ object Notifications {
     const val TAB_STOPWATCH = "stopwatch"
     const val EXTRA_TAB = "tab"
 
-    fun openApp(context: Context, tab: String): PendingIntent = PendingIntent.getActivity(
+    fun openApp(
+        context: Context,
+        tab: String,
+    ): PendingIntent = PendingIntent.getActivity(
         context,
         tab.hashCode(),
         Intent(context, MainActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            )
             .putExtra(EXTRA_TAB, tab),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    fun broadcast(context: Context, action: String, requestCode: Int, id: Long = 0L): PendingIntent =
+    fun broadcast(
+        context: Context,
+        action: String,
+        requestCode: Int,
+        id: Long = 0L,
+    ): PendingIntent =
         PendingIntent.getBroadcast(
             context,
             requestCode,
-            Intent(context, ClockActionReceiver::class.java).setAction(action)
-                .putExtra(AlarmReceiver.EXTRA_ID, id),
+            Intent(
+                context,
+                ClockActionReceiver::class.java,
+            )
+                .setAction(action)
+                .putExtra(
+                    AlarmReceiver.EXTRA_ID,
+                    id,
+                ),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -330,12 +489,20 @@ object Notifications {
      *
      * `POST_NOTIFICATIONS` is a runtime permission from API 33 and every one of these calls sits
      * on a path that must not throw, whether a receiver, a service or a coroutine with no UI.
-     * Checking here once is cheaper than a try/catch at every call site and it fails the way it
-     * should: the alarm still rings, it is just not announced.
+     * Checking here once is cheaper than a try/catch at every call site and it fails the way
+     * it should: the alarm still rings, it is just not announced.
      */
-    private fun post(context: Context, id: Int, n: android.app.Notification) {
+    private fun post(
+        context: Context,
+        id: Int,
+        n: android.app.Notification,
+    ) {
         val nm = NotificationManagerCompat.from(context)
+
         if (!nm.areNotificationsEnabled()) return
-        runCatching { nm.notify(id, n) }
+
+        runCatching {
+            nm.notify(id, n)
+        }
     }
 }
