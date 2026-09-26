@@ -13,28 +13,42 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.materialclock.MainActivity
 import app.materialclock.R
-import app.materialclock.core.Alarm
 import app.materialclock.core.ClockTimer
 import app.materialclock.core.Stopwatch
 import app.materialclock.core.TimerState
 import app.materialclock.core.clockFormat
+import app.materialclock.core.parts
 import app.materialclock.core.stopwatchParts
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
 
+/**
+ * Every channel and every notification the app posts.
+ *
+ * ## The timer and stopwatch notifications carry no service
+ *
+ * They do not need one. A countdown is a deadline, not a process:
+ * remaining time is deadline - elapsedRealtime().
+ *
+ * The ringer uses a foreground service because looping audio is
+ * ongoing work.
+ *
+ * ## Promoted ongoing (Android 16 Now Bar / Live Updates)
+ *
+ * setRequestPromotedOngoing and POST_PROMOTED_NOTIFICATIONS in
+ * the manifest allow eligible notifications to be promoted.
+ *
+ * Progress and shortCriticalText are refreshed by LiveUpdateService.
+ */
 object Notifications {
 
     const val CHANNEL_ALARM = "alarm"
     const val CHANNEL_UPCOMING = "upcoming"
     const val CHANNEL_TIMER = "timer"
     const val CHANNEL_STOPWATCH = "stopwatch"
-    const val CHANNEL_NEXT_ALARM = "next_alarm"
 
     const val ID_RINGING = 1
     const val ID_TIMER = 2
     const val ID_STOPWATCH = 3
-    const val ID_NEXT_ALARM = 5
 
     private const val ID_UPCOMING_BASE = 4_000
 
@@ -43,6 +57,7 @@ object Notifications {
 
         val nm = context.getSystemService<NotificationManager>() ?: return
 
+        // Alarm channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ALARM,
@@ -58,6 +73,7 @@ object Notifications {
             }
         )
 
+        // Upcoming alarm channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_UPCOMING,
@@ -68,6 +84,7 @@ object Notifications {
             }
         )
 
+        // Timer channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_TIMER,
@@ -81,6 +98,7 @@ object Notifications {
             }
         )
 
+        // Stopwatch channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_STOPWATCH,
@@ -93,93 +111,13 @@ object Notifications {
                     android.app.Notification.VISIBILITY_PUBLIC
             }
         )
-
-        // Next alarm indicator channel
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_NEXT_ALARM,
-                "Next alarm indicator",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Shows the next scheduled alarm"
-                setSound(null, null)
-                setShowBadge(false)
-            }
-        )
-    }
-
-    /* ── Next alarm indicator ─────────────────────────────────────── */
-
-    fun refreshNextAlarmIndicator(
-        context: Context,
-        alarms: List<Alarm>,
-        zone: ZoneId = ZoneId.systemDefault(),
-    ) {
-        val now = ZonedDateTime.now(zone)
-
-        val next = alarms
-            .filter { it.enabled }
-            .mapNotNull { it.nextFire(now) }
-            .minOrNull()
-
-        if (next == null) {
-            NotificationManagerCompat
-                .from(context)
-                .cancel(ID_NEXT_ALARM)
-            return
-        }
-
-        val is24 =
-            android.text.format.DateFormat.is24HourFormat(context)
-
-        val hour = if (is24) {
-            next.hour
-        } else {
-            ((next.hour % 12).takeIf { it != 0 } ?: 12)
-        }
-
-        val meridiem = if (is24) {
-            ""
-        } else if (next.hour < 12) {
-            " AM"
-        } else {
-            " PM"
-        }
-
-        val timeText = "%d:%02d%s".format(
-            hour,
-            next.minute,
-            meridiem,
-        )
-
-        val notification = NotificationCompat.Builder(
-            context,
-            CHANNEL_NEXT_ALARM,
-        )
-            .setSmallIcon(R.drawable.ic_stat_alarm)
-            .setColor(
-                ContextCompat.getColor(
-                    context,
-                    R.color.notification_accent,
-                )
-            )
-            .setOnlyAlertOnce(true)
-            .setContentTitle("Next alarm: $timeText")
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setOngoing(true)
-            .setSilent(true)
-            .setShowWhen(false)
-            .setContentIntent(openApp(context, TAB_ALARMS))
-            .build()
-
-        post(context, ID_NEXT_ALARM, notification)
     }
 
     /* ── Upcoming alarm ───────────────────────────────────────────── */
 
     fun showUpcoming(
         context: Context,
-        alarm: Alarm,
+        alarm: app.materialclock.core.Alarm,
     ) {
         post(
             context,
@@ -190,10 +128,10 @@ object Notifications {
 
     private fun buildUpcoming(
         context: Context,
-        alarm: Alarm,
+        alarm: app.materialclock.core.Alarm,
     ): android.app.Notification {
-        val is24 =
-            android.text.format.DateFormat.is24HourFormat(context)
+        val is24 = android.text.format.DateFormat
+            .is24HourFormat(context)
 
         val hour = if (is24) {
             alarm.time.hour
@@ -260,23 +198,34 @@ object Notifications {
             CHANNEL_TIMER,
         )
             .setSmallIcon(R.drawable.ic_stat_timer)
+
+            // Blue notification accent
             .setColor(
                 ContextCompat.getColor(
                     context,
                     R.color.notification_accent,
                 )
             )
+
+            // Prevent repeated alerts during notification updates
             .setOnlyAlertOnce(true)
-            .setContentTitle(timer.label.ifBlank { "Timer" })
+
+            .setContentTitle(
+                timer.label.ifBlank { "Timer" }
+            )
             .setOngoing(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(
                 NotificationCompat.VISIBILITY_PUBLIC
             )
-            .setContentIntent(openApp(context, TAB_TIMERS))
+            .setContentIntent(
+                openApp(context, TAB_TIMERS)
+            )
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(remaining.clockFormat())
+            .setShortCriticalText(
+                remaining.clockFormat()
+            )
             .addAction(
                 0,
                 if (running) "Pause" else "Resume",
@@ -320,7 +269,8 @@ object Notifications {
 
         if (running) {
             val is24h =
-                android.text.format.DateFormat.is24HourFormat(context)
+                android.text.format.DateFormat
+                    .is24HourFormat(context)
 
             val setMinutes = timer.total.toMinutes()
 
@@ -355,10 +305,13 @@ object Notifications {
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(
-                    System.currentTimeMillis() + remaining.toMillis()
+                    System.currentTimeMillis() +
+                        remaining.toMillis()
                 )
                 .setShowWhen(true)
-                .setContentText("$durationLabel / $endLabel")
+                .setContentText(
+                    "$durationLabel / $endLabel"
+                )
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
@@ -393,20 +346,27 @@ object Notifications {
         context: Context,
         sw: Stopwatch,
     ): android.app.Notification {
-        val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
+        val elapsed = sw.elapsed(
+            SystemClock.elapsedRealtime()
+        )
 
         val b = NotificationCompat.Builder(
             context,
             CHANNEL_STOPWATCH,
         )
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
+
+            // Blue notification accent
             .setColor(
                 ContextCompat.getColor(
                     context,
                     R.color.notification_accent,
                 )
             )
+
+            // Prevent repeated alerts during notification updates
             .setOnlyAlertOnce(true)
+
             .setContentTitle("Stopwatch")
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
@@ -414,7 +374,9 @@ object Notifications {
             .setVisibility(
                 NotificationCompat.VISIBILITY_PUBLIC
             )
-            .setContentIntent(openApp(context, TAB_STOPWATCH))
+            .setContentIntent(
+                openApp(context, TAB_STOPWATCH)
+            )
             .setRequestPromotedOngoing(true)
             .setShortCriticalText(
                 elapsed.clockFormat(withHours = true)
@@ -469,10 +431,13 @@ object Notifications {
 
             b.setUsesChronometer(true)
                 .setWhen(
-                    System.currentTimeMillis() - elapsed.toMillis()
+                    System.currentTimeMillis() -
+                        elapsed.toMillis()
                 )
                 .setShowWhen(true)
-                .setContentText(lapText ?: elapsedWithCentis)
+                .setContentText(
+                    lapText ?: elapsedWithCentis
+                )
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
@@ -503,7 +468,10 @@ object Notifications {
     ): PendingIntent = PendingIntent.getActivity(
         context,
         tab.hashCode(),
-        Intent(context, MainActivity::class.java)
+        Intent(
+            context,
+            MainActivity::class.java,
+        )
             .setFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -522,7 +490,10 @@ object Notifications {
         PendingIntent.getBroadcast(
             context,
             requestCode,
-            Intent(context, ClockActionReceiver::class.java)
+            Intent(
+                context,
+                ClockActionReceiver::class.java,
+            )
                 .setAction(action)
                 .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
                 .putExtra(
@@ -533,6 +504,9 @@ object Notifications {
                 PendingIntent.FLAG_IMMUTABLE,
         )
 
+    /**
+     * Posts unless notifications are disabled.
+     */
     private fun post(
         context: Context,
         id: Int,
