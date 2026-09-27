@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
+import java.time.Duration
 
 /**
  * Logic for generating 44 different vibrant colors
@@ -48,15 +49,15 @@ import app.materialclock.core.stopwatchParts
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
     val hue = ((index - 1) * (360f / 44f)) % 360f 
-    
+
     // Increased saturation and lightness for Dark mode to avoid dull/grey colors
     val saturation = if (isDark) 0.75f else 0.7f
     val lightnessBadge = if (isDark) 0.45f else 0.85f
     val lightnessText = if (isDark) 0.95f else 0.2f
-    
+
     val badgeBg = Color.hsl(hue, saturation, lightnessBadge)
     val badgeFg = Color.hsl(hue, saturation, lightnessText)
-    
+
     return Pair(badgeBg, badgeFg)
 }
 
@@ -110,6 +111,20 @@ fun StopwatchScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(LAP_GAP),
             ) {
+                // New Feature: Show current live lap when not idle
+                val isIdle = !stopwatch.running && elapsed.isZero
+                if (!isIdle) {
+                    item(key = "current_lap") {
+                        val currentSplit = elapsed.minus(stopwatch.laps.firstOrNull()?.total ?: Duration.ZERO)
+                        val currentLap = Lap(
+                            index = (stopwatch.laps.firstOrNull()?.index ?: 0) + 1,
+                            split = currentSplit,
+                            total = elapsed
+                        )
+                        LapRow(lap = currentLap, isFastest = false, isSlowest = false)
+                    }
+                }
+
                 items(stopwatch.laps, key = { it.index }) { lap ->
                     LapRow(lap, fastest == lap.index, slowest == lap.index)
                 }
@@ -257,24 +272,24 @@ private fun StopwatchControls(
 private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
-private val IDLE_PADDING_H = 48.dp // Increased width for the single Start button
+private val IDLE_PADDING_H = 48.dp
 private val STACK_GAP = 35.dp
 private val READOUT_CAP = 66.dp
 private val GAP = 6.dp
-private val ROW_HEIGHT = 76.dp // Increased height for all main buttons
-private val LAP_ROW_HEIGHT = 56.dp // Slightly increased for better touch target
+private val ROW_HEIGHT = 76.dp
+private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
 
 @Composable
 private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
     val (badgeBg, badgeFg) = getLapColors(lap.index)
-    
+
     val timeColor = when {
         isFastest -> MaterialTheme.colorScheme.tertiary
         isSlowest -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
-    
+
     val (m, s, cs) = lap.split.stopwatchParts()
     val (tm, ts, tcs) = lap.total.stopwatchParts()
 
