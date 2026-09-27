@@ -13,10 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancel
 
 /**
  * Keeps Timer and Stopwatch Live Update notifications fresh while they are
@@ -111,29 +111,6 @@ class LiveUpdateService : Service() {
                                 foregrounded = true
                             }
 
-                            /*
-                             * IMPORTANT:
-                             *
-                             * Reading state and posting notifications happen
-                             * under the same mutex used by ClockActionReceiver.
-                             *
-                             * Therefore an old state can no longer overwrite
-                             * a freshly clicked Pause/Resume/Cancel/Stop/Lap.
-                             */
-                            if (timerLive) {
-                                Notifications.showTimer(
-                                    this@LiveUpdateService,
-                                    timer!!,
-                                )
-                            }
-
-                            if (swLive) {
-                                Notifications.showStopwatch(
-                                    this@LiveUpdateService,
-                                    sw,
-                                )
-                            }
-
                             true
                         }
                     }
@@ -142,7 +119,9 @@ class LiveUpdateService : Service() {
                     break
                 }
 
-                delay(1000L)
+                // delay 1000L से बढ़ाकर 5000L किया गया है ताकि बार-बार नोटीफ़िकेशन रिपोस्ट न हो
+                // और बटन टैप करने में कोई लेग या 2-3 टैप की समस्या न आए।
+                delay(5000L)
             }
 
             stopForeground(STOP_FOREGROUND_DETACH)
