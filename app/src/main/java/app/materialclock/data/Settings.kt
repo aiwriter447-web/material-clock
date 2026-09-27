@@ -80,7 +80,7 @@ data class ThemeSettings(
      * falls back to when dynamic colour is off, or unavailable below API 31.
      */
     val dynamicColor: Boolean = true,
-    val palette: Palette = Palette.CONCEPT,
+    val palette: Palette = Palette.EXPRESSIVE,
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val amoledBlack: Boolean = false,
     /**
