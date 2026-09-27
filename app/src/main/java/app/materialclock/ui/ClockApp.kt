@@ -7,15 +7,12 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
@@ -70,7 +69,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.materialclock.alarm.AlarmScheduler
 import app.materialclock.alarm.Notifications
 import app.materialclock.core.Alarm
-import app.materialclock.core.AlarmGroup
 import app.materialclock.core.TimerPreset
 import app.materialclock.ui.screens.AlarmsScreen
 import app.materialclock.ui.screens.StopwatchScreen
@@ -111,13 +109,31 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         }
 
         var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
+        
+        // Pager state for swipe gestures
+        val pagerState = rememberPagerState(
+            initialPage = Tab.entries.indexOf(tab).coerceAtLeast(0),
+            pageCount = { Tab.entries.size }
+        )
+
+        LaunchedEffect(pagerState.currentPage) {
+            tab = Tab.entries[pagerState.currentPage]
+        }
+
+        LaunchedEffect(tab) {
+            val targetPage = Tab.entries.indexOf(tab)
+            if (targetPage != -1 && pagerState.currentPage != targetPage) {
+                pagerState.animateScrollToPage(targetPage)
+            }
+        }
+
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
         var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
         var selectionActive by remember { mutableStateOf(false) } 
-        
+
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
@@ -170,7 +186,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     title = {
                         Surface(
                             shape = CircleShape,
-                            // COLOR FIX: Changed to primaryContainer so it stays vibrant in dark mode
                             color = MaterialTheme.colorScheme.primaryContainer, 
                         ) {
                             Text(
@@ -217,17 +232,15 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             )
 
           Box(Modifier.fillMaxSize()) {
-            AnimatedContent(
-                targetState = tab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
-                label = "tab",
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier.graphicsLayer {
                     scaleX = curtainScale
                     scaleY = curtainScale
                     transformOrigin = TransformOrigin(0.5f, 1f)
                 },
-            ) { current ->
-                when (current) {
+            ) { page ->
+                when (Tab.entries[page]) {
                     Tab.ALARMS -> {
                         val alarms by vm.alarms.collectAsStateWithLifecycle()
                         val groups by vm.groups.collectAsStateWithLifecycle()
