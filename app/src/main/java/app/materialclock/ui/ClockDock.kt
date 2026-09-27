@@ -27,15 +27,12 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.HourglassBottom
-import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,12 +42,102 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+
+// --- pure Kotlin code vectors for solid Alarm and World icons ---
+
+private val AlarmFilledIcon: ImageVector
+    get() {
+        if (_alarmFilledIcon != null) return _alarmFilledIcon!!
+        _alarmFilledIcon = ImageVector.Builder(
+            name = "AlarmFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(22f, 5.72f)
+            lineTo(17.4f, 1.86f)
+            lineTo(16.11f, 3.39f)
+            lineTo(20.71f, 7.25f)
+            close()
+            moveTo(7.88f, 3.39f)
+            lineTo(6.6f, 1.86f)
+            lineTo(2f, 5.71f)
+            lineTo(3.29f, 7.25f)
+            close()
+            moveTo(12.5f, 8f)
+            horizontalLineTo(11f)
+            verticalLineTo(14f)
+            lineTo(15.25f, 16.55f)
+            lineTo(16f, 15.32f)
+            lineTo(12.5f, 13.25f)
+            close()
+            moveTo(12f, 4f)
+            curveTo(7.03f, 4f, 3f, 8.03f, 3f, 13f)
+            curveTo(3f, 17.97f, 7.03f, 22f, 12f, 22f)
+            curveTo(16.97f, 22f, 21f, 17.97f, 21f, 13f)
+            curveTo(21f, 8.03f, 16.97f, 4f, 12f, 4f)
+            close()
+        }.build()
+        return _alarmFilledIcon!!
+    }
+private var _alarmFilledIcon: ImageVector? = null
+
+private val WorldFilledIcon: ImageVector
+    get() {
+        if (_worldFilledIcon != null) return _worldFilledIcon!!
+        _worldFilledIcon = ImageVector.Builder(
+            name = "WorldFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
+            close()
+            moveTo(11f, 19.93f)
+            curveTo(7.05f, 19.44f, 4f, 16.08f, 4f, 12f)
+            curveTo(4f, 11.38f, 4.08f, 10.79f, 4.21f, 10.21f)
+            lineTo(9f, 15f)
+            verticalLineTo(16f)
+            curveTo(9f, 17.1f, 9.9f, 18f, 11f, 18f)
+            verticalLineTo(19.93f)
+            close()
+            moveTo(17.9f, 17.39f)
+            curveTo(17.64f, 16.58f, 16.9f, 16f, 16f, 16f)
+            horizontalLineTo(15f)
+            verticalLineTo(13f)
+            curveTo(15f, 12.45f, 14.55f, 12f, 14f, 12f)
+            horizontalLineTo(8f)
+            verticalLineTo(10f)
+            horizontalLineTo(10f)
+            curveTo(10.55f, 10f, 11f, 9.55f, 11f, 9f)
+            verticalLineTo(7f)
+            horizontalLineTo(13f)
+            curveTo(14.1f, 7f, 15f, 6.1f, 15f, 5f)
+            verticalLineTo(4.59f)
+            curveTo(17.93f, 5.77f, 20f, 8.65f, 20f, 12f)
+            curveTo(20f, 14.08f, 19.2f, 15.97f, 17.9f, 17.39f)
+            close()
+        }.build()
+        return _worldFilledIcon!!
+    }
+private var _worldFilledIcon: ImageVector? = null
+
+// --- main components ---
 
 @Composable
 fun ClockDock(
@@ -90,7 +177,7 @@ fun ClockDock(
 @Composable
 private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    
+
     val targetContainer = when {
         !selected -> Color.Transparent
         dark -> scheme.primary
@@ -102,22 +189,22 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         else -> scheme.onSurface
     }
 
-    // Very fast and responsive color fade animation.
+    // Smoother color transitions without harsh bouncing
     val containerColor by animateColorAsState(
         targetValue = targetContainer,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
         label = "containerColor"
     )
     val contentColor by animateColorAsState(
         targetValue = targetContent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
         label = "contentColor"
     )
 
     val activeIcon = remember(tab) {
         when (tab) {
-            Tab.ALARMS -> Icons.Rounded.Alarm
-            Tab.WORLD -> Icons.Rounded.Public
+            Tab.ALARMS -> AlarmFilledIcon
+            Tab.WORLD -> WorldFilledIcon
             Tab.TIMERS -> Icons.Rounded.HourglassBottom
             Tab.STOPWATCH -> Icons.Rounded.Timer
         }
@@ -135,12 +222,12 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Parallel pop animation for the icon (Fast & Snappy).
+        // Icon pop effect: Relaxed spring stiffness for a highly fluid scale transition
         AnimatedContent(
             targetState = currentIcon,
             transitionSpec = {
-                (fadeIn(tween(150)) + scaleIn(initialScale = 0.6f, animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f)))
-                    .togetherWith(fadeOut(tween(150)) + scaleOut(targetScale = 0.6f, animationSpec = tween(150)))
+                (fadeIn(tween(220)) + scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)))
+                    .togetherWith(fadeOut(tween(150)) + scaleOut(targetScale = 0.8f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)))
             },
             label = "iconAnim"
         ) { icon ->
@@ -151,21 +238,21 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
                 modifier = Modifier.size(ICON_SIZE),
             )
         }
-        
-        // Smooth spring effect with a balanced bounce.
+
+        // Text reveal: Slower fade and balanced spring so it expands like liquid
         AnimatedVisibility(
             visible = selected,
-            enter = fadeIn(tween(150)) + expandHorizontally(
+            enter = fadeIn(tween(250)) + expandHorizontally(
                 animationSpec = spring(
-                    dampingRatio = 0.7f, 
-                    stiffness = 500f
+                    dampingRatio = 0.75f, 
+                    stiffness = 400f
                 ),
                 clip = false
             ),
-            exit = fadeOut(tween(100)) + shrinkHorizontally(
+            exit = fadeOut(tween(200)) + shrinkHorizontally(
                 animationSpec = spring(
                     dampingRatio = 0.8f, 
-                    stiffness = 600f
+                    stiffness = 450f
                 ),
                 clip = false
             ),
@@ -185,19 +272,19 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
 fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
     val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "addGrow")
-    
+
     val glyph by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 150),
+        animationSpec = tween(durationMillis = 200),
         label = "addGlyph",
     )
-    
+
     val rotation by animateFloatAsState(
         targetValue = if (visible) 0f else -90f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "addRotate"
     )
-    
+
     if (grow <= 0.001f) return
 
     FloatingActionButton(
