@@ -41,7 +41,7 @@ data class WidgetConfig(
     /* ── Colour ─────────────────────────────────────────────────────────────────────────── */
     val colour: ColourSource = ColourSource.FOLLOW_APP,
     /** Only read when [colour] is [ColourSource.PALETTE]. */
-    val palette: Palette = Palette.CONCEPT,
+    val palette: Palette = Palette.EXPRESSIVE,
 )
 
 /**
