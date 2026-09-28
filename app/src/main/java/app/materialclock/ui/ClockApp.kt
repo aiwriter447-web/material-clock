@@ -108,24 +108,14 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             return@ClockTheme
         }
 
-        var tab by rememberSaveable { mutableStateOf(startTab?.let { k -> Tab.entries.firstOrNull { it.key == k } } ?: Tab.ALARMS) }
-        
-        // Pager state for swipe gestures
+        // Setup the pager state for swipe gestures as the single source of truth
         val pagerState = rememberPagerState(
-            initialPage = Tab.entries.indexOf(tab).coerceAtLeast(0),
+            initialPage = startTab?.let { k -> Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 } } ?: 0,
             pageCount = { Tab.entries.size }
         )
-
-        LaunchedEffect(pagerState.currentPage) {
-            tab = Tab.entries[pagerState.currentPage]
-        }
-
-        LaunchedEffect(tab) {
-            val targetPage = Tab.entries.indexOf(tab)
-            if (targetPage != -1 && pagerState.currentPage != targetPage) {
-                pagerState.animateScrollToPage(targetPage)
-            }
-        }
+        
+        val currentTab = Tab.entries[pagerState.currentPage]
+        val targetTab = Tab.entries[pagerState.targetPage]
 
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
@@ -138,8 +128,8 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         val scope = rememberCoroutineScope()
         val ctx = LocalContext.current
 
-        LaunchedEffect(tab) {
-            if (tab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
+        LaunchedEffect(currentTab) {
+            if (currentTab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 delay(OPEN_SETTLE_DELAY_MS)
                 val result = snackbar.showSnackbar(
                     message = "Alarms need the \"Alarms & reminders\" permission to fire exactly on time",
@@ -189,7 +179,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             color = MaterialTheme.colorScheme.primaryContainer, 
                         ) {
                             Text(
-                                text = tab.label,
+                                text = currentTab.label,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold, 
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
@@ -201,7 +191,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                         IconButton(onClick = { showSettings = true }) {
                             Icon(
                                 Icons.Rounded.Settings, 
-                                contentDescription = "${tab.label} settings",
+                                contentDescription = "${currentTab.label} settings",
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -232,13 +222,17 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             )
 
           Box(Modifier.fillMaxSize()) {
+            
+            // FILL_MAX_SIZE solves the stacking/earthquake layout glitch
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.graphicsLayer {
-                    scaleX = curtainScale
-                    scaleY = curtainScale
-                    transformOrigin = TransformOrigin(0.5f, 1f)
-                },
+                modifier = Modifier
+                    .fillMaxSize() 
+                    .graphicsLayer {
+                        scaleX = curtainScale
+                        scaleY = curtainScale
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                    },
             ) { page ->
                 when (Tab.entries[page]) {
                     Tab.ALARMS -> {
@@ -337,8 +331,12 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             ) {
                 ClockDock(
                     destinations = Tab.entries,
-                    selected = tab,
-                    onSelect = { tab = it },
+                    selected = targetTab, // Syncs dock selection perfectly with swipe
+                    onSelect = { selectedTab -> 
+                        scope.launch {
+                            pagerState.animateScrollToPage(Tab.entries.indexOf(selectedTab))
+                        }
+                    },
                     modifier = Modifier
                         .onGloballyPositioned { coords ->
                             with(density) { dockHeight = coords.size.height.toDp() }
@@ -356,9 +354,9 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             }
 
             FloatingAddButton(
-                visible = !selectionActive && (tab == Tab.ALARMS || tab == Tab.WORLD),
-                label = if (tab == Tab.WORLD) "Add city" else "Add alarm",
-                onClick = { if (tab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
+                visible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
+                label = if (targetTab == Tab.WORLD) "Add city" else "Add alarm",
+                onClick = { if (targetTab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(
@@ -416,7 +414,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         }
 
         if (showSettings) {
-            when (tab) {
+            when (currentTab) {
                 Tab.ALARMS -> AlarmSettingsSheet(
                     settings = settings,
                     onChange = vm::updateSettings,
