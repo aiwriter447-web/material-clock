@@ -17,15 +17,9 @@ import kotlinx.coroutines.flow.first
 import java.time.Duration
 
 /**
- * The buttons on the notifications, and nothing else.
- *
- * Notification actions are processed on a dedicated I/O coroutine and are
- * serialized with LiveUpdateService through LiveUpdateCoordinator.
- *
- * The serialization is important because LiveUpdateService reposts the
- * notification every second. Without coordination it could repost an old
- * notification immediately after the user presses Pause, Resume, Stop, Lap,
- * Cancel, etc.
+ * Handles actions from notifications. 
+ * Prevents ForegroundServiceStartNotAllowedException crashes on Android 12+ 
+ * by wrapping background service starts in a try-catch block.
  */
 class ClockActionReceiver : BroadcastReceiver() {
 
@@ -40,15 +34,12 @@ class ClockActionReceiver : BroadcastReceiver() {
 
                     when (intent.action) {
                         ACTION_SNOOZE -> {
-                            val id = intent.getLongExtra(
-                                AlarmReceiver.EXTRA_ID,
-                                -1L,
-                            )
+                            val id = intent.getLongExtra(AlarmReceiver.EXTRA_ID, -1L)
                             snooze(app, store, id)
                         }
 
                         ACTION_DISMISS -> {
-                            AlarmService.stop(app)
+                            try { AlarmService.stop(app) } catch (e: Exception) { e.printStackTrace() }
                         }
 
                         ACTION_TIMER_TOGGLE -> {
@@ -60,11 +51,10 @@ class ClockActionReceiver : BroadcastReceiver() {
                         }
 
                         ACTION_TIMER_CANCEL -> {
-                            AlarmService.stop(app)
+                            try { AlarmService.stop(app) } catch (e: Exception) { e.printStackTrace() }
                             store.putTimer(null)
-                            TimerScheduler.sync(app, null)
-
-                            Notifications.hideTimer(app)
+                            try { TimerScheduler.sync(app, null) } catch (e: Exception) { e.printStackTrace() }
+                            try { Notifications.hideTimer(app) } catch (e: Exception) { e.printStackTrace() }
                         }
 
                         ACTION_SW_TOGGLE -> {
@@ -77,7 +67,7 @@ class ClockActionReceiver : BroadcastReceiver() {
 
                         ACTION_SW_RESET -> {
                             store.putStopwatch(Stopwatch())
-                            Notifications.hideStopwatch(app)
+                            try { Notifications.hideStopwatch(app) } catch (e: Exception) { e.printStackTrace() }
                         }
                     }
                 }
@@ -87,24 +77,15 @@ class ClockActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun snooze(
-        context: Context,
-        store: ClockStore,
-        id: Long,
-    ) {
-        AlarmService.stop(context)
+    private suspend fun snooze(context: Context, store: ClockStore, id: Long) {
+        try { AlarmService.stop(context) } catch (e: Exception) { e.printStackTrace() }
 
         val minutes = store.settingsNow().alarms.snoozeMinutes
         val due = System.currentTimeMillis() + minutes * 60_000L
 
         val updated = store.alarmsNow().map {
-            // Re-arming matters for a one-shot: firing disabled it, and a
-            // snooze has to bring it back or the second ring never happens.
             if (it.id == id) {
-                it.copy(
-                    snoozedUntilMillis = due,
-                    enabled = true,
-                )
+                it.copy(snoozedUntilMillis = due, enabled = true)
             } else {
                 it
             }
@@ -112,106 +93,92 @@ class ClockActionReceiver : BroadcastReceiver() {
 
         store.putAlarms(updated)
 
-        updated
-            .firstOrNull { it.id == id }
-            ?.let {
+        updated.firstOrNull { it.id == id }?.let {
+            try {
                 AlarmScheduler.schedule(context, it)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+        }
     }
 
-    private suspend fun timerToggle(
-        context: Context,
-        store: ClockStore,
-    ) {
+    private suspend fun timerToggle(context: Context, store: ClockStore) {
         val t = store.timerNow() ?: return
-
         val now = SystemClock.elapsedRealtime()
 
         val next = when (t.state) {
             TimerState.RUNNING -> {
-                t.copy(
-                    state = TimerState.PAUSED,
-                    pausedRemaining = t.remaining(now),
-                )
+                t.copy(state = TimerState.PAUSED, pausedRemaining = t.remaining(now))
             }
-
             else -> {
-                t.copy(
-                    state = TimerState.RUNNING,
-                    deadlineElapsedMillis =
-                        now + t.pausedRemaining.toMillis(),
-                )
+                t.copy(state = TimerState.RUNNING, deadlineElapsedMillis = now + t.pausedRemaining.toMillis())
             }
         }
 
-        // DataStore write completes before notification publishing.
         store.putTimer(next)
+        
+        try {
+            TimerScheduler.sync(context, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
-        // Keep the exact-alarm scheduler in sync with the new state.
-        TimerScheduler.sync(context, next)
+        Notifications.showTimer(context, next)
 
-        // Immediately publish the new state rather than waiting for the
-        // next LiveUpdateService tick.
         if (next.state == TimerState.RUNNING) {
-            Notifications.showTimer(context, next)
-            LiveUpdateService.ensureRunning(context)
-        } else {
-            Notifications.showTimer(context, next)
+            try {
+                LiveUpdateService.ensureRunning(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    private suspend fun timerAdd(
-        context: Context,
-        store: ClockStore,
-    ) {
+    private suspend fun timerAdd(context: Context, store: ClockStore) {
         val t = store.timerNow() ?: return
 
         val next: ClockTimer = when (t.state) {
             TimerState.RUNNING -> {
                 t.copy(
                     total = t.total.plusMinutes(1),
-                    deadlineElapsedMillis =
-                        t.deadlineElapsedMillis + 60_000L,
+                    deadlineElapsedMillis = t.deadlineElapsedMillis + 60_000L,
                 )
             }
-
             else -> {
                 t.copy(
                     total = t.total.plusMinutes(1),
-                    pausedRemaining =
-                        t.pausedRemaining.plusMinutes(1),
+                    pausedRemaining = t.pausedRemaining.plusMinutes(1),
                 )
             }
         }
 
         store.putTimer(next)
-
-        TimerScheduler.sync(context, next)
+        
+        try {
+            TimerScheduler.sync(context, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         Notifications.showTimer(context, next)
 
         if (next.state == TimerState.RUNNING) {
-            LiveUpdateService.ensureRunning(context)
+            try {
+                LiveUpdateService.ensureRunning(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    private suspend fun stopwatchToggle(
-        context: Context,
-        store: ClockStore,
-    ) {
+    private suspend fun stopwatchToggle(context: Context, store: ClockStore) {
         val sw = store.stopwatch.first()
         val now = SystemClock.elapsedRealtime()
 
         val next = if (sw.running) {
-            sw.copy(
-                running = false,
-                accumulated = sw.elapsed(now),
-            )
+            sw.copy(running = false, accumulated = sw.elapsed(now))
         } else {
-            sw.copy(
-                running = true,
-                startedAtElapsed = now,
-            )
+            sw.copy(running = true, startedAtElapsed = now)
         }
 
         store.putStopwatch(next)
@@ -219,72 +186,43 @@ class ClockActionReceiver : BroadcastReceiver() {
         Notifications.showStopwatch(context, next)
 
         if (next.running) {
-            LiveUpdateService.ensureRunning(context)
-        } else {
-            Notifications.showStopwatch(context, next)
+            try {
+                LiveUpdateService.ensureRunning(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    private suspend fun stopwatchLap(
-        context: Context,
-        store: ClockStore,
-    ) {
+    private suspend fun stopwatchLap(context: Context, store: ClockStore) {
         val sw = store.stopwatch.first()
 
         if (!sw.running) return
 
         val total = sw.elapsed(SystemClock.elapsedRealtime())
-
-        val previous = sw.laps
-            .firstOrNull()
-            ?.total
-            ?: Duration.ZERO
+        val previous = sw.laps.firstOrNull()?.total ?: Duration.ZERO
 
         val next = sw.copy(
             laps = listOf(
-                Lap(
-                    sw.laps.size + 1,
-                    total.minus(previous),
-                    total,
-                )
+                Lap(sw.laps.size + 1, total.minus(previous), total)
             ) + sw.laps,
         )
 
         store.putStopwatch(next)
-
-        // Immediately update the notification so the new lap appears
-        // without waiting for the next one-second service tick.
         Notifications.showStopwatch(context, next)
     }
 
     companion object {
 
-        private val actionScope = CoroutineScope(
-            SupervisorJob() + Dispatchers.IO,
-        )
+        private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        const val ACTION_SNOOZE =
-            "app.materialclock.SNOOZE"
-
-        const val ACTION_DISMISS =
-            "app.materialclock.DISMISS"
-
-        const val ACTION_TIMER_TOGGLE =
-            "app.materialclock.TIMER_TOGGLE"
-
-        const val ACTION_TIMER_ADD =
-            "app.materialclock.TIMER_ADD"
-
-        const val ACTION_TIMER_CANCEL =
-            "app.materialclock.TIMER_CANCEL"
-
-        const val ACTION_SW_TOGGLE =
-            "app.materialclock.SW_TOGGLE"
-
-        const val ACTION_SW_LAP =
-            "app.materialclock.SW_LAP"
-
-        const val ACTION_SW_RESET =
-            "app.materialclock.SW_RESET"
+        const val ACTION_SNOOZE = "app.materialclock.SNOOZE"
+        const val ACTION_DISMISS = "app.materialclock.DISMISS"
+        const val ACTION_TIMER_TOGGLE = "app.materialclock.TIMER_TOGGLE"
+        const val ACTION_TIMER_ADD = "app.materialclock.TIMER_ADD"
+        const val ACTION_TIMER_CANCEL = "app.materialclock.TIMER_CANCEL"
+        const val ACTION_SW_TOGGLE = "app.materialclock.SW_TOGGLE"
+        const val ACTION_SW_LAP = "app.materialclock.SW_LAP"
+        const val ACTION_SW_RESET = "app.materialclock.SW_RESET"
     }
 }
