@@ -126,7 +126,19 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putAlarms(next)
         next.firstOrNull { it.id == id }?.let { a ->
-            if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, id)
+            if (a.enabled) {
+                try {
+                    AlarmScheduler.schedule(ctx, a)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } else {
+                try {
+                    AlarmScheduler.cancel(ctx, id)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
         }
     }
 
@@ -140,11 +152,19 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             current + alarm
         }
         store.putAlarms(next)
-        AlarmScheduler.schedule(ctx, alarm)
+        try {
+            AlarmScheduler.schedule(ctx, alarm)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun deleteAlarm(id: Long) = viewModelScope.launch {
-        AlarmScheduler.cancel(ctx, id)
+        try {
+            AlarmScheduler.cancel(ctx, id)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         val next = store.alarmsNow().filterNot { it.id == id }
         store.putAlarms(next)
     }
@@ -159,7 +179,13 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteSelectedAlarms(alarmIds: Set<Long>, groupIds: Set<Long>) = viewModelScope.launch {
-        alarmIds.forEach { AlarmScheduler.cancel(ctx, it) }
+        alarmIds.forEach { 
+            try {
+                AlarmScheduler.cancel(ctx, it)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         store.putAlarms(store.alarmsNow().filterNot { it.id in alarmIds || it.groupId in groupIds })
         store.putGroups(store.groupsNow().filterNot { it.id in groupIds })
     }
@@ -172,7 +198,11 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putAlarms(next)
         next.filter { it.id in alarmIds || it.groupId in groupIds }.forEach { a ->
-            if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+            try {
+                if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -212,7 +242,11 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putAlarms(next)
         next.filter { it.groupId == groupId }.forEach { a ->
-            if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+            try {
+                if (a.enabled) AlarmScheduler.schedule(ctx, a) else AlarmScheduler.cancel(ctx, a.id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -276,8 +310,18 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         )
         timerDigits = ""
         store.putTimer(t)
-        TimerScheduler.sync(ctx, t)
-        LiveUpdateService.ensureRunning(ctx)
+        
+        try {
+            TimerScheduler.sync(ctx, t)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        try {
+            LiveUpdateService.ensureRunning(ctx)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun startPreset(preset: TimerPreset) = viewModelScope.launch {
@@ -290,8 +334,18 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             deadlineElapsedMillis = SystemClock.elapsedRealtime() + preset.totalSeconds * 1000L,
         )
         store.putTimer(t)
-        TimerScheduler.sync(ctx, t)
-        LiveUpdateService.ensureRunning(ctx)
+        
+        try {
+            TimerScheduler.sync(ctx, t)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        try {
+            LiveUpdateService.ensureRunning(ctx)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun savePreset(preset: TimerPreset) = viewModelScope.launch {
@@ -316,8 +370,20 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             else -> t.copy(state = TimerState.RUNNING, deadlineElapsedMillis = now + t.pausedRemaining.toMillis())
         }
         store.putTimer(next)
-        TimerScheduler.sync(ctx, next)
-        if (next.state == TimerState.RUNNING) LiveUpdateService.ensureRunning(ctx)
+        
+        try {
+            TimerScheduler.sync(ctx, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        if (next.state == TimerState.RUNNING) {
+            try {
+                LiveUpdateService.ensureRunning(ctx)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun addTenSeconds() = viewModelScope.launch {
@@ -330,13 +396,27 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             else -> t.copy(total = t.total.plusSeconds(10), pausedRemaining = t.pausedRemaining.plusSeconds(10))
         }
         store.putTimer(next)
-        TimerScheduler.sync(ctx, next)
+        
+        try {
+            TimerScheduler.sync(ctx, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun cancelTimer() = viewModelScope.launch {
-        AlarmService.stop(ctx)
+        try {
+            AlarmService.stop(ctx)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         store.putTimer(null)
-        TimerScheduler.sync(ctx, null)
+        
+        try {
+            TimerScheduler.sync(ctx, null)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun toggleStopwatch() = viewModelScope.launch {
@@ -349,7 +429,14 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.putStopwatch(next)
         Notifications.showStopwatch(ctx, next)
-        if (next.running) LiveUpdateService.ensureRunning(ctx)
+        
+        if (next.running) {
+            try {
+                LiveUpdateService.ensureRunning(ctx)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun lap() = viewModelScope.launch {
@@ -364,7 +451,11 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetStopwatch() = viewModelScope.launch {
         store.putStopwatch(Stopwatch())
-        Notifications.hideStopwatch(ctx)
+        try {
+            Notifications.hideStopwatch(ctx)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun blankAlarm(): Alarm = Alarm(
