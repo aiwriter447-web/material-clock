@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -189,7 +190,6 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         else -> scheme.onSurface
     }
 
-    // Smoother color transitions without harsh bouncing
     val containerColor by animateColorAsState(
         targetValue = targetContainer,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
@@ -199,6 +199,13 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
         targetValue = targetContent,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
         label = "contentColor"
+    )
+
+    // Animated padding prevents sudden layout jumps that cause the earthquake glitch
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (selected) 16.dp else 14.dp,
+        animationSpec = tween(250),
+        label = "paddingAnim"
     )
 
     val activeIcon = remember(tab) {
@@ -218,11 +225,10 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
             .background(containerColor)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .defaultMinSize(minWidth = ITEM_HEIGHT)
-            .padding(horizontal = if (selected) 16.dp else 14.dp),
+            .padding(horizontal = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Icon pop effect: Relaxed spring stiffness for a highly fluid scale transition
         AnimatedContent(
             targetState = currentIcon,
             transitionSpec = {
@@ -239,21 +245,15 @@ private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> 
             )
         }
 
-        // Text reveal: Slower fade and balanced spring so it expands like liquid
+        // Switched from spring to tween to remove the bouncy push-pull earthquake effect
         AnimatedVisibility(
             visible = selected,
             enter = fadeIn(tween(250)) + expandHorizontally(
-                animationSpec = spring(
-                    dampingRatio = 0.75f, 
-                    stiffness = 400f
-                ),
+                animationSpec = tween(durationMillis = 250),
                 clip = false
             ),
             exit = fadeOut(tween(200)) + shrinkHorizontally(
-                animationSpec = spring(
-                    dampingRatio = 0.8f, 
-                    stiffness = 450f
-                ),
+                animationSpec = tween(durationMillis = 200),
                 clip = false
             ),
         ) {
