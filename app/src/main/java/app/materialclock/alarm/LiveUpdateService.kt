@@ -6,10 +6,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import app.materialclock.R
 import app.materialclock.core.TimerState
 import app.materialclock.data.ClockStore
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +17,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Keeps Timer and Stopwatch Live Update notifications fresh while they are
@@ -37,40 +35,46 @@ class LiveUpdateService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        // Prevent duplicate loops
         if (job?.isActive == true) {
             return START_STICKY
         }
 
-        // CRITICAL FIX FOR ANDROID 14/15/16:
-        // Foreground services must call startForeground() IMMEDIATELY.
-        // We post a secure placeholder notification instantly to prevent ForegroundServiceStartNotAllowedException crashes.
-        try {
-            val placeholder = NotificationCompat.Builder(this, Notifications.CHANNEL_TIMER)
-                .setSmallIcon(R.drawable.ic_stat_timer)
-                .setContentTitle("Updating Clock...")
-                .setSilent(true)
-                .setOngoing(true)
-                .build()
+        val store = ClockStore(applicationContext)
+        Notifications.ensureChannels(this)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    Notifications.ID_TIMER,
-                    placeholder,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                )
-            } else {
-                startForeground(Notifications.ID_TIMER, placeholder)
+        // CRITICAL FIX FOR ANDROID 16 & NOW BAR:
+        // We must synchronously read the real state and post the EXACT notification 
+        // immediately to prevent ForegroundServiceStartNotAllowedException and 
+        // to ensure the Now Bar accepts the promoted notification flags instantly.
+        try {
+            val timer = runBlocking { store.timer.first() }
+            val sw = runBlocking { store.stopwatch.first() }
+
+            val timerLive = timer != null && timer.state == TimerState.RUNNING
+            val swLive = sw.running
+
+            if (timerLive || swLive) {
+                val (id, notification) = if (timerLive) {
+                    Notifications.ID_TIMER to Notifications.buildTimer(this, timer!!)
+                } else {
+                    Notifications.ID_STOPWATCH to Notifications.buildStopwatch(this, sw)
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(
+                        id, 
+                        notification, 
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    )
+                } else {
+                    startForeground(id, notification)
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        val store = ClockStore(applicationContext)
-
         job = scope.launch {
-            var foregrounded = false
-
             while (true) {
                 val shouldContinue = LiveUpdateCoordinator.withNotificationLock {
                     val timer = store.timer.first()
@@ -82,32 +86,6 @@ class LiveUpdateService : Service() {
                     if (!timerLive && !swLive) {
                         false
                     } else {
-                        // Upgrade placeholder to actual Live/Now Bar Notification
-                        if (!foregrounded) {
-                            val (id, notification) = if (timerLive) {
-                                Notifications.ID_TIMER to Notifications.buildTimer(this@LiveUpdateService, timer!!)
-                            } else {
-                                Notifications.ID_STOPWATCH to Notifications.buildStopwatch(this@LiveUpdateService, sw)
-                            }
-
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                startForeground(
-                                    id,
-                                    notification,
-                                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-                                )
-                            } else {
-                                startForeground(id, notification)
-                            }
-
-                            // If the active ID is Stopwatch, cancel the Timer placeholder to avoid ghost notifications
-                            if (id != Notifications.ID_TIMER) {
-                                NotificationManagerCompat.from(this@LiveUpdateService).cancel(Notifications.ID_TIMER)
-                            }
-
-                            foregrounded = true
-                        }
-
                         if (timerLive) {
                             Notifications.showTimer(this@LiveUpdateService, timer!!)
                         }
@@ -121,7 +99,10 @@ class LiveUpdateService : Service() {
                 if (!shouldContinue) {
                     break
                 }
-                delay(5000L)
+                
+                // 2-second delay reduces the chance of dropping button taps in the notification 
+                // while keeping the progress bar moving smoothly.
+                delay(2000L)
             }
 
             stopForeground(STOP_FOREGROUND_DETACH)
