@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.getSystemService
+import app.materialclock.MainActivity
 import app.materialclock.core.Alarm
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -31,13 +32,12 @@ object AlarmScheduler {
         val fire = firePendingIntent(context, alarm.id)
         
         if (canScheduleExact(context)) {
-            // STATUS BAR ICON FIX: 
-            // The system requires a standard LaunchIntent to validate the AlarmClockInfo
-            // and light up the alarm glyph in the status bar.
+            // सिस्टम को एक स्टैंडर्ड ऐप लॉन्च इंटेंट दिया गया है ताकि स्टेटस बार आइकॉन इनेबल हो सके
             am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showPendingIntent(context)), fire)
         } else {
             am.setWindow(AlarmManager.RTC_WAKEUP, at, 60_000L, fire)
         }
+        
         scheduleUpcoming(context, alarm, at, upcomingMinutes, zone)
     }
 
@@ -86,13 +86,18 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    private fun showPendingIntent(context: Context): PendingIntent =
-        PendingIntent.getActivity(
+    private fun showPendingIntent(context: Context): PendingIntent {
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?: Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        return PendingIntent.getActivity(
             context,
             0,
-            context.packageManager.getLaunchIntentForPackage(context.packageName)!!,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
 
     private const val UPCOMING_REQUEST_CODE_OFFSET = 1_000_000_000L
 }
