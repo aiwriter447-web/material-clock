@@ -6,45 +6,37 @@
       shows it computes locally from the platform's clock and tz database.
 
       USE_EXACT_ALARM rather than a runtime prompt. It is install-granted, and it is granted
-      specifically to apps whose *core function* is an alarm clock or calendar, which this one is.
+      specifically to apps whose core function is an alarm clock or calendar, which this one is.
       SCHEDULE_EXACT_ALARM is declared alongside it capped at API 32, the last release before
       USE_EXACT_ALARM existed; above that the capped one is inert and the app never asks for
       anything.
     -->
 
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Alarm scheduling -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-   
 
-<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
 
+    <!-- Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Rescheduling after a reboot: AlarmManager keeps nothing across one. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Runtime-requested from API 33. Refusing it costs the notifications, not the alarm. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!--
-      Android 16's Live Updates / Now Bar. Separate from POST_NOTIFICATIONS above and install-time
-      rather than runtime — a promoted timer/stopwatch notification is refused without this even
-      when POST_NOTIFICATIONS is already granted, and refused silently, so it is easy to add the
-      promotion flags in code, test on a 16 device with nothing changing, and conclude the feature
-      does not work when the actual cause is this one line being missing.
-    -->
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-
     <!-- The ringer: looping audio and a repeating waveform with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <!-- LiveUpdateService: reposting a timer/stopwatch notification once a second is not one of
-         the platform's named foreground-service categories, so it is specialUse with the
-         justification property below rather than any of the other typed permissions. -->
+
+    <!--
+      LiveUpdateService: reposting a timer/stopwatch notification once a second is not one of
+      the platform's named foreground-service categories, so it is specialUse with the
+      justification property below rather than any of the other typed permissions.
+    -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -69,11 +61,12 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.MaterialClock">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
             <!-- So "set an alarm for 7" from Assistant or another app lands here. -->
             <intent-filter>
                 <action android:name="android.intent.action.SHOW_ALARMS" />
@@ -107,6 +100,7 @@
             android:name=".alarm.LiveUpdateService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
+
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps the running timer/stopwatch notification's live progress and status-bar chip ticking every second while one is active." />
@@ -116,6 +110,7 @@
             android:name=".alarm.AlarmReceiver"
             android:exported="false"
             android:directBootAware="true">
+
             <intent-filter>
                 <!--
                   All four mean the same thing to this app: every AlarmManager entry it owns is now
@@ -130,7 +125,9 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".alarm.ClockActionReceiver" android:exported="false" />
+        <receiver
+            android:name=".alarm.ClockActionReceiver"
+            android:exported="false" />
 
         <!--
           The clock widget. exported="false" is correct: every one of these broadcasts comes from
@@ -145,6 +142,7 @@
         <receiver
             android:name=".widget.ClockWidgetProvider"
             android:exported="false">
+
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.TIME_SET" />
@@ -152,13 +150,16 @@
                 <action android:name="android.intent.action.LOCALE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
+
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clock_widget_info" />
         </receiver>
 
         <!-- Receives the launcher's pin callback, which carries the new widget's id. -->
-        <receiver android:name=".widget.WidgetPinnedReceiver" android:exported="false" />
+        <receiver
+            android:name=".widget.WidgetPinnedReceiver"
+            android:exported="false" />
 
         <!--
           No launchMode, no taskAffinity, no noHistory, no dialog theme. See the class docs. The
@@ -171,9 +172,11 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
             android:theme="@style/Theme.MaterialClock">
+
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
     </application>
 </manifest>
