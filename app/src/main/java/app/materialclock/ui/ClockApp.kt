@@ -1,6 +1,8 @@
 package app.materialclock.ui
 
 import android.Manifest
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -8,18 +10,24 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +40,7 @@ import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +74,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.materialclock.alarm.AlarmScheduler
@@ -109,6 +123,71 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             return@ClockTheme
         }
 
+        val ctx = LocalContext.current
+        val nm = remember { ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+        
+        // Full Screen Intent Permission check for Android 14+
+        var hasFullScreenPermission by remember {
+            mutableStateOf(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    nm.canUseFullScreenIntent()
+                } else true
+            )
+        }
+
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        hasFullScreenPermission = nm.canUseFullScreenIntent()
+                    }
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+
+        if (!hasFullScreenPermission) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Outlined.Alarm,
+                        contentDescription = null,
+                        modifier = Modifier.size(72.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        "Full Screen Alerts Needed",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "To reliably wake up your screen when an alarm rings, please allow Full Screen Intents in settings.",
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(32.dp))
+                    Button(onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            ctx.startActivity(
+                                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                                    .setData(Uri.parse("package:${ctx.packageName}"))
+                            )
+                        }
+                    }) {
+                        Text("Grant Permission")
+                    }
+                }
+            }
+            return@ClockTheme
+        }
+
         val pagerState = rememberPagerState(
             initialPage = startTab?.let { k -> Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 } } ?: 0,
             pageCount = { Tab.entries.size }
@@ -126,7 +205,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
-        val ctx = LocalContext.current
 
         LaunchedEffect(currentTab) {
             if (currentTab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
@@ -234,12 +312,8 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     },
             ) { page ->
                 
-                // CRITICAL FIX FOR EARTHQUAKE/STACKING GLITCH:
-                // Only allow the 120fps UI ticker to run if this specific page is currently visible/focused.
-                // This prevents 2 or 3 screens from rapidly updating at the same time and choking the layout engine.
                 val isFocused = pagerState.currentPage == page || pagerState.targetPage == page
 
-                // The solid background prevents visual bleeding and stacking when swiping
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                     when (Tab.entries[page]) {
                         Tab.ALARMS -> {
@@ -265,7 +339,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                         Tab.WORLD -> {
                             val cities by vm.cities.collectAsStateWithLifecycle()
                             val homeZone by vm.homeZone.collectAsStateWithLifecycle()
-                            // World clock ticks every 1000ms (1fps), which is harmless
                             val now by rememberWallTicker()
                             WorldClockScreen(
                                 cities = cities,
@@ -343,7 +416,11 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     selected = targetTab, 
                     onSelect = { selectedTab -> 
                         scope.launch {
-                            pagerState.animateScrollToPage(Tab.entries.indexOf(selectedTab))
+                            // SMOOTH ANIMATION FIX: Added tween with FastOutSlowInEasing
+                            pagerState.animateScrollToPage(
+                                page = Tab.entries.indexOf(selectedTab),
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
+                            )
                         }
                     },
                     modifier = Modifier
