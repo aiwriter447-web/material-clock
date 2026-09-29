@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.getSystemService
-import app.materialclock.MainActivity
 import app.materialclock.core.Alarm
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -33,23 +32,12 @@ object AlarmScheduler {
         
         if (canScheduleExact(context)) {
             // STATUS BAR ICON FIX: 
-            // To show the alarm icon in the status bar, we must provide a valid showIntent 
-            // that opens the app when the user taps the status bar icon.
-            val showIntent = PendingIntent.getActivity(
-                context,
-                alarm.id.toInt(),
-                Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra(Notifications.EXTRA_TAB, Notifications.TAB_ALARMS)
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            
-            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showIntent), fire)
+            // The system requires a standard LaunchIntent to validate the AlarmClockInfo
+            // and light up the alarm glyph in the status bar.
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showPendingIntent(context)), fire)
         } else {
             am.setWindow(AlarmManager.RTC_WAKEUP, at, 60_000L, fire)
         }
-        
         scheduleUpcoming(context, alarm, at, upcomingMinutes, zone)
     }
 
@@ -95,6 +83,14 @@ object AlarmScheduler {
             Intent(context, AlarmReceiver::class.java)
                 .setAction(AlarmReceiver.ACTION_FIRE)
                 .putExtra(AlarmReceiver.EXTRA_ID, id),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun showPendingIntent(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            0,
+            context.packageManager.getLaunchIntentForPackage(context.packageName)!!,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
