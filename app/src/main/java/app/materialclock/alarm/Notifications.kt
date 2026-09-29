@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.materialclock.MainActivity
 import app.materialclock.R
@@ -21,24 +20,6 @@ import app.materialclock.core.parts
 import app.materialclock.core.stopwatchParts
 import java.time.LocalDateTime
 
-/**
- * Every channel and every notification the app posts.
- *
- * ## The timer and stopwatch notifications carry no service
- *
- * They do not need one. A countdown is a deadline, not a process:
- * remaining time is deadline - elapsedRealtime().
- *
- * The ringer uses a foreground service because looping audio is
- * ongoing work.
- *
- * ## Promoted ongoing (Android 16 Now Bar / Live Updates)
- *
- * setRequestPromotedOngoing and POST_PROMOTED_NOTIFICATIONS in
- * the manifest allow eligible notifications to be promoted.
- *
- * Progress and shortCriticalText are refreshed by LiveUpdateService.
- */
 object Notifications {
 
     const val CHANNEL_ALARM = "alarm"
@@ -57,7 +38,6 @@ object Notifications {
 
         val nm = context.getSystemService<NotificationManager>() ?: return
 
-        // Alarm channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ALARM,
@@ -67,13 +47,11 @@ object Notifications {
                 description = "A ringing alarm"
                 setSound(null, null)
                 enableVibration(false)
-                lockscreenVisibility =
-                    android.app.Notification.VISIBILITY_PUBLIC
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                 setBypassDnd(true)
             }
         )
 
-        // Upcoming alarm channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_UPCOMING,
@@ -84,7 +62,6 @@ object Notifications {
             }
         )
 
-        // Timer channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_TIMER,
@@ -93,12 +70,10 @@ object Notifications {
             ).apply {
                 description = "A running timer"
                 setSound(null, null)
-                lockscreenVisibility =
-                    android.app.Notification.VISIBILITY_PUBLIC
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
         )
 
-        // Stopwatch channel
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_STOPWATCH,
@@ -107,13 +82,10 @@ object Notifications {
             ).apply {
                 description = "A running stopwatch"
                 setSound(null, null)
-                lockscreenVisibility =
-                    android.app.Notification.VISIBILITY_PUBLIC
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
         )
     }
-
-    /* ── Upcoming alarm ───────────────────────────────────────────── */
 
     fun showUpcoming(
         context: Context,
@@ -130,8 +102,7 @@ object Notifications {
         context: Context,
         alarm: app.materialclock.core.Alarm,
     ): android.app.Notification {
-        val is24 = android.text.format.DateFormat
-            .is24HourFormat(context)
+        val is24 = android.text.format.DateFormat.is24HourFormat(context)
 
         val hour = if (is24) {
             alarm.time.hour
@@ -147,11 +118,7 @@ object Notifications {
             " PM"
         }
 
-        val timeText = "%d:%02d%s".format(
-            hour,
-            alarm.time.minute,
-            meridiem,
-        )
+        val timeText = "%d:%02d%s".format(hour, alarm.time.minute, meridiem)
 
         val title = if (alarm.label.isNotBlank()) {
             "\"${alarm.label}\" rings at $timeText"
@@ -159,10 +126,7 @@ object Notifications {
             "Alarm rings at $timeText"
         }
 
-        return NotificationCompat.Builder(
-            context,
-            CHANNEL_UPCOMING,
-        )
+        return NotificationCompat.Builder(context, CHANNEL_UPCOMING)
             .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle(title)
             .setContentText("Tap to review it")
@@ -171,8 +135,6 @@ object Notifications {
             .setContentIntent(openApp(context, TAB_ALARMS))
             .build()
     }
-
-    /* ── Timer ────────────────────────────────────────────────────── */
 
     fun showTimer(
         context: Context,
@@ -193,73 +155,37 @@ object Notifications {
         val now = SystemClock.elapsedRealtime()
         val remaining = timer.remaining(now)
 
-        val b = NotificationCompat.Builder(
-            context,
-            CHANNEL_TIMER,
-        )
+        // DARK MODE VISIBILITY FIX: 
+        // Removed .setColor() here to allow Android's default adaptive notification coloring
+        val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
-
-            // Blue notification accent
-            .setColor(
-                ContextCompat.getColor(
-                    context,
-                    R.color.notification_accent,
-                )
-            )
-
-            // Prevent repeated alerts during notification updates
             .setOnlyAlertOnce(true)
-
-            .setContentTitle(
-                timer.label.ifBlank { "Timer" }
-            )
+            .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(
-                NotificationCompat.VISIBILITY_PUBLIC
-            )
-            .setContentIntent(
-                openApp(context, TAB_TIMERS)
-            )
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(openApp(context, TAB_TIMERS))
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(
-                remaining.clockFormat()
-            )
+            .setShortCriticalText(remaining.clockFormat())
             .addAction(
                 0,
                 if (running) "Pause" else "Resume",
-                broadcast(
-                    context,
-                    ClockActionReceiver.ACTION_TIMER_TOGGLE,
-                    20,
-                ),
+                broadcast(context, ClockActionReceiver.ACTION_TIMER_TOGGLE, 20),
             )
             .addAction(
                 0,
                 "+1 min",
-                broadcast(
-                    context,
-                    ClockActionReceiver.ACTION_TIMER_ADD,
-                    21,
-                ),
+                broadcast(context, ClockActionReceiver.ACTION_TIMER_ADD, 21),
             )
             .addAction(
                 0,
                 "Cancel",
-                broadcast(
-                    context,
-                    ClockActionReceiver.ACTION_TIMER_CANCEL,
-                    22,
-                ),
+                broadcast(context, ClockActionReceiver.ACTION_TIMER_CANCEL, 22),
             )
             .setStyle(
                 NotificationCompat.ProgressStyle()
-                    .setProgressSegments(
-                        listOf(
-                            NotificationCompat.ProgressStyle.Segment(100)
-                        )
-                    )
+                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100)))
                     .setProgress(
                         timer.fractionLeft(now)
                             .let { (100 - (it * 100)).toInt() }
@@ -268,18 +194,9 @@ object Notifications {
             )
 
         if (running) {
-            val is24h =
-                android.text.format.DateFormat
-                    .is24HourFormat(context)
-
+            val is24h = android.text.format.DateFormat.is24HourFormat(context)
             val setMinutes = timer.total.toMinutes()
-
-            val durationLabel = if (setMinutes > 0) {
-                "$setMinutes m"
-            } else {
-                "${timer.total.seconds} s"
-            }
-
+            val durationLabel = if (setMinutes > 0) "$setMinutes m" else "${timer.total.seconds} s"
             val endInstant = LocalDateTime.now().plus(remaining)
 
             val endHour = if (is24h) {
@@ -296,40 +213,25 @@ object Notifications {
                 " pm"
             }
 
-            val endLabel = "%d:%02d%s".format(
-                endHour,
-                endInstant.minute,
-                endMeridiem,
-            )
+            val endLabel = "%d:%02d%s".format(endHour, endInstant.minute, endMeridiem)
 
             b.setUsesChronometer(true)
                 .setChronometerCountDown(true)
-                .setWhen(
-                    System.currentTimeMillis() +
-                        remaining.toMillis()
-                )
+                .setWhen(System.currentTimeMillis() + remaining.toMillis())
                 .setShowWhen(true)
-                .setContentText(
-                    "$durationLabel / $endLabel"
-                )
+                .setContentText("$durationLabel / $endLabel")
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
-                .setContentText(
-                    "Paused · ${timer.pausedRemaining.clockFormat()}"
-                )
+                .setContentText("Paused · ${timer.pausedRemaining.clockFormat()}")
         }
 
         return b.build()
     }
 
     fun hideTimer(context: Context) {
-        NotificationManagerCompat
-            .from(context)
-            .cancel(ID_TIMER)
+        NotificationManagerCompat.from(context).cancel(ID_TIMER)
     }
-
-    /* ── Stopwatch ────────────────────────────────────────────────── */
 
     fun showStopwatch(
         context: Context,
@@ -346,79 +248,44 @@ object Notifications {
         context: Context,
         sw: Stopwatch,
     ): android.app.Notification {
-        val elapsed = sw.elapsed(
-            SystemClock.elapsedRealtime()
-        )
+        val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
 
-        val b = NotificationCompat.Builder(
-            context,
-            CHANNEL_STOPWATCH,
-        )
+        // DARK MODE VISIBILITY FIX: 
+        // Removed .setColor() here to allow Android's default adaptive notification coloring
+        val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
-
-            // Blue notification accent
-            .setColor(
-                ContextCompat.getColor(
-                    context,
-                    R.color.notification_accent,
-                )
-            )
-
-            // Prevent repeated alerts during notification updates
             .setOnlyAlertOnce(true)
-
             .setContentTitle("Stopwatch")
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
             .setSilent(true)
-            .setVisibility(
-                NotificationCompat.VISIBILITY_PUBLIC
-            )
-            .setContentIntent(
-                openApp(context, TAB_STOPWATCH)
-            )
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(openApp(context, TAB_STOPWATCH))
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(
-                elapsed.clockFormat(withHours = true)
-            )
+            .setShortCriticalText(elapsed.clockFormat(withHours = true))
             .setStyle(
                 NotificationCompat.ProgressStyle()
-                    .setProgressSegments(
-                        listOf(
-                            NotificationCompat.ProgressStyle.Segment(60)
-                        )
-                    )
-                    .setProgress(
-                        (elapsed.seconds % 60).toInt()
-                    ),
+                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(60)))
+                    .setProgress((elapsed.seconds % 60).toInt()),
             )
             .addAction(
                 0,
                 if (sw.running) "Stop" else "Start",
-                broadcast(
-                    context,
-                    ClockActionReceiver.ACTION_SW_TOGGLE,
-                    30,
-                ),
+                broadcast(context, ClockActionReceiver.ACTION_SW_TOGGLE, 30),
             )
             .addAction(
                 0,
                 if (sw.running) "Lap" else "Reset",
                 broadcast(
                     context,
-                    if (sw.running) {
-                        ClockActionReceiver.ACTION_SW_LAP
-                    } else {
-                        ClockActionReceiver.ACTION_SW_RESET
-                    },
+                    if (sw.running) ClockActionReceiver.ACTION_SW_LAP else ClockActionReceiver.ACTION_SW_RESET,
                     31,
                 ),
             )
 
         if (sw.running) {
             val lapText = sw.laps.firstOrNull()?.let {
-                "Lap ${it.index} · " +
-                    it.split.clockFormat(withHours = true)
+                "Lap ${it.index} · " + it.split.clockFormat(withHours = true)
             }
 
             val (p1, p2, p3) = elapsed.stopwatchParts()
@@ -430,32 +297,21 @@ object Notifications {
             }
 
             b.setUsesChronometer(true)
-                .setWhen(
-                    System.currentTimeMillis() -
-                        elapsed.toMillis()
-                )
+                .setWhen(System.currentTimeMillis() - elapsed.toMillis())
                 .setShowWhen(true)
-                .setContentText(
-                    lapText ?: elapsedWithCentis
-                )
+                .setContentText(lapText ?: elapsedWithCentis)
         } else {
             b.setUsesChronometer(false)
                 .setShowWhen(false)
-                .setContentText(
-                    sw.accumulated.clockFormat(withHours = true)
-                )
+                .setContentText(sw.accumulated.clockFormat(withHours = true))
         }
 
         return b.build()
     }
 
     fun hideStopwatch(context: Context) {
-        NotificationManagerCompat
-            .from(context)
-            .cancel(ID_STOPWATCH)
+        NotificationManagerCompat.from(context).cancel(ID_STOPWATCH)
     }
-
-    /* ── Plumbing ─────────────────────────────────────────────────── */
 
     const val TAB_ALARMS = "alarms"
     const val TAB_TIMERS = "timers"
@@ -468,17 +324,10 @@ object Notifications {
     ): PendingIntent = PendingIntent.getActivity(
         context,
         tab.hashCode(),
-        Intent(
-            context,
-            MainActivity::class.java,
-        )
-            .setFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP
-            )
+        Intent(context, MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(EXTRA_TAB, tab),
-        PendingIntent.FLAG_UPDATE_CURRENT or
-            PendingIntent.FLAG_IMMUTABLE,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
     fun broadcast(
@@ -490,32 +339,20 @@ object Notifications {
         PendingIntent.getBroadcast(
             context,
             requestCode,
-            Intent(
-                context,
-                ClockActionReceiver::class.java,
-            )
+            Intent(context, ClockActionReceiver::class.java)
                 .setAction(action)
                 .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-                .putExtra(
-                    AlarmReceiver.EXTRA_ID,
-                    id,
-                ),
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                PendingIntent.FLAG_IMMUTABLE,
+                .putExtra(AlarmReceiver.EXTRA_ID, id),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    /**
-     * Posts unless notifications are disabled.
-     */
     private fun post(
         context: Context,
         id: Int,
         n: android.app.Notification,
     ) {
         val nm = NotificationManagerCompat.from(context)
-
         if (!nm.areNotificationsEnabled()) return
-
         runCatching {
             nm.notify(id, n)
         }
