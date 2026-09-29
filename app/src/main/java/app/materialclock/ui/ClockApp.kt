@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -108,7 +109,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             return@ClockTheme
         }
 
-        // Setup the pager state for swipe gestures as the single source of truth
         val pagerState = rememberPagerState(
             initialPage = startTab?.let { k -> Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 } } ?: 0,
             pageCount = { Tab.entries.size }
@@ -223,7 +223,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
           Box(Modifier.fillMaxSize()) {
             
-            // FILL_MAX_SIZE solves the stacking/earthquake layout glitch
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -234,88 +233,98 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                         transformOrigin = TransformOrigin(0.5f, 1f)
                     },
             ) { page ->
-                when (Tab.entries[page]) {
-                    Tab.ALARMS -> {
-                        val alarms by vm.alarms.collectAsStateWithLifecycle()
-                        val groups by vm.groups.collectAsStateWithLifecycle()
-                        AlarmsScreen(
-                            alarms = alarms,
-                            groups = groups,
-                            weekStart = settings.alarms.weekStart,
-                            onSelectionChange = { selectionActive = it },
-                            onToggle = vm::toggleAlarm,
-                            onToggleGroup = vm::toggleGroup,
-                            onTogglePin = vm::togglePinAlarm,
-                            onEdit = { editing = it },
-                            onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
-                            onDeleteSelected = vm::deleteSelectedAlarms,
-                            onSetEnabledSelected = vm::setAlarmsEnabledState,
-                            onUngroupSelected = vm::ungroupSelectedAlarms,
-                            contentPadding = body,
-                        )
-                    }
+                
+                // CRITICAL FIX FOR EARTHQUAKE/STACKING GLITCH:
+                // Only allow the 120fps UI ticker to run if this specific page is currently visible/focused.
+                // This prevents 2 or 3 screens from rapidly updating at the same time and choking the layout engine.
+                val isFocused = pagerState.currentPage == page || pagerState.targetPage == page
 
-                    Tab.WORLD -> {
-                        val cities by vm.cities.collectAsStateWithLifecycle()
-                        val homeZone by vm.homeZone.collectAsStateWithLifecycle()
-                        val now by rememberWallTicker()
-                        WorldClockScreen(
-                            cities = cities,
-                            home = homeZone,
-                            nowUtcMillis = now,
-                            settings = settings.world,
-                            onSelectionChange = { selectionActive = it },
-                            onRemove = { city ->
-                                vm.removeCity(city.zone)
-                                scope.launch {
-                                    val r = snackbar.showSnackbar(
-                                        message = "Removed ${city.city}",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Short,
-                                    )
-                                    if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
-                                }
-                            },
-                            onTogglePin = { city -> vm.togglePinCity(city.zone) },
-                            onDeleteSelected = vm::deleteSelectedCities,
-                            contentPadding = edgeToEdgeWithFab,
-                        )
-                    }
+                // The solid background prevents visual bleeding and stacking when swiping
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                    when (Tab.entries[page]) {
+                        Tab.ALARMS -> {
+                            val alarms by vm.alarms.collectAsStateWithLifecycle()
+                            val groups by vm.groups.collectAsStateWithLifecycle()
+                            AlarmsScreen(
+                                alarms = alarms,
+                                groups = groups,
+                                weekStart = settings.alarms.weekStart,
+                                onSelectionChange = { selectionActive = it },
+                                onToggle = vm::toggleAlarm,
+                                onToggleGroup = vm::toggleGroup,
+                                onTogglePin = vm::togglePinAlarm,
+                                onEdit = { editing = it },
+                                onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
+                                onDeleteSelected = vm::deleteSelectedAlarms,
+                                onSetEnabledSelected = vm::setAlarmsEnabledState,
+                                onUngroupSelected = vm::ungroupSelectedAlarms,
+                                contentPadding = body,
+                            )
+                        }
 
-                    Tab.TIMERS -> {
-                        val timer by vm.timer.collectAsStateWithLifecycle()
-                        val presets by vm.presets.collectAsStateWithLifecycle()
-                        val now by rememberElapsedTicker(active = timer != null)
-                        TimersScreen(
-                            timer = timer,
-                            draft = vm.draftDuration,
-                            nowElapsedMillis = now,
-                            presets = presets,
-                            onDigit = vm::pressDigit,
-                            onBackspace = vm::backspace,
-                            onWind = vm::windToMinutes,
-                            onStart = { vm.startTimer() },
-                            onPauseResume = { vm.pauseOrResumeTimer() },
-                            onAddTen = { vm.addTenSeconds() },
-                            onCancel = { vm.cancelTimer() },
-                            onStartPreset = { vm.startPreset(it) },
-                            onEditPreset = { editingPreset = it },
-                            onAddPreset = { editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60) },
-                            contentPadding = edgeToEdge,
-                        )
-                    }
+                        Tab.WORLD -> {
+                            val cities by vm.cities.collectAsStateWithLifecycle()
+                            val homeZone by vm.homeZone.collectAsStateWithLifecycle()
+                            // World clock ticks every 1000ms (1fps), which is harmless
+                            val now by rememberWallTicker()
+                            WorldClockScreen(
+                                cities = cities,
+                                home = homeZone,
+                                nowUtcMillis = now,
+                                settings = settings.world,
+                                onSelectionChange = { selectionActive = it },
+                                onRemove = { city ->
+                                    vm.removeCity(city.zone)
+                                    scope.launch {
+                                        val r = snackbar.showSnackbar(
+                                            message = "Removed ${city.city}",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short,
+                                        )
+                                        if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
+                                    }
+                                },
+                                onTogglePin = { city -> vm.togglePinCity(city.zone) },
+                                onDeleteSelected = vm::deleteSelectedCities,
+                                contentPadding = edgeToEdgeWithFab,
+                            )
+                        }
 
-                    Tab.STOPWATCH -> {
-                        val sw by vm.stopwatch.collectAsStateWithLifecycle()
-                        val now by rememberElapsedTicker(active = sw.running)
-                        StopwatchScreen(
-                            stopwatch = sw,
-                            nowElapsedMillis = now,
-                            onToggle = { vm.toggleStopwatch() },
-                            onLap = { vm.lap() },
-                            onReset = { vm.resetStopwatch() },
-                            contentPadding = edgeToEdge,
-                        )
+                        Tab.TIMERS -> {
+                            val timer by vm.timer.collectAsStateWithLifecycle()
+                            val presets by vm.presets.collectAsStateWithLifecycle()
+                            val now by rememberElapsedTicker(active = isFocused && timer != null)
+                            TimersScreen(
+                                timer = timer,
+                                draft = vm.draftDuration,
+                                nowElapsedMillis = now,
+                                presets = presets,
+                                onDigit = vm::pressDigit,
+                                onBackspace = vm::backspace,
+                                onWind = vm::windToMinutes,
+                                onStart = { vm.startTimer() },
+                                onPauseResume = { vm.pauseOrResumeTimer() },
+                                onAddTen = { vm.addTenSeconds() },
+                                onCancel = { vm.cancelTimer() },
+                                onStartPreset = { vm.startPreset(it) },
+                                onEditPreset = { editingPreset = it },
+                                onAddPreset = { editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60) },
+                                contentPadding = edgeToEdge,
+                            )
+                        }
+
+                        Tab.STOPWATCH -> {
+                            val sw by vm.stopwatch.collectAsStateWithLifecycle()
+                            val now by rememberElapsedTicker(active = isFocused && sw.running)
+                            StopwatchScreen(
+                                stopwatch = sw,
+                                nowElapsedMillis = now,
+                                onToggle = { vm.toggleStopwatch() },
+                                onLap = { vm.lap() },
+                                onReset = { vm.resetStopwatch() },
+                                contentPadding = edgeToEdge,
+                            )
+                        }
                     }
                 }
             }
@@ -331,7 +340,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             ) {
                 ClockDock(
                     destinations = Tab.entries,
-                    selected = targetTab, // Syncs dock selection perfectly with swipe
+                    selected = targetTab, 
                     onSelect = { selectedTab -> 
                         scope.launch {
                             pagerState.animateScrollToPage(Tab.entries.indexOf(selectedTab))
