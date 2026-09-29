@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import app.materialclock.core.TimerState
 import app.materialclock.data.ClockStore
@@ -42,10 +43,6 @@ class LiveUpdateService : Service() {
         val store = ClockStore(applicationContext)
         Notifications.ensureChannels(this)
 
-        // CRITICAL FIX FOR ANDROID 16 & NOW BAR:
-        // We must synchronously read the real state and post the EXACT notification 
-        // immediately to prevent ForegroundServiceStartNotAllowedException and 
-        // to ensure the Now Bar accepts the promoted notification flags instantly.
         try {
             val timer = runBlocking { store.timer.first() }
             val sw = runBlocking { store.stopwatch.first() }
@@ -100,12 +97,32 @@ class LiveUpdateService : Service() {
                     break
                 }
                 
-                // 2-second delay reduces the chance of dropping button taps in the notification 
-                // while keeping the progress bar moving smoothly.
                 delay(2000L)
             }
 
-            stopForeground(STOP_FOREGROUND_DETACH)
+            // GHOST NOTIFICATION FIX: 
+            // Detach service from notification, then manually check if they were cancelled/reset.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_DETACH)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(false)
+            }
+
+            delay(100) // Brief pause to ensure ClockActionReceiver has updated the store
+            
+            val finalTimer = store.timer.first()
+            val finalSw = store.stopwatch.first()
+            val nm = NotificationManagerCompat.from(this@LiveUpdateService)
+
+            // If completely cancelled, wipe it. (If just paused, it stays).
+            if (finalTimer == null) {
+                nm.cancel(Notifications.ID_TIMER)
+            }
+            if (!finalSw.running && finalSw.accumulated.isZero) {
+                nm.cancel(Notifications.ID_STOPWATCH)
+            }
+
             stopSelf()
         }
 
