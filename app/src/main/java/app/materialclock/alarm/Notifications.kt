@@ -156,7 +156,6 @@ object Notifications {
         val now = SystemClock.elapsedRealtime()
         val remaining = timer.remaining(now)
 
-        // VISIBILITY FIX: Added .setColor() to restore gradient and progress bar color in all themes
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
             .setColor(0xFF0061A4.toInt()) 
@@ -164,7 +163,7 @@ object Notifications {
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
             .setSilent(true)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(NotificationCompat.CATEGORY_STOPWATCH) 
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_TIMERS))
             .setRequestPromotedOngoing(true)
@@ -251,13 +250,12 @@ object Notifications {
     ): android.app.Notification {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
 
-        // VISIBILITY FIX: Added .setColor() to restore gradient and progress bar color in all themes
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
-            .setColor(0xFF0061A4.toInt())
+            .setColor(0xFF0061A4.toInt()) 
             .setOnlyAlertOnce(true)
             .setContentTitle("Stopwatch")
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setCategory(NotificationCompat.CATEGORY_STOPWATCH) 
             .setOngoing(true)
             .setSilent(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
