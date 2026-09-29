@@ -128,6 +128,7 @@ object Notifications {
 
         return NotificationCompat.Builder(context, CHANNEL_UPCOMING)
             .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setColor(0xFF0061A4.toInt())
             .setContentTitle(title)
             .setContentText("Tap to review it")
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -155,10 +156,10 @@ object Notifications {
         val now = SystemClock.elapsedRealtime()
         val remaining = timer.remaining(now)
 
-        // DARK MODE VISIBILITY FIX: 
-        // Removed .setColor() here to allow Android's default adaptive notification coloring
+        // VISIBILITY FIX: Added .setColor() to restore gradient and progress bar color in all themes
         val b = NotificationCompat.Builder(context, CHANNEL_TIMER)
             .setSmallIcon(R.drawable.ic_stat_timer)
+            .setColor(0xFF0061A4.toInt()) 
             .setOnlyAlertOnce(true)
             .setContentTitle(timer.label.ifBlank { "Timer" })
             .setOngoing(true)
@@ -250,10 +251,10 @@ object Notifications {
     ): android.app.Notification {
         val elapsed = sw.elapsed(SystemClock.elapsedRealtime())
 
-        // DARK MODE VISIBILITY FIX: 
-        // Removed .setColor() here to allow Android's default adaptive notification coloring
+        // VISIBILITY FIX: Added .setColor() to restore gradient and progress bar color in all themes
         val b = NotificationCompat.Builder(context, CHANNEL_STOPWATCH)
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
+            .setColor(0xFF0061A4.toInt())
             .setOnlyAlertOnce(true)
             .setContentTitle("Stopwatch")
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
