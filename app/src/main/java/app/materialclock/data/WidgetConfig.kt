@@ -21,9 +21,7 @@ data class WidgetConfig(
     val shape: FaceShape = FaceShape.CIRCLE,
     /** Only read when [shape] is [FaceShape.PILL]. */
     val pillOrientation: PillOrientation = PillOrientation.HORIZONTAL,
-    val fit: FitMode = FitMode.STRETCH,
     val faceFill: FaceFill = FaceFill.CONTAINER,
-    val outline: OutlineStyle = OutlineStyle.NONE,
 
     /* ── Hands ──────────────────────────────────────────────────────────────────────────── */
     val hourHand: HandStyle = HandStyle.BATON,
@@ -65,7 +63,7 @@ enum class WidgetType(val label: String) {
  * `ShapeFit.fillRect`, which necessarily turns circular corners into ellipses when the widget is
  * not square. That is not a defect to fix: a fixed point list cannot both fill a non-square box and
  * keep its roundings circular, which is exactly why the four common shapes are parametric and why
- * [FitMode.UNIFORM] exists.
+ * the fit is always uniform.
  *
  * [MATERIAL_PILL] is Material's own `Pill`, and it is *not* a stadium; measured, it is a
  * 45°-tilted capsule on a square bounding box. It is offered under an honest name; real pills come
@@ -74,43 +72,19 @@ enum class WidgetType(val label: String) {
 enum class FaceShape(val label: String, val parametric: Boolean = false) {
     CIRCLE("Circle", true),
     ROUNDED_SQUARE("Rounded square", true),
-    SQUARE_SHARP("Square", true),
     PILL("Pill", true),
 
-    ARCH("Arch"),
-    ARROW("Arrow"),
-    BOOM("Boom"),
-    BUN("Bun"),
-    BURST("Burst"),
     CLAM_SHELL("Clamshell"),
     CLOVER_4("Clover, 4 leaf"),
     CLOVER_8("Clover, 8 leaf"),
     COOKIE_4("Cookie, 4 sided"),
     COOKIE_6("Cookie, 6 sided"),
     COOKIE_7("Cookie, 7 sided"),
-    COOKIE_9("Cookie, 9 sided"),
-    COOKIE_12("Cookie, 12 sided"),
-    DIAMOND("Diamond"),
-    FAN("Fan"),
-    FLOWER("Flower"),
-    GEM("Gem"),
     GHOSTISH("Ghost"),
-    HEART("Heart"),
-    MATERIAL_PILL("Tilted capsule"),
-    OVAL("Oval"),
-    PENTAGON("Pentagon"),
-    PIXEL_CIRCLE("Pixel circle"),
-    PIXEL_TRIANGLE("Pixel triangle"),
-    PUFFY("Puffy"),
-    PUFFY_DIAMOND("Puffy diamond"),
     SEMI_CIRCLE("Semicircle"),
     SLANTED("Slanted"),
-    SOFT_BOOM("Soft boom"),
-    SOFT_BURST("Soft burst"),
     SQUIRCLE("Squircle"),
     SUNNY("Sunny"),
-    TRIANGLE("Triangle"),
-    VERY_SUNNY("Very sunny"),
 }
 
 /**
@@ -128,34 +102,15 @@ enum class PillOrientation(val label: String) {
 }
 
 /**
- * Labels are terse on purpose: these sit in a connected button group where three or four share the
- * screen's width, and anything much longer ellipsises into uselessness.
- */
-enum class FitMode(val label: String) {
-    /** Independent x and y scale onto the exact ink bounds. Always fills; distorts by sx/sy. */
-    STRETCH("Stretch"),
-    /** One scale for both axes, centred. Corners stay circular; leaves a gap on one axis. */
-    UNIFORM("Uniform"),
-}
-
-/**
  * Whether the face carries a filled container behind the dial.
  *
  * Two values, not three. An earlier `OUTLINE_ONLY` did exactly what [NONE] does, because the
- * stroke has always come from [OutlineStyle], which is an independent control. That made it a
+ * stroke has always come from a separate stroke control. That made it a
  * third button that changed nothing. An outlined face is `NONE` plus a stroke.
  */
 enum class FaceFill(val label: String) {
     NONE("None"),
     CONTAINER("Filled"),
-}
-
-/** Stroke width as a fraction of the face's minimum radius. */
-enum class OutlineStyle(val label: String, val widthR: Float) {
-    NONE("None", 0f),
-    HAIRLINE("Hairline", 0.008f),
-    THIN("Thin", 0.016f),
-    THICK("Thick", 0.032f),
 }
 
 /**
@@ -169,16 +124,8 @@ enum class OutlineStyle(val label: String, val widthR: Float) {
 enum class HandStyle(val label: String) {
     OFF("Off"),
     BATON("Baton"),
-    TAPER("Tapered"),
     NEEDLE("Needle"),
     OUTLINE("Outlined"),
-    DIAMOND("Diamond"),
-    /** A hairline with a disc near the tip: the counterpoise seconds hand of a chronograph. */
-    BALL("Ball"),
-    /** Disc at the very tip, no overhang: the Braun/Rams seconds hand. */
-    DOT("Dot"),
-    /** A stick that stops short, with an open ring at the end. */
-    RING("Ring"),
     /** Pointed leaf, widest near the middle (the dress-watch hand). */
     LEAF("Leaf"),
     /** Straight stick with a triangular arrowhead. */
