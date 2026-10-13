@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Alarm widget (res/layout/widget_alarm.xml).
+
+  Everything you see (background, time, weekday dots, the round button) is drawn into one picture
+  by AlarmWidgetRenderer, so the layout is the same at every size. On top of it sits an invisible
+  tap area exactly over the round button: tapping it turns the alarm on or off. Tapping anywhere
+  else opens the app.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/alarm_art"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+
+    <FrameLayout
+        android:id="@+id/alarm_hit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/alarm_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
+</FrameLayout>
