@@ -11,7 +11,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -70,6 +69,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -104,7 +104,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 20.dp
-private const val OPEN_SETTLE_DELAY_MS = 300L
+private const val OPEN_SETTLE_DELAY_MS = 150L
+
+private val FastSnappySpringSpec = spring<Float>(
+    stiffness = Spring.StiffnessMedium,
+    dampingRatio = Spring.DampingRatioNoBouncy
+)
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
     ALARMS("Alarms", Icons.Outlined.Alarm, Notifications.TAB_ALARMS),
@@ -252,13 +257,11 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 targetState = targetTab,
                                 transitionSpec = {
                                     if (targetState.ordinal > initialState.ordinal) {
-                                        (slideInHorizontally { width -> width } + fadeIn(tween(250))).togetherWith(
-                                            slideOutHorizontally { width -> -width } + fadeOut(tween(200))
-                                        )
+                                        (slideInHorizontally(animationSpec = FastSnappySpringSpec) { width -> width / 3 } + fadeIn(tween(100)))
+                                            .togetherWith(slideOutHorizontally(animationSpec = FastSnappySpringSpec) { width -> -width / 3 } + fadeOut(tween(80)))
                                     } else {
-                                        (slideInHorizontally { width -> -width } + fadeIn(tween(250))).togetherWith(
-                                            slideOutHorizontally { width -> width } + fadeOut(tween(200))
-                                        )
+                                        (slideInHorizontally(animationSpec = FastSnappySpringSpec) { width -> -width / 3 } + fadeIn(tween(100)))
+                                            .togetherWith(slideOutHorizontally(animationSpec = FastSnappySpringSpec) { width -> width / 3 } + fadeOut(tween(80)))
                                     }
                                 },
                                 label = "TopBarTitleAnim"
@@ -320,6 +323,10 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .graphicsLayer {
+                                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                                alpha = 1f - (kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0f, 1f)
+                            }
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
                         when (Tab.entries[page]) {
@@ -411,19 +418,13 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
 
                 AnimatedVisibility(
                     visible = !selectionActive,
-                    enter = fadeIn(animationSpec = tween(200)) + slideInVertically(
-                        initialOffsetY = { it / 2 },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
+                    enter = fadeIn(animationSpec = tween(100)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = FastSnappySpringSpec
                     ),
-                    exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(
-                        targetOffsetY = { it / 2 },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
+                    exit = fadeOut(animationSpec = tween(80)) + slideOutVertically(
+                        targetOffsetY = { it / 4 },
+                        animationSpec = FastSnappySpringSpec
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -437,10 +438,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             scope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(selectedTab),
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
+                                    animationSpec = FastSnappySpringSpec
                                 )
                             }
                         },
