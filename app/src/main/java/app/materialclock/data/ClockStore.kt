@@ -268,6 +268,9 @@ private fun parseGroups(s: String): List<AlarmGroup> = runCatching {
 
 private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("v", 1)
+    .put("type", c.type.name)
+    .put("dSec", c.digitalSeconds)
+    .put("dDate", c.digitalDate)
     .put("shape", c.shape.name)
     .put("pill", c.pillOrientation.name)
     .put("fit", c.fit.name)
@@ -294,6 +297,9 @@ private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
 private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
     val o = JSONObject(s)
     WidgetConfig(
+        type = enumOr(o.optString("type"), WidgetType.ANALOG),
+        digitalSeconds = o.optBoolean("dSec", false),
+        digitalDate = o.optBoolean("dDate", true),
         shape = enumOr(o.optString("shape"), FaceShape.CIRCLE),
         pillOrientation = enumOr(o.optString("pill"), PillOrientation.HORIZONTAL),
         fit = enumOr(o.optString("fit"), FitMode.STRETCH),
