@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  World Clock widget. Sizes: 2x1 (110 x 40 dp) up to 4x2 (250 x 110 dp); default 2x2.
+  A cell is roughly 70dp: n cells = 70*n - 30 dp.
+
+  updatePeriodMillis is 0: the launcher's own TextClock views keep the times ticking, so this app
+  never needs to wake up.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="250dp"
+    android:maxResizeHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_clock_placeholder"
+    android:previewLayout="@layout/widget_world_preview"
+    android:description="@string/widget_world_description" />
