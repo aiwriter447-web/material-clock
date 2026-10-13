@@ -2,4 +2,10 @@
 <resources>
     <color name="ic_launcher_background">#1B1D45</color>
     <color name="notification_accent">#2563EB</color> <!-- Vibrant Accent Blue -->
+
+    <!-- Only used by the static picture in the widget picker (widget_world_preview.xml). -->
+    <color name="widget_preview_light">#CFE5FF</color>
+    <color name="widget_preview_dark">#1F4E79</color>
+    <color name="widget_preview_on_light">#0B2A4A</color>
+    <color name="widget_preview_on_dark">#FFFFFF</color>
 </resources>
