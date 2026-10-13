@@ -63,7 +63,6 @@ import app.materialclock.data.DateMode
 import app.materialclock.data.DatePosition
 import app.materialclock.data.FaceFill
 import app.materialclock.data.FaceShape
-import app.materialclock.data.FitMode
 import app.materialclock.data.HandStyle
 import app.materialclock.data.IndexSet
 import app.materialclock.data.MinorIndex
@@ -73,7 +72,6 @@ import app.materialclock.data.NumeralRound
 import app.materialclock.data.NumeralSystem
 import app.materialclock.data.NumeralWeight
 import app.materialclock.data.NumeralWidth
-import app.materialclock.data.OutlineStyle
 import app.materialclock.data.PillOrientation
 import app.materialclock.data.WidgetConfig
 import app.materialclock.data.WidgetType
@@ -164,14 +162,8 @@ fun WidgetConfigScreen(
                         { it.label },
                     ) { config = config.copy(pillOrientation = it) }
                 }
-                OptionGroup("Fit", config.fit, FitMode.entries, { it.label }) {
-                    config = config.copy(fit = it)
-                }
                 OptionGroup("Background", config.faceFill, FaceFill.entries, { it.label }) {
                     config = config.copy(faceFill = it)
-                }
-                OptionGroup("Outline", config.outline, OutlineStyle.entries, { it.label }) {
-                    config = config.copy(outline = it)
                 }
 
                 HandCarousel("Hour hand", config.hourHand, settings, config,
@@ -509,11 +501,11 @@ private fun ShapeCarousel(
         } else {
             MaterialTheme.colorScheme.primary
         }.toArgb()
-        val bitmap = remember(shape, config.fit, config.pillOrientation, ink, density) {
+        val bitmap = remember(shape, config.pillOrientation, ink, density) {
             val px = with(density) { 62.dp.toPx() }.toInt()
             val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
             val canvas = android.graphics.Canvas(bmp)
-            val path = facePath(shape, config.pillOrientation, config.fit, px.toFloat(), px.toFloat())
+            val path = facePath(shape, config.pillOrientation, px.toFloat(), px.toFloat())
             canvas.drawPath(
                 path,
                 android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).also { it.color = ink },
@@ -645,7 +637,6 @@ private fun IndexCarousel(
                 val probe = config.copy(
                     shape = FaceShape.CIRCLE,
                     faceFill = FaceFill.NONE,
-                    outline = OutlineStyle.NONE,
                     numerals = NumeralSystem.NONE,
                     indexSet = IndexSet.NONE,
                     minorIndices = option,
