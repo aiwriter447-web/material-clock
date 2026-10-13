@@ -24,31 +24,7 @@ import app.materialclock.ui.theme.toAmoledBlack
 object WidgetColours {
 
     fun resolve(context: Context, config: WidgetConfig, appSettings: ClockSettings): FaceRenderer.Colours {
-        val dark = when {
-            config.colour == ColourSource.FOLLOW_APP -> when (appSettings.theme.darkMode) {
-                DarkMode.SYSTEM -> systemDark(context)
-                DarkMode.LIGHT -> false
-                DarkMode.DARK -> true
-            }
-            else -> systemDark(context)
-        }
-
-        val base: ColorScheme = when {
-            config.colour == ColourSource.FOLLOW_APP -> {
-                val t = appSettings.theme
-                if (t.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    dynamic(context, dark)
-                } else if (dark) t.palette.dark else t.palette.light
-            }
-            config.colour == ColourSource.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-                dynamic(context, dark)
-            // Below API 31 "wallpaper colours" has nothing to read, so it falls back to the picked
-            // palette rather than to grey.
-            else -> if (dark) config.palette.dark else config.palette.light
-        }
-
-        val amoled = config.colour == ColourSource.FOLLOW_APP && appSettings.theme.amoledBlack
-        val scheme = if (dark && amoled) base.toAmoledBlack() else base
+        val scheme = scheme(context, config, appSettings)
 
         // Seven roles, not one accent repeated.
         //
@@ -80,6 +56,36 @@ object WidgetColours {
             // would make that hand look severed at the centre.
             pin = scheme.onSurface.toArgb(),
         )
+    }
+
+    /** The Material colour scheme a widget should draw with (app theme, wallpaper or palette). */
+    fun scheme(context: Context, config: WidgetConfig, appSettings: ClockSettings): ColorScheme {
+        val dark = when {
+            config.colour == ColourSource.FOLLOW_APP -> when (appSettings.theme.darkMode) {
+                DarkMode.SYSTEM -> systemDark(context)
+                DarkMode.LIGHT -> false
+                DarkMode.DARK -> true
+            }
+            else -> systemDark(context)
+        }
+
+        val base: ColorScheme = when {
+            config.colour == ColourSource.FOLLOW_APP -> {
+                val t = appSettings.theme
+                if (t.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    dynamic(context, dark)
+                } else if (dark) t.palette.dark else t.palette.light
+            }
+            config.colour == ColourSource.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                dynamic(context, dark)
+            // Below API 31 "wallpaper colours" has nothing to read, so it falls back to the picked
+            // palette rather than to grey.
+            else -> if (dark) config.palette.dark else config.palette.light
+        }
+
+        val amoled = config.colour == ColourSource.FOLLOW_APP && appSettings.theme.amoledBlack
+        val scheme = if (dark && amoled) base.toAmoledBlack() else base
+        return scheme
     }
 
     private fun dynamic(context: Context, dark: Boolean): ColorScheme =
