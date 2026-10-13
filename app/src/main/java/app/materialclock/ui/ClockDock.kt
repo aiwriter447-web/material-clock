@@ -1,59 +1,56 @@
 package app.materialclock.ui
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-
-// --- pure Kotlin code vectors for solid Alarm and World icons ---
 
 private val AlarmFilledIcon: ImageVector
     get() {
@@ -138,8 +135,6 @@ private val WorldFilledIcon: ImageVector
     }
 private var _worldFilledIcon: ImageVector? = null
 
-// --- main components ---
-
 @Composable
 fun ClockDock(
     destinations: List<Tab>,
@@ -147,123 +142,119 @@ fun ClockDock(
     onSelect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val selectedIndex = destinations.indexOf(selected).takeIf { it >= 0 } ?: 0
 
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        HorizontalFloatingToolbar(
-            expanded = true,
-            colors = if (dark) {
-                FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                FloatingToolbarDefaults.vibrantFloatingToolbarColors()
-            },
-            expandedShadowElevation = 6.dp,
-            collapsedShadowElevation = 6.dp,
-            modifier = Modifier.selectableGroup().height(DOCK_HEIGHT),
+        val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
+        val targetRect = buttonBounds[selectedIndex]
+        val button0Rect = buttonBounds[0]
+        val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
+
+        val pillAnimatedX by animateFloatAsState(
+            targetValue = pillRelativeX,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+            label = "pillX",
+        )
+        val pillAnimatedWidth by animateFloatAsState(
+            targetValue = targetRect?.width ?: 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+            label = "pillWidth",
+        )
+        val pillColor = MaterialTheme.colorScheme.primary
+
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 6.dp,
         ) {
-            destinations.forEach { d ->
-                DockItem(tab = d, selected = d == selected, dark = dark, onClick = { onSelect(d) })
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .height(56.dp)
+                    .drawBehind {
+                        if (pillAnimatedWidth > 0f) {
+                            drawRoundRect(
+                                color = pillColor,
+                                topLeft = Offset(pillAnimatedX, 0f),
+                                size = Size(pillAnimatedWidth, size.height),
+                                cornerRadius = CornerRadius(size.height / 2f),
+                            )
+                        }
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                destinations.forEachIndexed { index, destination ->
+                    val isSelected = destination == selected
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onSelect(destination) }
+                            )
+                            .onGloballyPositioned { coords ->
+                                buttonBounds[index] = coords.boundsInParent()
+                            }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            val activeIcon = remember(destination) {
+                                when (destination) {
+                                    Tab.ALARMS -> AlarmFilledIcon
+                                    Tab.WORLD -> WorldFilledIcon
+                                    Tab.TIMERS -> Icons.Rounded.HourglassBottom
+                                    Tab.STOPWATCH -> Icons.Rounded.Timer
+                                }
+                            }
+                            val icon = if (isSelected) activeIcon else destination.icon
+                            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = destination.label,
+                                modifier = Modifier.size(24.dp),
+                                tint = contentColor
+                            )
+
+                            AnimatedVisibility(
+                                visible = isSelected,
+                                enter = expandHorizontally(
+                                    animationSpec = tween(300, easing = LinearOutSlowInEasing)
+                                ),
+                                exit = shrinkHorizontally(
+                                    animationSpec = tween(300, easing = FastOutLinearInEasing)
+                                ),
+                            ) {
+                                Text(
+                                    text = destination.label,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = contentColor
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun DockItem(tab: Tab, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-
-    val targetContainer = when {
-        !selected -> Color.Transparent
-        dark -> scheme.primary
-        else -> scheme.surfaceContainer
-    }
-    val targetContent = when {
-        !selected -> scheme.onSurfaceVariant
-        dark -> scheme.onPrimary
-        else -> scheme.onSurface
-    }
-
-    val containerColor by animateColorAsState(
-        targetValue = targetContainer,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
-        label = "containerColor"
-    )
-    val contentColor by animateColorAsState(
-        targetValue = targetContent,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
-        label = "contentColor"
-    )
-
-    // Animated padding prevents sudden layout jumps that cause the earthquake glitch
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (selected) 16.dp else 14.dp,
-        animationSpec = tween(250),
-        label = "paddingAnim"
-    )
-
-    val activeIcon = remember(tab) {
-        when (tab) {
-            Tab.ALARMS -> AlarmFilledIcon
-            Tab.WORLD -> WorldFilledIcon
-            Tab.TIMERS -> Icons.Rounded.HourglassBottom
-            Tab.STOPWATCH -> Icons.Rounded.Timer
-        }
-    }
-    val currentIcon = if (selected) activeIcon else tab.icon
-
-    Row(
-        modifier = Modifier
-            .height(ITEM_HEIGHT)
-            .clip(RoundedCornerShape(24.dp))
-            .background(containerColor)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .defaultMinSize(minWidth = ITEM_HEIGHT)
-            .padding(horizontal = horizontalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        AnimatedContent(
-            targetState = currentIcon,
-            transitionSpec = {
-                (fadeIn(tween(220)) + scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)))
-                    .togetherWith(fadeOut(tween(150)) + scaleOut(targetScale = 0.8f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)))
-            },
-            label = "iconAnim"
-        ) { icon ->
-            Icon(
-                imageVector = icon,
-                contentDescription = if (selected) null else tab.label,
-                tint = contentColor,
-                modifier = Modifier.size(ICON_SIZE),
-            )
-        }
-
-        // Switched from spring to tween to remove the bouncy push-pull earthquake effect
-        AnimatedVisibility(
-            visible = selected,
-            enter = fadeIn(tween(250)) + expandHorizontally(
-                animationSpec = tween(durationMillis = 250),
-                clip = false
-            ),
-            exit = fadeOut(tween(200)) + shrinkHorizontally(
-                animationSpec = tween(durationMillis = 200),
-                clip = false
-            ),
-        ) {
-            Text(
-                text = tab.label,
-                style = MaterialTheme.typography.labelLargeEmphasized,
-                color = contentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-            )
         }
     }
 }
@@ -301,19 +292,16 @@ fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modi
             contentDescription = label,
             modifier = Modifier
                 .size(28.dp)
-                .graphicsLayer { 
-                    scaleX = glyph 
-                    scaleY = glyph 
+                .graphicsLayer {
+                    scaleX = glyph
+                    scaleY = glyph
                     alpha = glyph
-                    rotationZ = rotation 
+                    rotationZ = rotation
                 },
         )
     }
 }
 
 val DOCK_HEIGHT = 72.dp
-private val ITEM_HEIGHT = 56.dp
-private val ICON_SIZE = 25.dp
-
 private val FAB_SIZE = DOCK_HEIGHT
 private val FAB_CORNER = 24.dp
