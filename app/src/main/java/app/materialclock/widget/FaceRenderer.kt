@@ -54,20 +54,7 @@ object FaceRenderer {
         val wf = w.toFloat()
         val hf = h.toFloat()
 
-        // The fitted path is a *centreline*, so an outline stroke would spill half its width past
-        // the widget. Fitting into a rect inset by half the stroke is what keeps it inside.
-        val strokeR = config.outline.widthR
-        val provisional = facePath(config.shape, config.pillOrientation, config.fit, wf, hf)
-        val provisionalOutline = FaceOutline(provisional, wf / 2f, hf / 2f)
-        val strokePx = strokeR * provisionalOutline.rMin
-        val path = if (strokePx > 0f) {
-            facePath(
-                config.shape, config.pillOrientation, config.fit,
-                wf - strokePx, hf - strokePx,
-            ).also { it.offset(strokePx / 2f, strokePx / 2f) }
-        } else {
-            provisional
-        }
+        val path = facePath(config.shape, config.pillOrientation, wf, hf)
 
         val outline = FaceOutline(path, wf / 2f, hf / 2f)
         val r = outline.rMin
@@ -80,21 +67,6 @@ object FaceRenderer {
                 canvas.drawPath(path, fill)
             }
         }
-        if (strokePx > 0f) {
-            canvas.drawPath(
-                path,
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    style = Paint.Style.STROKE
-                    strokeWidth = strokePx
-                    // Round joins rather than mitred: a mitre on a star's sharp vertex reaches four
-                    // times the stroke width past the path and straight out of the widget.
-                    strokeJoin = Paint.Join.ROUND
-                    strokeCap = Paint.Cap.ROUND
-                    color = colours.outline
-                },
-            )
-        }
-
         drawIndices(context, canvas, config, colours, outline, path, r)
         drawNumerals(context, canvas, config, colours, outline, r)
 
