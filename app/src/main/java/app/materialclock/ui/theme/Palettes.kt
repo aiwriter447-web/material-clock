@@ -13,15 +13,15 @@ enum class Palette(
     CREATIVE(
         displayName = "Creative",
         light = lightColorScheme(
-            primary = Color(0xFFB83252), // Rose Pink
+            primary = Color(0xFFB83252),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFFFD9DF),
             onPrimaryContainer = Color(0xFF3D0010),
-            secondary = Color(0xFF58651A), // Olive
+            secondary = Color(0xFF58651A),
             onSecondary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFFE4EDAA),
             onSecondaryContainer = Color(0xFF191F00),
-            tertiary = Color(0xFF006C70), // Deep Teal
+            tertiary = Color(0xFF006C70),
             onTertiary = Color(0xFFFFFFFF),
             tertiaryContainer = Color(0xFF9CF1F0),
             onTertiaryContainer = Color(0xFF002020),
@@ -50,61 +50,81 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: High-contrast Cyberpunk/Neon vibe. Totally different from all others.
     EXPRESSIVE(
         displayName = "Express",
         light = lightColorScheme(
-            primary = Color(0xFFAEEA00), // Neon Lime
-            onPrimary = Color(0xFF1A2600),
-            primaryContainer = Color(0xFFE4FF54),
-            onPrimaryContainer = Color(0xFF2D4000),
-            secondary = Color(0xFFFF007F), // Hot Magenta
+            primary = Color(0xFF558000),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE4FFAA),
+            onPrimaryContainer = Color(0xFF243800),
+            secondary = Color(0xFFC00060),
             onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFFFD9E6),
+            secondaryContainer = Color(0xFFFFD9E8),
             onSecondaryContainer = Color(0xFF3E001B),
-            tertiary = Color(0xFF00E5FF), // Electric Cyan
-            onTertiary = Color(0xFF000000),
-            tertiaryContainer = Color(0xFFB3FBFF),
-            onTertiaryContainer = Color(0xFF00262A),
-            background = Color(0xFF121212), // Dark bg even in light mode for neon pop
-            onBackground = Color(0xFFFFFFFF),
-            surface = Color(0xFF1E1E1E),
-            onSurface = Color(0xFFFFFFFF)
+            tertiary = Color(0xFF007C91),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFB3F5FF),
+            onTertiaryContainer = Color(0xFF002F38),
+            background = Color(0xFFF8FAF2),
+            onBackground = Color(0xFF191D12),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF191D12),
+            surfaceVariant = Color(0xFFE8EBDD),
+            onSurfaceVariant = Color(0xFF44483D),
+            outline = Color(0xFF74796A),
+            outlineVariant = Color(0xFFC5C9B9),
+            error = Color(0xFFBA1A1A),
+            onError = Color(0xFFFFFFFF),
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002),
+            inverseSurface = Color(0xFF2E3226),
+            inverseOnSurface = Color(0xFFF0F2E7),
+            inversePrimary = Color(0xFFC6FF00)
         ),
         dark = darkColorScheme(
-            primary = Color(0xFFC6FF00), 
+            primary = Color(0xFFC6FF00),
             onPrimary = Color(0xFF243300),
             primaryContainer = Color(0xFF425E00),
             onPrimaryContainer = Color(0xFFE4FF54),
             secondary = Color(0xFFFF3399),
-            onSecondary = Color(0xFF5E002A),
-            secondaryContainer = Color(0xFF8A0042),
-            onSecondaryContainer = Color(0xFFFFD9E6),
+            onSecondary = Color(0xFF4A0025),
+            secondaryContainer = Color(0xFF790044),
+            onSecondaryContainer = Color(0xFFFFD9E8),
             tertiary = Color(0xFF18FFFF),
             onTertiary = Color(0xFF00363D),
             tertiaryContainer = Color(0xFF005560),
             onTertiaryContainer = Color(0xFFB3FBFF),
-            background = Color(0xFF000000), // Pitch Black
-            onBackground = Color(0xFFE0E0E0),
-            surface = Color(0xFF0A0A0A),
-            onSurface = Color(0xFFE0E0E0)
+            background = Color(0xFF080A08),
+            onBackground = Color(0xFFE6E9DE),
+            surface = Color(0xFF10130F),
+            onSurface = Color(0xFFE6E9DE),
+            surfaceVariant = Color(0xFF292D24),
+            onSurfaceVariant = Color(0xFFC4C8B9),
+            outline = Color(0xFF8D9380),
+            outlineVariant = Color(0xFF44483D),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6),
+            inverseSurface = Color(0xFFE6E9DE),
+            inverseOnSurface = Color(0xFF2D3128),
+            inversePrimary = Color(0xFF558000)
         )
     ),
 
-    // 100% UNIQUE: Deep Space Navy and Star Gold (Moved away from Violet/Purple)
     GALAXY(
         displayName = "Galaxy",
         light = lightColorScheme(
-            primary = Color(0xFF1A237E), // Deep Space Navy
+            primary = Color(0xFF1A237E),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFDDE1FF),
             onPrimaryContainer = Color(0xFF000B45),
-            secondary = Color(0xFFFBC02D), // Star Gold
+            secondary = Color(0xFFFBC02D),
             onSecondary = Color(0xFF3E2D00),
             secondaryContainer = Color(0xFFFFF0C4),
             onSecondaryContainer = Color(0xFF231900),
-            tertiary = Color(0xFFEC407A), // Nebula Pink
-            onTertiary = Color(0xFFFFFFFF),
+            tertiary = Color(0xFFEC407A),
+            onTertiary = Color(0xFF3E001D),
             tertiaryContainer = Color(0xFFFFD9E3),
             onTertiaryContainer = Color(0xFF3E001D),
             background = Color(0xFFF8F9FF),
@@ -125,27 +145,26 @@ enum class Palette(
             onTertiary = Color(0xFF5E1133),
             tertiaryContainer = Color(0xFF7D294B),
             onTertiaryContainer = Color(0xFFFFD9E3),
-            background = Color(0xFF080A12), // Deep Void Black
+            background = Color(0xFF080A12),
             onBackground = Color(0xFFE3E2E6),
             surface = Color(0xFF0E1019),
             onSurface = Color(0xFFE3E2E6)
         )
     ),
 
-    // 100% UNIQUE: Frosty Pale Ice & Silver (No strong blue, purely frozen look)
     GLACIER(
         displayName = "Glacier",
         light = lightColorScheme(
-            primary = Color(0xFF4DD0E1), // Light Frost Blue
+            primary = Color(0xFF4DD0E1),
             onPrimary = Color(0xFF00363D),
             primaryContainer = Color(0xFFB2EBF2),
             onPrimaryContainer = Color(0xFF001F24),
-            secondary = Color(0xFF90A4AE), // Silver Gray
-            onSecondary = Color(0xFFFFFFFF),
+            secondary = Color(0xFF90A4AE),
+            onSecondary = Color(0xFF1C272D),
             secondaryContainer = Color(0xFFCFD8DC),
             onSecondaryContainer = Color(0xFF1C272D),
-            tertiary = Color(0xFF0288D1), // Deep Ice Crevice
-            onTertiary = Color(0xFFFFFFFF),
+            tertiary = Color(0xFF0288D1),
+            onTertiary = Color(0xFF001D33),
             tertiaryContainer = Color(0xFFB3E5FC),
             onTertiaryContainer = Color(0xFF001D33),
             background = Color(0xFFFAFDFF),
@@ -187,7 +206,7 @@ enum class Palette(
         ),
         dark = darkColorScheme(
             primary = Color(0x33FFFFFF),
-            onPrimary = Color(0xFFFFFFFF),
+            onPrimary = Color(0xFF000000),
             primaryContainer = Color(0x1AFFFFFF),
             onPrimaryContainer = Color(0xFFFFFFFF),
             background = Color(0xCC000000),
@@ -197,20 +216,19 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Classic Google Standard (Pure Blue/Red/Green)
     INDUS(
         displayName = "Indus",
         light = lightColorScheme(
-            primary = Color(0xFF1A73E8), // Classic Blue
+            primary = Color(0xFF1A73E8),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFD3E3FD),
             onPrimaryContainer = Color(0xFF041E49),
-            secondary = Color(0xFFEA4335), // Classic Red
-            onSecondary = Color(0xFFFFFFFF),
+            secondary = Color(0xFFEA4335),
+            onSecondary = Color(0xFF3E001D),
             secondaryContainer = Color(0xFFFFD9E4),
             onSecondaryContainer = Color(0xFF3E001D),
-            tertiary = Color(0xFF34A853), // Classic Green
-            onTertiary = Color(0xFFFFFFFF),
+            tertiary = Color(0xFF34A853),
+            onTertiary = Color(0xFF00210B),
             tertiaryContainer = Color(0xFFC4EED0),
             onTertiaryContainer = Color(0xFF00210B),
             background = Color(0xFFFFFFFF),
@@ -238,20 +256,19 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Tropical Water (Pure Teal/Seafoam & Warm Coral) - Moved away from Blue
     LIQUID(
         displayName = "Liquid",
         light = lightColorScheme(
-            primary = Color(0xFF00897B), // Deep Teal
+            primary = Color(0xFF00897B),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFF80CBC4),
             onPrimaryContainer = Color(0xFF00201A),
-            secondary = Color(0xFFFF7043), // Vibrant Coral
-            onSecondary = Color(0xFFFFFFFF),
+            secondary = Color(0xFFFF7043),
+            onSecondary = Color(0xFF3E1200),
             secondaryContainer = Color(0xFFFFCCBC),
             onSecondaryContainer = Color(0xFF3E1200),
-            tertiary = Color(0xFF00BFA5), // Aqua
-            onTertiary = Color(0xFFFFFFFF),
+            tertiary = Color(0xFF00BFA5),
+            onTertiary = Color(0xFF002821),
             tertiaryContainer = Color(0xFFB2DFDB),
             onTertiaryContainer = Color(0xFF002821),
             background = Color(0xFFF2FBFA),
@@ -279,7 +296,6 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Slate & Muted Blue-Gray
     MOON(
         displayName = "Moon",
         light = lightColorScheme(
@@ -312,15 +328,14 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Deep Forest Green and Earth Brown (Completely distinct from Pixel)
     NATURE(
         displayName = "Nature",
         light = lightColorScheme(
-            primary = Color(0xFF33691E), // Forest Green
+            primary = Color(0xFF33691E),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFDCEDC8),
             onPrimaryContainer = Color(0xFF112700),
-            secondary = Color(0xFF6D4C41), // Earth Brown
+            secondary = Color(0xFF6D4C41),
             onSecondary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFFD7CCC8),
             onSecondaryContainer = Color(0xFF2E1911),
@@ -345,7 +360,6 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: True Red and Pitch Black/White
     NOTHING(
         displayName = "Nothing",
         light = lightColorScheme(
@@ -371,23 +385,22 @@ enum class Palette(
             onSecondary = Color(0xFF292929),
             secondaryContainer = Color(0xFF454545),
             onSecondaryContainer = Color(0xFFE8E8E8),
-            background = Color(0xFF000000), // Pitch Black
+            background = Color(0xFF000000),
             onBackground = Color(0xFFFFFFFF),
             surface = Color(0xFF090909),
             onSurface = Color(0xFFFFFFFF)
         )
     ),
 
-    // 100% UNIQUE: Vibrant Mint & Watermelon Pink
     PIXEL(
         displayName = "Pixel",
         light = lightColorScheme(
-            primary = Color(0xFF00BFA5), // Pure Mint
+            primary = Color(0xFF00BFA5),
             onPrimary = Color(0xFF00382E),
             primaryContainer = Color(0xFF80FDE1),
             onPrimaryContainer = Color(0xFF002019),
-            secondary = Color(0xFFFF5252), // Watermelon
-            onSecondary = Color(0xFFFFFFFF),
+            secondary = Color(0xFFFF5252),
+            onSecondary = Color(0xFF410002),
             secondaryContainer = Color(0xFFFFD9D4),
             onSecondaryContainer = Color(0xFF410002),
             background = Color(0xFFF4FBF9),
@@ -411,19 +424,18 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: True Multi-Color Rainbow (Yellow/Red/Green) - Moved away from Indigo
     RAINBOW(
         displayName = "Rainbow",
         light = lightColorScheme(
-            primary = Color(0xFFFFC107), // Sunflower Yellow
+            primary = Color(0xFFFFC107),
             onPrimary = Color(0xFF402D00),
             primaryContainer = Color(0xFFFFE082),
             onPrimaryContainer = Color(0xFF261900),
-            secondary = Color(0xFFE53935), // Ruby Red
+            secondary = Color(0xFFE53935),
             onSecondary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFFFFCDD2),
             onSecondaryContainer = Color(0xFF4A0008),
-            tertiary = Color(0xFF43A047), // Grass Green
+            tertiary = Color(0xFF43A047),
             onTertiary = Color(0xFFFFFFFF),
             tertiaryContainer = Color(0xFFC8E6C9),
             onTertiaryContainer = Color(0xFF002204),
@@ -452,16 +464,15 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Pure Warm Orange & Peach
     SUNSET(
         displayName = "Sunset",
         light = lightColorScheme(
             primary = Color(0xFFFF7A59),
-            onPrimary = Color(0xFFFFFFFF),
+            onPrimary = Color(0xFF3A0B00),
             primaryContainer = Color(0xFFFFDBD1),
             onPrimaryContainer = Color(0xFF3A0B00),
             secondary = Color(0xFFD94F70),
-            onSecondary = Color(0xFFFFFFFF),
+            onSecondary = Color(0xFF3E001D),
             secondaryContainer = Color(0xFFFFD9E2),
             onSecondaryContainer = Color(0xFF3E001D),
             background = Color(0xFFFFF8F5),
@@ -485,16 +496,15 @@ enum class Palette(
         )
     ),
 
-    // 100% UNIQUE: Monochromatic True Violet/Amethyst
     VIOLET(
         displayName = "Violet",
         light = lightColorScheme(
-            primary = Color(0xFF8E24AA), // Pure Amethyst
+            primary = Color(0xFF8E24AA),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFF8D8FF),
             onPrimaryContainer = Color(0xFF320048),
-            secondary = Color(0xFFAB47BC), // Lighter Violet
-            onSecondary = Color(0xFFFFFFFF),
+            secondary = Color(0xFFAB47BC),
+            onSecondary = Color(0xFF25142B),
             secondaryContainer = Color(0xFFF2DAF7),
             onSecondaryContainer = Color(0xFF25142B),
             background = Color(0xFFFFF7FD),
