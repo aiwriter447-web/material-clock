@@ -10,7 +10,6 @@ import androidx.graphics.shapes.pill
 import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.toPath
 import app.materialclock.data.FaceShape
-import app.materialclock.data.FitMode
 import app.materialclock.data.PillOrientation
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -114,26 +113,21 @@ fun diagonalPill(
  *
  * The four parametric shapes are *rebuilt* at the target aspect so their corners stay circular.
  * Everything else is a baked point list and can only be stretched, which turns circular roundings
- * into ellipses of semi-axes `(r·sx, r·sy)`. That is unavoidable, and it is the reason
- * [FitMode.UNIFORM] is offered.
+ * into ellipses. That is why the fit is always uniform (one scale for both axes).
  */
 fun facePath(
     shape: FaceShape,
     pill: PillOrientation,
-    fit: FitMode,
     w: Float,
     h: Float,
     out: Path = Path(),
 ): Path {
-    val uniform = fit == FitMode.UNIFORM
+    // Always uniform: one scale for both axes, so corners stay circular.
+    val uniform = true
     return when (shape) {
         FaceShape.CIRCLE ->
             RoundedPolygon.circle(numVertices = 24, radius = 0.5f, centerX = 0.5f, centerY = 0.5f)
                 .fillRect(0f, 0f, w, h, uniform, out)
-
-        FaceShape.SQUARE_SHARP ->
-            RoundedPolygon.rectangle(w, h, CornerRounding.Unrounded, centerX = w / 2f, centerY = h / 2f)
-                .toPath(out)
 
         FaceShape.ROUNDED_SQUARE ->
             RoundedPolygon.rectangle(
@@ -166,39 +160,16 @@ fun facePath(
  * degrade to a working clock.
  */
 fun FaceShape.materialShape(): RoundedPolygon = when (this) {
-    FaceShape.ARCH -> MaterialShapes.Arch
-    FaceShape.ARROW -> MaterialShapes.Arrow
-    FaceShape.BOOM -> MaterialShapes.Boom
-    FaceShape.BUN -> MaterialShapes.Bun
-    FaceShape.BURST -> MaterialShapes.Burst
     FaceShape.CLAM_SHELL -> MaterialShapes.ClamShell
     FaceShape.CLOVER_4 -> MaterialShapes.Clover4Leaf
     FaceShape.CLOVER_8 -> MaterialShapes.Clover8Leaf
     FaceShape.COOKIE_4 -> MaterialShapes.Cookie4Sided
     FaceShape.COOKIE_6 -> MaterialShapes.Cookie6Sided
     FaceShape.COOKIE_7 -> MaterialShapes.Cookie7Sided
-    FaceShape.COOKIE_9 -> MaterialShapes.Cookie9Sided
-    FaceShape.COOKIE_12 -> MaterialShapes.Cookie12Sided
-    FaceShape.DIAMOND -> MaterialShapes.Diamond
-    FaceShape.FAN -> MaterialShapes.Fan
-    FaceShape.FLOWER -> MaterialShapes.Flower
-    FaceShape.GEM -> MaterialShapes.Gem
     FaceShape.GHOSTISH -> MaterialShapes.Ghostish
-    FaceShape.HEART -> MaterialShapes.Heart
-    FaceShape.MATERIAL_PILL -> MaterialShapes.Pill
-    FaceShape.OVAL -> MaterialShapes.Oval
-    FaceShape.PENTAGON -> MaterialShapes.Pentagon
-    FaceShape.PIXEL_CIRCLE -> MaterialShapes.PixelCircle
-    FaceShape.PIXEL_TRIANGLE -> MaterialShapes.PixelTriangle
-    FaceShape.PUFFY -> MaterialShapes.Puffy
-    FaceShape.PUFFY_DIAMOND -> MaterialShapes.PuffyDiamond
     FaceShape.SEMI_CIRCLE -> MaterialShapes.SemiCircle
     FaceShape.SLANTED -> MaterialShapes.Slanted
-    FaceShape.SOFT_BOOM -> MaterialShapes.SoftBoom
-    FaceShape.SOFT_BURST -> MaterialShapes.SoftBurst
     FaceShape.SQUIRCLE -> MaterialShapes.Square
     FaceShape.SUNNY -> MaterialShapes.Sunny
-    FaceShape.TRIANGLE -> MaterialShapes.Triangle
-    FaceShape.VERY_SUNNY -> MaterialShapes.VerySunny
     else -> MaterialShapes.Circle
 }
