@@ -106,7 +106,7 @@ import kotlinx.coroutines.launch
 private val DOCK_CLEARANCE = 20.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
 
-private val FastSnappySpringSpec = spring<Float>(
+private fun <T> fastSnappySpringSpec() = spring<T>(
     stiffness = Spring.StiffnessMedium,
     dampingRatio = Spring.DampingRatioNoBouncy
 )
@@ -257,11 +257,11 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                 targetState = targetTab,
                                 transitionSpec = {
                                     if (targetState.ordinal > initialState.ordinal) {
-                                        (slideInHorizontally(animationSpec = FastSnappySpringSpec) { width -> width / 3 } + fadeIn(tween(100)))
-                                            .togetherWith(slideOutHorizontally(animationSpec = FastSnappySpringSpec) { width -> -width / 3 } + fadeOut(tween(80)))
+                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> width / 3 } + fadeIn(tween(100)))
+                                            .togetherWith(slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
                                     } else {
-                                        (slideInHorizontally(animationSpec = FastSnappySpringSpec) { width -> -width / 3 } + fadeIn(tween(100)))
-                                            .togetherWith(slideOutHorizontally(animationSpec = FastSnappySpringSpec) { width -> width / 3 } + fadeOut(tween(80)))
+                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeIn(tween(100)))
+                                            .togetherWith(slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> width / 3 } + fadeOut(tween(80)))
                                     }
                                 },
                                 label = "TopBarTitleAnim"
@@ -420,11 +420,11 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     visible = !selectionActive,
                     enter = fadeIn(animationSpec = tween(100)) + slideInVertically(
                         initialOffsetY = { it / 4 },
-                        animationSpec = FastSnappySpringSpec
+                        animationSpec = fastSnappySpringSpec()
                     ),
                     exit = fadeOut(animationSpec = tween(80)) + slideOutVertically(
                         targetOffsetY = { it / 4 },
-                        animationSpec = FastSnappySpringSpec
+                        animationSpec = fastSnappySpringSpec()
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -438,7 +438,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             scope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(selectedTab),
-                                    animationSpec = FastSnappySpringSpec
+                                    animationSpec = fastSnappySpringSpec()
                                 )
                             }
                         },
