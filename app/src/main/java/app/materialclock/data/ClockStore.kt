@@ -58,10 +58,14 @@ class ClockStore(private val context: Context) {
 
     suspend fun putAlarms(list: List<Alarm>) {
         context.prefs.edit { it[KEY_ALARMS] = encodeAlarms(list) }
+        // Keep the Alarm widget in step with the app's alarms.
+        app.materialclock.widget.AlarmWidgetProvider.refreshAll(context)
     }
 
     suspend fun putCities(list: List<WorldCity>) {
         context.prefs.edit { it[KEY_CITIES] = encodeCities(list) }
+        // Keep the World Clock widget in step with the app's city list.
+        app.materialclock.widget.WorldClockWidgetProvider.refreshAll(context)
     }
 
     suspend fun putGroups(list: List<AlarmGroup>) {
@@ -125,6 +129,9 @@ class ClockStore(private val context: Context) {
 
     suspend fun update(block: (ClockSettings) -> ClockSettings) {
         context.prefs.edit { p -> p.writeSettings(block(p.toSettings())) }
+        // Theme, palette or home zone may have changed: redraw the widgets.
+        app.materialclock.widget.ClockWidgetProvider.refreshAll(context)
+        app.materialclock.widget.WorldClockWidgetProvider.refreshAll(context)
     }
 
     private companion object {
@@ -273,9 +280,7 @@ private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("dDate", c.digitalDate)
     .put("shape", c.shape.name)
     .put("pill", c.pillOrientation.name)
-    .put("fit", c.fit.name)
     .put("fill", c.faceFill.name)
-    .put("outline", c.outline.name)
     .put("hour", c.hourHand.name)
     .put("minute", c.minuteHand.name)
     .put("second", c.secondHand.name)
@@ -302,9 +307,7 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
         digitalDate = o.optBoolean("dDate", true),
         shape = enumOr(o.optString("shape"), FaceShape.CIRCLE),
         pillOrientation = enumOr(o.optString("pill"), PillOrientation.HORIZONTAL),
-        fit = enumOr(o.optString("fit"), FitMode.STRETCH),
         faceFill = enumOr(o.optString("fill"), FaceFill.CONTAINER),
-        outline = enumOr(o.optString("outline"), OutlineStyle.NONE),
         hourHand = enumOr(o.optString("hour"), HandStyle.BATON),
         minuteHand = enumOr(o.optString("minute"), HandStyle.BATON),
         secondHand = enumOr(o.optString("second"), HandStyle.OFF),
