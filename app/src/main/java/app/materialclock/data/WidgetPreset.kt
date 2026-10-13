@@ -8,8 +8,8 @@ package app.materialclock.data
  * is on the tile is exactly what lands on the home screen.
  *
  * They are chosen to span the axes rather than to be five variations of a circle: between them they
- * cover four face shapes, all three numeral treatments plus none, all four mark styles plus none,
- * and six of the eleven hand styles. Anything a preset does not reach is one tap away in Custom.
+ * cover several face shapes, all three numeral treatments plus none, all four mark styles plus
+ * none, and most of the hand styles. Anything a preset does not reach is one tap away in Custom.
  */
 enum class WidgetPreset(val label: String, val config: WidgetConfig) {
 
@@ -19,15 +19,13 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
         WidgetConfig(),
     ),
 
-    /** No container at all: a hairline ring, two needles, and a disc for the seconds. */
+    /** Nothing on the dial at all: two needles and a seconds hand. */
     BARE(
         "Bare",
         WidgetConfig(
-            faceFill = FaceFill.NONE,
-            outline = OutlineStyle.THIN,
             hourHand = HandStyle.NEEDLE,
             minuteHand = HandStyle.NEEDLE,
-            secondHand = HandStyle.DOT,
+            secondHand = HandStyle.NEEDLE,
             numerals = NumeralSystem.NONE,
             indexSet = IndexSet.NONE,
             minorIndices = MinorIndex.NONE,
@@ -39,8 +37,8 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
         "Roman",
         WidgetConfig(
             shape = FaceShape.SQUIRCLE,
-            hourHand = HandStyle.TAPER,
-            minuteHand = HandStyle.TAPER,
+            hourHand = HandStyle.LEAF,
+            minuteHand = HandStyle.LEAF,
             numerals = NumeralSystem.ROMAN,
             indexSet = IndexSet.ALL_TWELVE,
             minorIndices = MinorIndex.NONE,
@@ -60,18 +58,18 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
             shape = FaceShape.ROUNDED_SQUARE,
             hourHand = HandStyle.ARROW,
             minuteHand = HandStyle.ARROW,
-            secondHand = HandStyle.BALL,
+            secondHand = HandStyle.NEEDLE,
             numerals = NumeralSystem.NONE,
             indexSet = IndexSet.NONE,
             minorIndices = MinorIndex.TICKS_60,
         ),
     ),
 
-    /** The expressive one: a flower outline, open rings for the hours, leaf hands. */
+    /** The expressive one: a scalloped outline, open rings for the hours, leaf hands. */
     BLOOM(
         "Bloom",
         WidgetConfig(
-            shape = FaceShape.FLOWER,
+            shape = FaceShape.COOKIE_7,
             hourHand = HandStyle.LEAF,
             minuteHand = HandStyle.LEAF,
             numerals = NumeralSystem.NONE,
