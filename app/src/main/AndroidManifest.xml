@@ -156,6 +156,52 @@
                 android:resource="@xml/clock_widget_info" />
         </receiver>
 
+        <!--
+          The World Clock widget: your first two cities side by side. No configuration screen;
+          the cities come from the World Clock tab (pinned cities first).
+        -->
+        <receiver
+            android:name=".widget.WorldClockWidgetProvider"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/world_clock_widget_info" />
+        </receiver>
+
+        <!--
+          The Alarm widget: your next alarm, its weekdays, and a round button that turns it on or
+          off. The button sends a broadcast to AlarmWidgetToggleReceiver.
+        -->
+        <receiver
+            android:name=".widget.AlarmWidgetProvider"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/alarm_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AlarmWidgetToggleReceiver"
+            android:exported="false" />
+
         <!-- Receives the launcher's pin callback, which carries the new widget's id. -->
         <receiver
             android:name=".widget.WidgetPinnedReceiver"
