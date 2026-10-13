@@ -9,13 +9,19 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
@@ -242,13 +248,29 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
                         ) {
-                            Text(
-                                text = currentTab.label,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                            AnimatedContent(
+                                targetState = targetTab,
+                                transitionSpec = {
+                                    if (targetState.ordinal > initialState.ordinal) {
+                                        (slideInHorizontally { width -> width } + fadeIn(tween(250))).togetherWith(
+                                            slideOutHorizontally { width -> -width } + fadeOut(tween(200))
+                                        )
+                                    } else {
+                                        (slideInHorizontally { width -> -width } + fadeIn(tween(250))).togetherWith(
+                                            slideOutHorizontally { width -> width } + fadeOut(tween(200))
+                                        )
+                                    }
+                                },
+                                label = "TopBarTitleAnim"
+                            ) { tab ->
+                                Text(
+                                    text = tab.label,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     },
                     actions = {
@@ -391,11 +413,17 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     visible = !selectionActive,
                     enter = fadeIn(animationSpec = tween(200)) + slideInVertically(
                         initialOffsetY = { it / 2 },
-                        animationSpec = tween(250, easing = FastOutSlowInEasing)
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
                     ),
                     exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(
                         targetOffsetY = { it / 2 },
-                        animationSpec = tween(200, easing = FastOutSlowInEasing)
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -409,7 +437,10 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             scope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(selectedTab),
-                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
                                 )
                             }
                         },
