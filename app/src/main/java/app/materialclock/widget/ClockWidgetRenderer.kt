@@ -19,6 +19,7 @@ import app.materialclock.data.DateMode
 import app.materialclock.data.DatePosition
 import app.materialclock.data.HandStyle
 import app.materialclock.data.WidgetConfig
+import app.materialclock.data.WidgetType
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import kotlin.math.cos
@@ -99,6 +100,10 @@ object ClockWidgetRenderer {
         w: Int,
         h: Int,
     ): RemoteViews {
+        // Digital widgets have their own layout and drawing; see DigitalRenderer.
+        if (config.type == WidgetType.DIGITAL) {
+            return DigitalRenderer.build(context, config, settings, w, h)
+        }
         val colours = WidgetColours.resolve(context, config, settings)
         val face = FaceRenderer.render(context, config, colours, w, h)
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
