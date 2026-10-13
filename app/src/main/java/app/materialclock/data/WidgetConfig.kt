@@ -10,6 +10,13 @@ import app.materialclock.ui.theme.Palette
  * a dead rectangle on the home screen that the user has no way to fix.
  */
 data class WidgetConfig(
+    /* ── Type ───────────────────────────────────────────────────────────────────────────── */
+    val type: WidgetType = WidgetType.ANALOG,
+
+    /* ── Digital (only read when [type] is [WidgetType.DIGITAL]) ───────────────────────── */
+    val digitalSeconds: Boolean = false,
+    val digitalDate: Boolean = true,
+
     /* ── Face ───────────────────────────────────────────────────────────────────────────── */
     val shape: FaceShape = FaceShape.CIRCLE,
     /** Only read when [shape] is [FaceShape.PILL]. */
@@ -43,6 +50,12 @@ data class WidgetConfig(
     /** Only read when [colour] is [ColourSource.PALETTE]. */
     val palette: Palette = Palette.EXPRESSIVE,
 )
+
+/** Which kind of widget this is. More types (world clock, timer, alarms) are added here later. */
+enum class WidgetType(val label: String) {
+    ANALOG("Analog"),
+    DIGITAL("Digital"),
+}
 
 /**
  * The face outline.
