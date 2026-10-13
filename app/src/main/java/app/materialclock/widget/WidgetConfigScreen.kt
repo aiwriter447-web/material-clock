@@ -76,6 +76,7 @@ import app.materialclock.data.NumeralWidth
 import app.materialclock.data.OutlineStyle
 import app.materialclock.data.PillOrientation
 import app.materialclock.data.WidgetConfig
+import app.materialclock.data.WidgetType
 import app.materialclock.data.WidgetPreset
 import app.materialclock.ui.sheets.SwitchRow
 import app.materialclock.ui.theme.Palette
@@ -113,7 +114,17 @@ fun WidgetConfigScreen(
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
             )
 
-            AnimatedContent(
+            // The type picker is hidden inside the Custom analog editor, where Back returns to
+            // the grid first.
+            if (!custom) {
+                OptionGroup("Widget type", config.type, WidgetType.entries, { it.label }) {
+                    config = config.copy(type = it)
+                }
+            }
+
+            if (config.type == WidgetType.DIGITAL) {
+                DigitalEditor(config, settings, Modifier.weight(1f)) { config = it }
+            } else AnimatedContent(
                 targetState = custom,
                 modifier = Modifier.weight(1f),
                 // Custom arrives from the right and the grid leaves to the left, so the pair reads
@@ -783,4 +794,69 @@ private fun renderStill(
         )
     }
     return face.bitmap
+}
+
+
+/**
+ * The editor for a Digital widget: a live preview, then the few things that can change.
+ *
+ * Everything else about a digital clock (type size, corner rounding, whether the date fits) is
+ * decided automatically from the widget's size, so the same widget is a compact pill when it is
+ * one row tall and a roomy card when it is two.
+ */
+@Composable
+private fun DigitalEditor(
+    config: WidgetConfig,
+    settings: ClockSettings,
+    modifier: Modifier = Modifier,
+    onChange: (WidgetConfig) -> Unit,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val bitmap: Bitmap = remember(config, settings, density) {
+        DigitalRenderer.preview(
+            context, config, settings,
+            with(density) { 440.dp.toPx() }.toInt(),
+            with(density) { 220.dp.toPx() }.toInt(),
+        )
+    }
+
+    Column(modifier) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .aspectRatio(2f)
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Preview",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            SwitchRow(
+                title = "Show seconds",
+                checked = config.digitalSeconds,
+                onChange = { onChange(config.copy(digitalSeconds = it)) },
+            )
+            SwitchRow(
+                title = "Show date",
+                subtitle = "Appears when the widget is two rows tall or more",
+                checked = config.digitalDate,
+                onChange = { onChange(config.copy(digitalDate = it)) },
+            )
+            OptionGroup("Colour", config.colour, ColourSource.entries, { it.label }) {
+                onChange(config.copy(colour = it))
+            }
+            if (config.colour == ColourSource.PALETTE) {
+                PaletteCarousel(config.palette) { onChange(config.copy(palette = it)) }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
 }
