@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Clock</string>
     <string name="widget_description">An analog clock you can shape</string>
+    <string name="widget_world_description">Two cities, side by side</string>
+    <string name="widget_alarm_description">Your next alarm, with an on/off button</string>
 </resources>
