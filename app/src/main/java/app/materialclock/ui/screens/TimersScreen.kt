@@ -2,12 +2,18 @@ package app.materialclock.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -81,7 +89,11 @@ fun TimersScreen(
 ) {
     AnimatedContent(
         targetState = timer != null,
-        transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
+        transitionSpec = { 
+            fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith 
+            fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) using 
+            SizeTransform(clip = false) 
+        },
         label = "timer-state",
         modifier = modifier
             .fillMaxSize()
@@ -116,7 +128,7 @@ private fun SetTimer(
     val armed = total > 0
 
     Column(
-        modifier = Modifier.fillMaxSize(), // Yahan se horizontal padding hata diya gaya hai taki rows edge tak ja sakein
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp)) 
@@ -126,7 +138,7 @@ private fun SetTimer(
             mm = mm, 
             ss = ss,
             onClear = { onWind(0) },
-            modifier = Modifier.padding(horizontal = 20.dp) // Yahan padding add kiya
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         
         Spacer(Modifier.height(36.dp))
@@ -135,7 +147,7 @@ private fun SetTimer(
             onDigit = onDigit, 
             onBackspace = onBackspace, 
             onClearAll = { onWind(0) },
-            modifier = Modifier.padding(horizontal = 20.dp) // Yahan padding add kiya
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         
         Spacer(Modifier.height(24.dp))
@@ -169,18 +181,35 @@ private fun PresetRow(
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 20.dp) // Isse items edges par cut nahi honge aur smoothly fade honge
+        contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
         items(presets, key = { it.id }) { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
         item {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.94f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                label = "addPresetScale"
+            )
+
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
                     .clip(CircleShape)
-                    .clickable(onClick = onAdd)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onAdd
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
@@ -197,13 +226,33 @@ private fun PresetRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
     val minutes = preset.totalSeconds / 60
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "presetChipScale"
+    )
+
     Surface(
         shape = CircleShape, 
         color = MaterialTheme.colorScheme.primaryContainer, 
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick, 
+                onLongClick = onLongClick
+            ),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
@@ -234,40 +283,43 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
     val isMActive = isHActive || mm != "00"
     val isSActive = isMActive || ss != "00"
 
+    val hColor by animateColorAsState(if (isHActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "hColor")
+    val mColor by animateColorAsState(if (isMActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "mColor")
+    val sColor by animateColorAsState(if (isSActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "sColor")
+
     Row(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .fillMaxWidth()
-            // Yahan se .clip hata diya gaya hai jisse text ko katne se roka ja sake
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null, 
                 onClick = onClear 
             )
-            .padding(top = 8.dp, bottom = 8.dp) // Niche extra jagah di taki numbers easily fit ho jayein
+            .padding(top = 8.dp, bottom = 8.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Hours", style = labelStyle, color = if (isHActive) activeColor else inactiveColor)
+            Text("Hours", style = labelStyle, color = hColor)
             Spacer(Modifier.height(12.dp))
-            Numerals(text = hh, capHeight = cap, color = if (isHActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
         
         Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
         
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Minutes", style = labelStyle, color = if (isMActive) activeColor else inactiveColor)
+            Text("Minutes", style = labelStyle, color = mColor)
             Spacer(Modifier.height(12.dp))
-            Numerals(text = mm, capHeight = cap, color = if (isMActive) activeColor else inactiveColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
         
         Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
         
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Seconds", style = labelStyle, color = if (isSActive) activeColor else inactiveColor)
+            Text("Seconds", style = labelStyle, color = sColor)
             Spacer(Modifier.height(12.dp))
-            Numerals(text = ss, capHeight = cap, color = activeColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
     }
 }
@@ -336,12 +388,26 @@ private fun KeyBox(
     label: String,
     content: @Composable () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.91f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "keyBoxScale"
+    )
+
     Surface(
         onClick = onClick, 
+        interactionSource = interactionSource,
         color = container, 
         shape = CircleShape, 
         modifier = modifier
             .height(58.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clearAndSetSemantics { contentDescription = label }
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
