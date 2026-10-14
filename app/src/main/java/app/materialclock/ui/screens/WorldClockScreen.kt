@@ -3,6 +3,10 @@ package app.materialclock.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,6 +16,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +66,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextMeasurer
@@ -195,8 +202,8 @@ fun WorldClockScreen(
 
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn() + slideInVertically { it },
-            exit = fadeOut() + slideOutVertically { it },
+            enter = fadeIn(spring()) + slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it },
+            exit = fadeOut(spring()) + slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -432,6 +439,31 @@ private fun CityRow(
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
     
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Tactile press-scale animation
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "cityRowScale"
+    )
+
+    // Smooth color state transitions
+    val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val targetContent = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface 
+    val targetTimeColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+
+    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "containerColor")
+    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "contentColor")
+    val timeTextColor by animateColorAsState(targetTimeColor, spring(stiffness = Spring.StiffnessMediumLow), label = "timeTextColor")
+
+    val targetBadgeBg = if (isSelected) MaterialTheme.colorScheme.primary else if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.secondaryContainer
+    val targetBadgeTint = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (night) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSecondaryContainer
+
+    val badgeBg by animateColorAsState(targetBadgeBg, spring(stiffness = Spring.StiffnessMediumLow), label = "badgeBg")
+    val badgeTint by animateColorAsState(targetBadgeTint, spring(stiffness = Spring.StiffnessMediumLow), label = "badgeTint")
+
     val timeOnly = buildString {
         if (use24h) {
             append(String.format(Locale.getDefault(), "%02d:%02d", local.hour, local.minute))
@@ -460,9 +492,6 @@ private fun CityRow(
         "${hStr}${mStr}$dir"
     }
 
-    val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface 
-    
     Surface(
         color = containerColor,
         shape = RoundedCornerShape(percent = 50), 
@@ -470,7 +499,13 @@ private fun CityRow(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(ROW_HEIGHT_DP.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
                 onClick = { if (inSelectionMode) onToggleSelect() },
                 onLongClick = { onToggleSelect() }
             )
@@ -482,7 +517,7 @@ private fun CityRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                color = if (isSelected) MaterialTheme.colorScheme.primary else if (night) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.secondaryContainer,
+                color = badgeBg,
                 shape = CircleShape,
                 modifier = Modifier.size(52.dp),
             ) {
@@ -490,7 +525,7 @@ private fun CityRow(
                     Icon(
                         imageVector = if (night) Icons.Outlined.Bedtime else Icons.Outlined.LightMode,
                         contentDescription = if (night) "night" else "daytime",
-                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (night) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSecondaryContainer,
+                        tint = badgeTint,
                         modifier = Modifier.size(26.dp),
                     )
                 }
@@ -555,7 +590,7 @@ private fun CityRow(
                         fontWeight = FontWeight.Bold, 
                         fontFeatureSettings = "tnum"
                     ), 
-                    color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
+                    color = timeTextColor,
                     maxLines = 1,
                     softWrap = false,
                 )
@@ -563,7 +598,7 @@ private fun CityRow(
                     Text(
                         text = amPmString,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (isSelected) contentColor else MaterialTheme.colorScheme.primary,
+                        color = timeTextColor,
                         maxLines = 1,
                         softWrap = false,
                     )
