@@ -84,8 +84,8 @@ import app.materialclock.ui.sheets.systemFirstDay
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.Duration
-import java.time.LocalDateTime
-import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -116,12 +116,11 @@ fun AlarmsScreen(
     val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
 
-    // Real-time ticking logic to keep "time leftover" updating live
-    var nowTime by remember { mutableStateOf(LocalDateTime.now()) }
+    var nowTime by remember { mutableStateOf(ZonedDateTime.now(ZoneId.systemDefault())) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(1000)
-            nowTime = LocalDateTime.now()
+            delay(60_000)
+            nowTime = ZonedDateTime.now(ZoneId.systemDefault())
         }
     }
 
@@ -307,30 +306,20 @@ fun AlarmsScreen(
     }
 }
 
-private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: LocalDateTime = LocalDateTime.now()): Pair<String, String>? {
+private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime): Pair<String, String>? {
     val activeAlarms = alarms.filter { it.enabled }
     if (activeAlarms.isEmpty()) return null
 
     var minDuration: Duration? = null
-    var nextAlarmTime: LocalDateTime? = null
+    var nextAlarmTime: ZonedDateTime? = null
 
     for (alarm in activeAlarms) {
-        val alarmTime = LocalTime.of(alarm.time.hour, alarm.time.minute)
-        for (i in 0..7) {
-            val checkDate = now.plusDays(i.toLong())
-            val checkDay = checkDate.dayOfWeek
-            val isActiveDay = alarm.isOneShot || alarm.days.contains(checkDay) || alarm.days.isEmpty()
-
-            if (isActiveDay) {
-                val candidateDateTime = checkDate.withHour(alarmTime.hour).withMinute(alarmTime.minute).withSecond(0).withNano(0)
-                if (candidateDateTime.isAfter(now)) {
-                    val duration = Duration.between(now, candidateDateTime)
-                    if (minDuration == null || duration < minDuration) {
-                        minDuration = duration
-                        nextAlarmTime = candidateDateTime
-                    }
-                    break
-                }
+        val nextTime = alarm.nextFire(now)
+        if (nextTime != null) {
+            val duration = Duration.between(now, nextTime)
+            if (minDuration == null || duration < minDuration) {
+                minDuration = duration
+                nextAlarmTime = nextTime
             }
         }
     }
