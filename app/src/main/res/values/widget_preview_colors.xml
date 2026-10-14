@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colours for the pictures in the widget picker. Android 12 and later use res/values-v31 instead. -->
+<resources>
+    <color name="wp_container">#D1E4FF</color>
+    <color name="wp_on_container">#001D36</color>
+    <color name="wp_primary">#1F4E79</color>
+    <color name="wp_on_primary">#FFFFFF</color>
+    <color name="wp_surface">#1B1B1F</color>
+    <color name="wp_on_surface">#E3E2E6</color>
+    <color name="wp_accent">#A8C8FF</color>
+</resources>
