@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import app.materialclock.data.ClockStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,6 +24,19 @@ class WorldClockWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         background { ids.forEach { id -> WorldClockRenderer.update(context.applicationContext, manager, id) } }
+    }
+
+    /** Also the cancelled-add path: either way, this widget's settings are no longer wanted. */
+    override fun onDeleted(context: Context, ids: IntArray) {
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                ClockStore(app).deleteWidgetConfigs(ids)
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     override fun onAppWidgetOptionsChanged(
