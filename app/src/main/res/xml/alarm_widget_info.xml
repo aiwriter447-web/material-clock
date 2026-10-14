@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Alarm widget. Sizes: 2x1 (110 x 40 dp) up to 4x2 (250 x 110 dp); default 2x2.
-  A cell is roughly 70dp: n cells = 70*n - 30 dp.
+  Alarm widget. Sizes: 2x1 up to 4x2; default 2x2.
+  The limits are generous (400 x 200 dp) because a cell is about 70 to 85dp depending on the phone.
+
+  The settings screen (cities or alarm, background, colours) is WidgetOptionsActivity. It is
+  fully qualified: a leading dot would be a silent ActivityNotFoundException.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="40dp"
-    android:maxResizeWidth="250dp"
-    android:maxResizeHeight="110dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="200dp"
     android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
@@ -17,4 +20,6 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_clock_placeholder"
     android:previewLayout="@layout/widget_alarm_preview"
-    android:description="@string/widget_alarm_description" />
+    android:description="@string/widget_alarm_description"
+    android:configure="app.materialclock.widget.WidgetOptionsActivity"
+    android:widgetFeatures="reconfigurable" />
