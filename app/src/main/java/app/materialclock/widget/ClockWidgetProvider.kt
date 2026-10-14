@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  * broadcasts below are on the implicit-broadcast exception list and may be declared in the
  * manifest; `ACTION_DATE_CHANGED` and `ACTION_CONFIGURATION_CHANGED` are not, and are not used.
  */
-class ClockWidgetProvider : AppWidgetProvider() {
+open class ClockWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         background(context) { store ->
@@ -94,13 +94,11 @@ class ClockWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        fun component(context: Context) = ComponentName(context, ClockWidgetProvider::class.java)
-
-        /** Redraw every placed widget, as the app does when the theme or a setting changes. */
+        /** Redraw every placed analog and digital widget. */
         fun refreshAll(context: Context) {
             val app = context.applicationContext
             val manager = AppWidgetManager.getInstance(app)
-            val ids = manager.getAppWidgetIds(component(app))
+            val ids = WidgetProviders.ids(app, WidgetKind.ANALOG, WidgetKind.DIGITAL)
             if (ids.isEmpty()) return
             CoroutineScope(Dispatchers.Default).launch {
                 ids.forEach { ClockWidgetRenderer.update(app, manager, it) }
@@ -108,19 +106,14 @@ class ClockWidgetProvider : AppWidgetProvider() {
         }
 
         /**
-         * Every widget of every kind (analog and digital, world clock, alarm). The cleanup of
+         * Every widget of every kind (analog, digital, world clock, alarm). The cleanup of
          * leftover settings must know about all of them, or it would delete the settings of the
          * widgets it has never heard of.
          */
-        fun allPlacedIds(context: Context): IntArray {
-            val manager = AppWidgetManager.getInstance(context)
-            return manager.getAppWidgetIds(component(context)) +
-                manager.getAppWidgetIds(WorldClockWidgetProvider.component(context)) +
-                manager.getAppWidgetIds(AlarmWidgetProvider.component(context))
-        }
+        fun allPlacedIds(context: Context): IntArray = WidgetProviders.allIds(context)
 
-        /** The ids of every widget this app currently has on a home screen. */
+        /** The ids of every analog and digital widget currently on a home screen. */
         fun placedIds(context: Context): IntArray =
-            AppWidgetManager.getInstance(context).getAppWidgetIds(component(context))
+            WidgetProviders.ids(context, WidgetKind.ANALOG, WidgetKind.DIGITAL)
     }
 }
