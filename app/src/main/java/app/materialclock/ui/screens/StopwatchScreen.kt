@@ -1,7 +1,11 @@
 package app.materialclock.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,14 +33,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
@@ -50,7 +56,6 @@ private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
     val hue = ((index - 1) * (360f / 44f)) % 360f 
 
-    // Increased saturation and lightness for Dark mode to avoid dull/grey colors
     val saturation = if (isDark) 0.75f else 0.7f
     val lightnessBadge = if (isDark) 0.45f else 0.85f
     val lightnessText = if (isDark) 0.95f else 0.2f
@@ -111,7 +116,6 @@ fun StopwatchScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(LAP_GAP),
             ) {
-                // New Feature: Show current live lap when not idle
                 val isIdle = !stopwatch.running && elapsed.isZero
                 if (!isIdle) {
                     item(key = "current_lap") {
@@ -121,12 +125,22 @@ fun StopwatchScreen(
                             split = currentSplit,
                             total = elapsed
                         )
-                        LapRow(lap = currentLap, isFastest = false, isSlowest = false)
+                        LapRow(
+                            lap = currentLap, 
+                            isFastest = false, 
+                            isSlowest = false,
+                            modifier = Modifier.animateItem()
+                        )
                     }
                 }
 
                 items(stopwatch.laps, key = { it.index }) { lap ->
-                    LapRow(lap, fastest == lap.index, slowest == lap.index)
+                    LapRow(
+                        lap = lap, 
+                        isFastest = fastest == lap.index, 
+                        isSlowest = slowest == lap.index,
+                        modifier = Modifier.animateItem()
+                    )
                 }
             }
         }
@@ -143,21 +157,29 @@ private fun StopwatchControls(
     onReset: () -> Unit,
 ) {
     val expanded = !idle
+
+    // Fluid spring physics for expanding / collapsing controls
     val expand by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "expand",
     )
     val label by animateFloatAsState(
         targetValue = if (expanded) 0f else 1f,
-        animationSpec = tween(durationMillis = LABEL_FADE_MS),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "label",
     )
     val split by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = SPLIT_MS,
-            delayMillis = if (expanded) EXPAND_LEAD_MS else 0,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "split",
     )
@@ -281,14 +303,36 @@ private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
 
 @Composable
-private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
+private fun LapRow(
+    lap: Lap, 
+    isFastest: Boolean, 
+    isSlowest: Boolean,
+    modifier: Modifier = Modifier
+) {
     val (badgeBg, badgeFg) = getLapColors(lap.index)
 
-    val timeColor = when {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Tactile press response
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "lapScale"
+    )
+
+    val targetTimeColor = when {
         isFastest -> MaterialTheme.colorScheme.tertiary
         isSlowest -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
+
+    // Smooth color morphing for fastest/slowest highlights
+    val timeColor by animateColorAsState(
+        targetValue = targetTimeColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "timeColor"
+    )
 
     val (m, s, cs) = lap.split.stopwatchParts()
     val (tm, ts, tcs) = lap.total.stopwatchParts()
@@ -296,7 +340,13 @@ private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = RoundedCornerShape(percent = 50),
-        modifier = Modifier.fillMaxWidth().height(LAP_ROW_HEIGHT),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(LAP_ROW_HEIGHT)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
@@ -308,7 +358,7 @@ private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
                     Text(
                         lap.index.toString(),
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         color = badgeFg,
                     )
                 }
@@ -316,7 +366,7 @@ private fun LapRow(lap: Lap, isFastest: Boolean, isSlowest: Boolean) {
             Text(
                 "$m:$s.$cs",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontWeight = FontWeight.Bold,
                 color = timeColor,
                 modifier = Modifier.weight(1f),
             )
