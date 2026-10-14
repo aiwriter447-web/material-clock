@@ -11,6 +11,7 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -155,18 +156,12 @@ fun ClockDock(
 
         val pillAnimatedX by animateFloatAsState(
             targetValue = pillRelativeX,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
             label = "pillX",
         )
         val pillAnimatedWidth by animateFloatAsState(
             targetValue = targetRect?.width ?: 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
             label = "pillWidth",
         )
         val pillColor = MaterialTheme.colorScheme.primary
@@ -195,13 +190,25 @@ fun ClockDock(
             ) {
                 destinations.forEachIndexed { index, destination ->
                     val isSelected = destination == selected
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    
+                    val tabScale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.90f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                        label = "tabScale"
+                    )
 
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .clip(CircleShape)
+                            .graphicsLayer {
+                                scaleX = tabScale
+                                scaleY = tabScale
+                            }
                             .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
+                                interactionSource = interactionSource,
                                 indication = null,
                                 onClick = { onSelect(destination) }
                             )
@@ -260,7 +267,12 @@ fun ClockDock(
 }
 
 @Composable
-fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun FloatingAddButton(
+    visible: Boolean, 
+    label: String, 
+    onClick: () -> Unit, 
+    modifier: Modifier = Modifier
+) {
     val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
     val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "addGrow")
 
@@ -276,16 +288,29 @@ fun FloatingAddButton(visible: Boolean, label: String, onClick: () -> Unit, modi
         label = "addRotate"
     )
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label = "fabPressScale"
+    )
+
     if (grow <= 0.001f) return
 
     FloatingActionButton(
         onClick = onClick,
+        interactionSource = interactionSource,
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         shape = RoundedCornerShape(lerp(FAB_SIZE / 2, FAB_CORNER, grow)),
         modifier = modifier
             .size(FAB_SIZE)
-            .graphicsLayer { scaleX = grow; scaleY = grow },
+            .graphicsLayer { 
+                scaleX = grow * pressScale
+                scaleY = grow * pressScale 
+            },
     ) {
         Icon(
             imageVector = Icons.Rounded.Add,
