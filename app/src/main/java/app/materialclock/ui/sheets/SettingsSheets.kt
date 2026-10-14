@@ -25,18 +25,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
@@ -48,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.DarkMode
@@ -59,24 +70,208 @@ import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.ClockWidgetProvider
 import app.materialclock.widget.WidgetEntryPoints
 
-/**
- * Modern Card Wrapper for Settings Sections
- * Groups related settings visually without clutter.
- */
+/* ── Modern Card & Row UI Helpers ─────────────────────────────────────────────────── */
+
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 2.dp,
     ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
             content()
         }
     }
 }
+
+@Composable
+private fun SettingsItemRow(
+    title: String,
+    subtitle: String? = null,
+    onClick: (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && onClick != null) 0.98f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "itemScale"
+    )
+
+    Surface(
+        color = Color.Transparent,
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        interactionSource = interactionSource,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (trailingContent != null) {
+                trailingContent()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ValueBadge(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun ItemDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        thickness = 0.8.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    )
+}
+
+@Composable
+private fun NavigateRow(title: String, subtitle: String? = null, onClick: () -> Unit) {
+    SettingsItemRow(
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    )
+}
+
+@Composable
+private fun <T> ChoiceRow(
+    title: String,
+    value: T,
+    options: List<T>,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        SettingsItemRow(
+            title = title,
+            onClick = { expanded = true },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ValueBadge(text = label(value))
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ) {
+            options.forEach { option ->
+                val selected = option == value
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = label(option),
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    trailingIcon = if (selected) {
+                        { Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    SettingsItemRow(
+        title = title,
+        subtitle = subtitle,
+        onClick = { onChange(!checked) },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                )
+            )
+        }
+    )
+}
+
+/* ── Sheets Implementation ──────────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +285,6 @@ fun AlarmSettingsSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        // Changed to LazyColumn to eliminate the "earthquake jitter" bug during scrolling
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 32.dp)
@@ -105,9 +299,10 @@ fun AlarmSettingsSheet(
                 SettingsCard {
                     NavigateRow(
                         title = "Groups",
-                        subtitle = "Alarm groups\nCreate, rename or delete",
+                        subtitle = "Alarm groups • Create, rename or delete",
                         onClick = onManageGroups,
                     )
+                    ItemDivider()
                     ChoiceRow(
                         title = "Start week on",
                         value = settings.alarms.weekStart,
@@ -115,6 +310,7 @@ fun AlarmSettingsSheet(
                         label = { it.label },
                         onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
                     )
+                    ItemDivider()
                     ChoiceRow(
                         title = "Dismiss alarm with",
                         value = settings.alarms.dismissMethod,
@@ -126,7 +322,7 @@ fun AlarmSettingsSheet(
             }
 
             item { 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Ringing & Sound") 
             }
             item {
@@ -138,6 +334,7 @@ fun AlarmSettingsSheet(
                         label = ::minutesLabel,
                         onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) } },
                     )
+                    ItemDivider()
                     ChoiceRow(
                         title = "Snooze length",
                         value = settings.alarms.snoozeMinutes,
@@ -145,6 +342,7 @@ fun AlarmSettingsSheet(
                         label = ::minutesLabel,
                         onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) } },
                     )
+                    ItemDivider()
                     ChoiceRow(
                         title = "Upcoming alarm notification",
                         value = settings.alarms.upcomingNotificationMinutes,
@@ -154,17 +352,20 @@ fun AlarmSettingsSheet(
                             onChange { it.copy(alarms = it.alarms.copy(upcomingNotificationMinutes = v)) }
                         },
                     )
+                    ItemDivider()
                     DefaultToneRow(
                         soundUri = settings.alarms.defaultSoundUri,
                         onPick = { v -> onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) } },
                     )
+                    ItemDivider()
                     VolumeRow(
                         volume = settings.alarms.volume,
                         onChange = { v -> onChange { it.copy(alarms = it.alarms.copy(volume = v)) } },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "Volume buttons during alarm",
-                        subtitle = "Control volume",
+                        subtitle = "Control alarm volume with hardware keys",
                         checked = settings.alarms.volumeButtonsControlVolume,
                         onChange = { v ->
                             onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
@@ -174,13 +375,15 @@ fun AlarmSettingsSheet(
             }
 
             item { 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Permissions & Alerts") 
             }
             item {
                 SettingsCard {
                     NotificationPermissionRow()
+                    ItemDivider()
                     ExactAlarmPermissionRow()
+                    ItemDivider()
                     FullScreenIntentRow()
                 }
             }
@@ -206,16 +409,15 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
     }
     val name = remember(soundUri) {
         when {
-            soundUri == null -> "Default alarm sound"
+            soundUri == null -> "Default sound"
             soundUri == SILENT -> "Silent"
             else -> runCatching {
                 RingtoneManager.getRingtone(context, Uri.parse(soundUri))?.getTitle(context)
-            }.getOrNull() ?: "Default alarm sound"
+            }.getOrNull() ?: "Default sound"
         }
     }
-    NavigateRow(
+    SettingsItemRow(
         title = "Default alarm tone",
-        subtitle = name,
         onClick = {
             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                 putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
@@ -228,17 +430,51 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
             }
             launcher.launch(intent)
         },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ValueBadge(text = name)
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     )
 }
 
 @Composable
 private fun VolumeRow(volume: Float, onChange: (Float) -> Unit) {
-    Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-        Text("Alarm volume", style = MaterialTheme.typography.bodyLarge)
-        androidx.compose.material3.Slider(
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Alarm volume", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                text = "${(volume * 100).toInt()}%",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Slider(
             value = volume, 
             onValueChange = onChange,
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -249,7 +485,7 @@ private fun NotificationPermissionRow() {
     val granted = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
     NavigateRow(
         title = "Notifications",
-        subtitle = if (granted) "Allowed" else "Off — a ringing alarm still sounds, but its controls won't show",
+        subtitle = if (granted) "Allowed" else "Off — controls won't show on lockscreen",
         onClick = {
             runCatching {
                 context.startActivity(
@@ -266,7 +502,7 @@ private fun ChangeDateTimeRow() {
     val context = LocalContext.current
     NavigateRow(
         title = "Change date & time",
-        subtitle = "Opens your device's date & time settings",
+        subtitle = "Opens system date & time settings",
         onClick = {
             runCatching {
                 context.startActivity(Intent(android.provider.Settings.ACTION_DATE_SETTINGS))
@@ -281,7 +517,7 @@ private fun ExactAlarmPermissionRow() {
     val granted = app.materialclock.alarm.AlarmScheduler.canScheduleExact(context)
     NavigateRow(
         title = "Alarms and reminders",
-        subtitle = if (granted) "Allowed" else "Not allowed, so alarms may fire late or not at all",
+        subtitle = if (granted) "Allowed" else "Not allowed — alarms may fire late",
         onClick = {
             runCatching {
                 context.startActivity(
@@ -299,13 +535,13 @@ private fun WidgetRows() {
     if (WidgetEntryPoints.canPin(context)) {
         NavigateRow(
             title = "Add a clock widget",
-            subtitle = "Long-press it on the home screen to change its look",
+            subtitle = "Long-press on home screen to customize",
             onClick = { WidgetEntryPoints.requestPin(context) },
         )
     } else {
         NavigateRow(
             title = "Clock widget",
-            subtitle = "Add one from your home screen's widget picker",
+            subtitle = "Add from your launcher's widget picker",
             onClick = {},
         )
     }
@@ -319,11 +555,7 @@ private fun FullScreenIntentRow() {
     val granted = nm?.canUseFullScreenIntent() != false
     NavigateRow(
         title = "Full screen alerts",
-        subtitle = if (granted) {
-            "Allow apps to send full screen alerts that cover the entire screen."
-        } else {
-            "Not allowed, so a ringing alarm will show as a banner instead"
-        },
+        subtitle = if (granted) "Allowed to open full screen when ringing" else "Not allowed — ringing alarm shows as banner",
         onClick = {
             runCatching {
                 context.startActivity(
@@ -355,7 +587,7 @@ private fun PaletteRow(
     }
 
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (wallpaper != null) {
@@ -384,7 +616,6 @@ private fun Swatch(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     
-    // Smooth, bouncy tactile scaling effect
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else if (selected) 1.1f else 1f,
         animationSpec = spring(
@@ -470,15 +701,17 @@ fun StopwatchSettingsSheet(
                         label = { it.label },
                         onSelect = { v -> onChange { it.copy(theme = it.theme.copy(darkMode = v)) } },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "Pure black",
-                        subtitle = "True black surfaces in dark mode, for OLED screens",
+                        subtitle = "True black surfaces in dark mode for OLED",
                         checked = settings.theme.amoledBlack,
                         onChange = { v -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "One-hand mode",
-                        subtitle = "Long-press the dock to pull the screen down into thumb reach",
+                        subtitle = "Long-press dock to pull screen into thumb reach",
                         checked = settings.theme.oneHandMode,
                         onChange = { v -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
                     )
@@ -486,7 +719,7 @@ fun StopwatchSettingsSheet(
             }
 
             item {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Theme Colors")
                 PaletteRow(
                     dynamic = settings.theme.dynamicColor,
@@ -499,7 +732,7 @@ fun StopwatchSettingsSheet(
             }
 
             item {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Widgets") 
             }
             item {
@@ -507,7 +740,7 @@ fun StopwatchSettingsSheet(
             }
 
             item {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SettingsCard { AboutRows() }
             }
         }
@@ -554,11 +787,13 @@ fun WorldSettingsSheet(
                         label = { it.label },
                         onSelect = { v -> onChange { it.copy(world = it.world.copy(style = v)) } },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "Display time with seconds",
                         checked = settings.world.showSeconds,
                         onChange = { v -> onChange { it.copy(world = it.world.copy(showSeconds = v)) } },
                     )
+                    ItemDivider()
                     ChoiceRow(
                         title = "Time format",
                         value = settings.world.hourFormat,
@@ -570,15 +805,14 @@ fun WorldSettingsSheet(
             }
 
             item {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Home clock") 
             }
             item {
                 SettingsCard {
                     SwitchRow(
                         title = "Automatic home clock",
-                        subtitle = "While travelling in an area where the time is different, " +
-                                "add a clock for home",
+                        subtitle = "Add a clock for home while travelling",
                         checked = settings.world.homeZoneOverride == null,
                         onChange = { v ->
                             if (v) {
@@ -589,6 +823,7 @@ fun WorldSettingsSheet(
                         },
                     )
                     if (settings.world.homeZoneOverride != null) {
+                        ItemDivider()
                         NavigateRow(
                             title = "Home time zone",
                             subtitle = homeCityName ?: "Not set",
@@ -599,7 +834,7 @@ fun WorldSettingsSheet(
             }
 
             item {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 SectionLabel("Date & time") 
             }
             item {
@@ -676,14 +911,16 @@ fun TimerSettingsSheet(
                             )
                         },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "Timer vibrate",
                         checked = settings.timers.vibrate,
                         onChange = { v -> onChange { it.copy(timers = it.timers.copy(vibrate = v)) } },
                     )
+                    ItemDivider()
                     SwitchRow(
                         title = "Gradually increase volume",
-                        subtitle = "Starts quiet and builds up over the first 20 seconds",
+                        subtitle = "Starts quiet and builds up over first 20s",
                         checked = settings.timers.gradualVolume,
                         onChange = { v -> onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) } },
                     )
@@ -693,7 +930,6 @@ fun TimerSettingsSheet(
     }
 }
 
-/** 0 is never, 1 is singular. Both of these read wrong the moment they are not special-cased. */
 private fun minutesLabel(minutes: Int): String = when (minutes) {
     0 -> "Never"
     1 -> "1 minute"
