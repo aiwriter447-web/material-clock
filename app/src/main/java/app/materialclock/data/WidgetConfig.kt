@@ -17,6 +17,16 @@ data class WidgetConfig(
     val digitalSeconds: Boolean = false,
     val digitalDate: Boolean = true,
 
+    /* ── Digital, World Clock and Alarm widgets ─────────────────────────────────────────── */
+    /** Whether the widget has a coloured card behind it, or sits directly on the wallpaper. */
+    val background: WidgetBackground = WidgetBackground.FILLED,
+
+    /** World Clock: up to two cities as "zone|city" keys. Empty means the first two in the app. */
+    val cityKeys: List<String> = emptyList(),
+
+    /** Alarm: which alarm to show. Null means the next one to ring. */
+    val alarmId: Long? = null,
+
     /* ── Face ───────────────────────────────────────────────────────────────────────────── */
     val shape: FaceShape = FaceShape.CIRCLE,
     /** Only read when [shape] is [FaceShape.PILL]. */
@@ -48,6 +58,12 @@ data class WidgetConfig(
     /** Only read when [colour] is [ColourSource.PALETTE]. */
     val palette: Palette = Palette.EXPRESSIVE,
 )
+
+/** Card behind a Digital, World Clock or Alarm widget. */
+enum class WidgetBackground(val label: String) {
+    FILLED("Filled"),
+    NONE("None"),
+}
 
 /** Which kind of widget this is. More types (world clock, timer, alarms) are added here later. */
 enum class WidgetType(val label: String) {
