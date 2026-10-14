@@ -17,6 +17,7 @@ import androidx.core.content.res.ResourcesCompat
 import app.materialclock.MainActivity
 import app.materialclock.R
 import app.materialclock.data.ClockSettings
+import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
@@ -116,7 +117,13 @@ object DigitalRenderer {
         val l = layoutFor(context, config, w, h)
         val views = RemoteViews(context.packageName, R.layout.widget_digital)
 
-        views.setImageViewIcon(R.id.digital_bg, background(colours.face, w, h, l.radiusPx).toIcon())
+        if (config.background == WidgetBackground.NONE) {
+            // No card: the time sits straight on the wallpaper.
+            views.setViewVisibility(R.id.digital_bg, View.GONE)
+        } else {
+            views.setViewVisibility(R.id.digital_bg, View.VISIBLE)
+            views.setImageViewIcon(R.id.digital_bg, background(colours.face, w, h, l.radiusPx).toIcon())
+        }
 
         // Time. 12-hour and 24-hour patterns are both set; the launcher picks by system setting.
         views.setCharSequence(R.id.digital_time, "setFormat12Hour", timePattern(config, false))
@@ -169,7 +176,11 @@ object DigitalRenderer {
     ): Bitmap {
         val colours = WidgetColours.resolve(context, config, settings)
         val l = layoutFor(context, config, w, h)
-        val bmp = background(colours.face, w, h, l.radiusPx)
+        val bmp = if (config.background == WidgetBackground.NONE) {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        } else {
+            background(colours.face, w, h, l.radiusPx)
+        }
         val canvas = Canvas(bmp)
         val typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex)
 
