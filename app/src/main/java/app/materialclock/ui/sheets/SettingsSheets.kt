@@ -70,10 +70,6 @@ import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.WidgetEntryPoints
 
-/* ── Constants ──────────────────────────────────────────────────────── */
-
-private const val SILENT = "silent"
-
 /* ── Modern Card & Row UI Helpers ─────────────────────────────────────────────────── */
 
 @Composable
@@ -174,125 +170,6 @@ private fun ItemDivider() {
         modifier = Modifier.padding(horizontal = 20.dp),
         thickness = 0.8.dp,
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-    )
-}
-
-@Composable
-private fun NavigateRow(title: String, subtitle: String? = null, onClick: () -> Unit) {
-    SettingsItemRow(
-        title = title,
-        subtitle = subtitle,
-        onClick = onClick,
-        trailingContent = {
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
-    )
-}
-
-@Composable
-private fun <T> ChoiceRow(
-    title: String,
-    value: T,
-    options: List<T>,
-    label: (T) -> String,
-    onSelect: (T) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        SettingsItemRow(
-            title = title,
-            onClick = { expanded = true },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ValueBadge(text = label(value))
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Rounded.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        ) {
-            options.forEach { option ->
-                val selected = option == value
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = label(option),
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    trailingIcon = if (selected) {
-                        { Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-                    } else null,
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SwitchRow(
-    title: String,
-    subtitle: String? = null,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    SettingsItemRow(
-        title = title,
-        subtitle = subtitle,
-        onClick = { onChange(!checked) },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                )
-            )
-        }
-    )
-}
-
-@Composable
-private fun SheetTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-    )
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
     )
 }
 
