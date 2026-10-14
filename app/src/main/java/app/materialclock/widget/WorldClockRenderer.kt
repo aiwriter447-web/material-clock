@@ -38,9 +38,9 @@ import kotlinx.coroutines.flow.first
  */
 object WorldClockRenderer {
 
-    private const val DATE_MIN_PANEL_HEIGHT_DP = 90f
-    private const val AMPM_MIN_PANEL_WIDTH_DP = 90f
-    private const val ONE_ROW_MAX_HEIGHT_DP = 90f
+    private const val DATE_MIN_PANEL_HEIGHT_DP = 100f
+    private const val AMPM_MIN_PANEL_WIDTH_DP = 80f
+    private const val ONE_ROW_MAX_HEIGHT_DP = 100f
 
     private class Side(val label: String, val zone: ZoneId)
 
@@ -108,7 +108,22 @@ object WorldClockRenderer {
         return RemoteViews(landscape, portrait)
     }
 
+    /** One size, kept a little inside its cell (see [WidgetInset]). */
     private fun one(
+        context: Context,
+        settings: ClockSettings,
+        left: Side,
+        right: Side,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
+        val m = WidgetInset.px(context)
+        val views = oneInner(context, settings, left, right, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
+        views.setViewPadding(android.R.id.background, m, m, m, m)
+        return views
+    }
+
+    private fun oneInner(
         context: Context,
         settings: ClockSettings,
         left: Side,
@@ -129,12 +144,12 @@ object WorldClockRenderer {
 
         // Text sizes: the time is as big as the panel's width and height allow; city and date
         // hang off it in fixed proportions.
-        val timeWidthEm = 2.8f + (if (showAmpm) 0.5f else 0f)
-        val heightEm = 0.85f + 0.36f + (if (showDate) 0.34f else 0f)
-        val timePx = min(panelW * 0.86f / timeWidthEm, panelH * 0.78f / heightEm)
-        val cityPx = timePx * 0.30f
-        val datePx = timePx * 0.26f
-        val ampmPx = timePx * 0.36f
+        val timeWidthEm = 2.8f + (if (showAmpm) 0.55f else 0f)
+        val heightEm = 0.85f + 0.50f + (if (showDate) 0.44f else 0f)
+        val timePx = min(panelW * 0.92f / timeWidthEm, panelH * 0.84f / heightEm)
+        val cityPx = timePx * 0.40f
+        val datePx = timePx * 0.34f
+        val ampmPx = timePx * 0.40f
 
         val scheme = WidgetColours.scheme(context, WidgetConfig(), settings)
         val bgA = scheme.primaryContainer.toArgb()
@@ -147,7 +162,7 @@ object WorldClockRenderer {
             if (horizontal) R.layout.widget_world_row else R.layout.widget_world_col,
         )
 
-        val radius = if (h / d < ONE_ROW_MAX_HEIGHT_DP) h / 2f else min(28f * d, min(w, h) / 2f)
+        val radius = if (h / d < ONE_ROW_MAX_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
         views.setImageViewIcon(R.id.world_bg, background(bgA, bgB, w, h, radius, horizontal).toIcon())
 
         val datePattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM")
