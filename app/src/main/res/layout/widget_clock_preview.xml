@@ -1,22 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Preview-only: just the AnalogClock, none of widget_clock.xml's other layers.
+  Picture shown in the widget picker for "Analog & Digital Clock": the analog clock above and the
+  digital time and date below, so the picker shows that this one widget can be either.
 
-  The face ImageView and the date TextClock in the real layout are both blank canvases until this
-  app's own code runs — the face bitmap is drawn at runtime, and the date's format string and
-  position are set with setViewPadding at runtime too. The widget picker only ever statically
-  inflates whatever previewLayout points to; no app code runs for it. Pointing it at the real
-  layout meant the date showed up as whatever a completely unconfigured TextClock defaults to,
-  clipped by padding that was never applied — the cut-off, half-rendered "_:30 pm" from testing.
-  AnalogClock alone has no such runtime dependency: uninitialised, it just draws the platform's
-  default analog face and hands, which is a perfectly honest preview of "this widget is a clock".
+  Only views that need no app code are used: the picker inflates this layout as it is, so
+  AnalogClock and TextClock (which tick by themselves) are fine; anything we would normally
+  draw at runtime is not.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/widget_preview_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="12dp">
 
     <AnalogClock
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="3" />
 
-</FrameLayout>
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="h:mm"
+        android:format24Hour="HH:mm"
+        android:textColor="@color/widget_preview_on_dark"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="EEE, d MMM"
+        android:format24Hour="EEE, d MMM"
+        android:textColor="@color/widget_preview_on_dark"
+        android:textSize="13sp" />
+</LinearLayout>
