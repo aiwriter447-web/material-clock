@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Alarm
@@ -416,6 +417,9 @@ private fun GroupCard(
 
     val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
 
+    val iconBackground = if (checked) Color(0xFF53A6E4) else Color(0xFFA0A0A0)
+    val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
+
     Surface(
         color = container,
         shape = RoundedCornerShape(GROUP_CARD_CORNER),
@@ -431,36 +435,41 @@ private fun GroupCard(
                 onLongClick = { onToggleSelect() }
             ),
     ) {
-        Column(Modifier.padding(GROUP_CARD_PADDING)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(GROUP_CARD_PADDING),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconBackground,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center, 
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.width(12.dp))
+            
+            Column(
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = group.name,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = titleFontWeight),
                     color = ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
-                Switch(
-                    checked = checked, 
-                    onCheckedChange = { if (!inSelectionMode) onToggle(it) },
-                    enabled = !inSelectionMode,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = container,
-                        checkedTrackColor = ink,
-                        checkedBorderColor = Color.Transparent,
-                        uncheckedThumbColor = ink,
-                        uncheckedTrackColor = Color.Transparent,
-                        uncheckedBorderColor = ink,
-                        disabledCheckedThumbColor = container,
-                        disabledCheckedTrackColor = ink,
-                        disabledUncheckedThumbColor = ink,
-                        disabledUncheckedTrackColor = Color.Transparent,
-                    )
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.height(4.dp))
                 GroupCount(armed = armedCount, unarmed = unarmedCount, ink = ink)
             }
         }
