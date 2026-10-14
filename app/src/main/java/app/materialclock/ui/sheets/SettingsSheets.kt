@@ -775,7 +775,6 @@ fun WorldSettingsSheet(
     onDismiss: () -> Unit,
 ) {
     var pickingHome by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    val now by app.materialclock.ui.rememberWallTicker()
     val homeCityName = remember(settings.world.homeZoneOverride) {
         settings.world.homeZoneOverride?.let { id ->
             runCatching { java.time.ZoneId.of(id) }.getOrNull()?.let { zone ->
