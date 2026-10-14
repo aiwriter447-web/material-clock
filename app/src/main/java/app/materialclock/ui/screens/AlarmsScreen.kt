@@ -58,6 +58,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +78,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
@@ -109,7 +113,22 @@ fun AlarmsScreen(
 ) {
     val order = remember(weekStart) { weekStart.order(systemFirstDay()) }
     val context = LocalContext.current
-    val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
 
     var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
