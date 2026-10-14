@@ -31,7 +31,7 @@ class ClockWidgetProvider : AppWidgetProvider() {
             // and calls onUpdate *before* the user has chosen anything. Leave the placeholder; do
             // not seed a default the user never picked.
             ids.forEach { ClockWidgetRenderer.update(context, manager, it) }
-            store.sweepWidgetConfigs(manager.getAppWidgetIds(component(context)))
+            store.sweepWidgetConfigs(allPlacedIds(context))
         }
     }
 
@@ -105,6 +105,18 @@ class ClockWidgetProvider : AppWidgetProvider() {
             CoroutineScope(Dispatchers.Default).launch {
                 ids.forEach { ClockWidgetRenderer.update(app, manager, it) }
             }
+        }
+
+        /**
+         * Every widget of every kind (analog and digital, world clock, alarm). The cleanup of
+         * leftover settings must know about all of them, or it would delete the settings of the
+         * widgets it has never heard of.
+         */
+        fun allPlacedIds(context: Context): IntArray {
+            val manager = AppWidgetManager.getInstance(context)
+            return manager.getAppWidgetIds(component(context)) +
+                manager.getAppWidgetIds(WorldClockWidgetProvider.component(context)) +
+                manager.getAppWidgetIds(AlarmWidgetProvider.component(context))
         }
 
         /** The ids of every widget this app currently has on a home screen. */
