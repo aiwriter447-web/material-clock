@@ -2,8 +2,9 @@
 <resources>
     <string name="app_name">Clock</string>
 
-    <!-- The names shown in the launcher's widget picker. -->
-    <string name="widget_name_clock">Analog &amp; Digital Clock</string>
+    <!-- The names shown in the launcher's widget picker. Every size of one kind shares a name. -->
+    <string name="widget_name_analog">Analog Clock</string>
+    <string name="widget_name_digital">Digital Clock</string>
     <string name="widget_name_world">World Clock</string>
     <string name="widget_name_alarm">Alarm Clock</string>
 
