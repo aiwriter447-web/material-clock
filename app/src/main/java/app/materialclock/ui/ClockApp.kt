@@ -123,6 +123,9 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
 fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    
+    // Timer state hoisted to control FAB visibility globally
+    val timer by vm.timer.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
         if (!isLoaded) {
@@ -378,7 +381,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                             }
 
                             Tab.TIMERS -> {
-                                val timer by vm.timer.collectAsStateWithLifecycle()
                                 val presets by vm.presets.collectAsStateWithLifecycle()
                                 val now by rememberElapsedTicker(active = isFocused && timer != null)
                                 TimersScreen(
@@ -395,7 +397,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                     onCancel = { vm.cancelTimer() },
                                     onStartPreset = { vm.startPreset(it) },
                                     onEditPreset = { editingPreset = it },
-                                    onAddPreset = { editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60) },
+                                    onAddPreset = { /* Not needed here directly, handled by FAB */ },
                                     contentPadding = edgeToEdge,
                                 )
                             }
@@ -448,10 +450,21 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     )
                 }
 
+                // Updated FAB logic: Now appears on the TIMERS tab as well (when no timer is running)
                 FloatingAddButton(
-                    visible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
-                    label = if (targetTab == Tab.WORLD) "Add city" else "Add alarm",
-                    onClick = { if (targetTab == Tab.WORLD) addingCity = true else editing = vm.blankAlarm() },
+                    visible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
+                    label = when (targetTab) {
+                        Tab.WORLD -> "Add city"
+                        Tab.TIMERS -> "Add preset"
+                        else -> "Add alarm"
+                    },
+                    onClick = { 
+                        when (targetTab) {
+                            Tab.WORLD -> addingCity = true 
+                            Tab.TIMERS -> editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60)
+                            else -> editing = vm.blankAlarm()
+                        }
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(
