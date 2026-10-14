@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and later: the pictures in the widget picker use the wallpaper's colours. -->
+<resources>
+    <color name="wp_container">@android:color/system_accent1_100</color>
+    <color name="wp_on_container">@android:color/system_accent1_900</color>
+    <color name="wp_primary">@android:color/system_accent1_600</color>
+    <color name="wp_on_primary">@android:color/system_accent1_0</color>
+    <color name="wp_surface">@android:color/system_neutral1_900</color>
+    <color name="wp_on_surface">@android:color/system_neutral1_100</color>
+    <color name="wp_accent">@android:color/system_accent1_200</color>
+</resources>
