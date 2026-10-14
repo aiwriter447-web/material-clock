@@ -1,8 +1,12 @@
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -10,8 +14,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -73,6 +81,7 @@ import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.sheets.systemFirstDay
+import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDateTime
@@ -101,11 +110,20 @@ fun AlarmsScreen(
     val context = LocalContext.current
     val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
     val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
-    
+
     var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
     var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
     val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+
+    // Real-time ticking logic to keep "time leftover" updating live
+    var nowTime by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            nowTime = LocalDateTime.now()
+        }
+    }
 
     LaunchedEffect(inSelectionMode) {
         onSelectionChange(inSelectionMode)
@@ -144,11 +162,11 @@ fun AlarmsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "upcoming-alarm-text", contentType = "upcoming") {
-                val upcomingInfo = remember(alarms) { calculateTimeUntilNextAlarm(alarms) }
+                val upcomingInfo = remember(alarms, nowTime) { calculateTimeUntilNextAlarm(alarms, nowTime) }
                 AnimatedVisibility(
                     visible = upcomingInfo != null,
-                    enter = expandVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeIn(tween(400)),
-                    exit = shrinkVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) + fadeOut(tween(400))
+                    enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(300)),
+                    exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(300))
                 ) {
                     if (upcomingInfo != null) {
                         Column(
@@ -157,17 +175,29 @@ fun AlarmsScreen(
                                 .padding(horizontal = 20.dp, vertical = 6.dp),
                             horizontalAlignment = Alignment.Start
                         ) {
-                            Text(
-                                text = upcomingInfo.first,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
+                            AnimatedContent(
+                                targetState = upcomingInfo.first,
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+                                label = "upcomingFirstText"
+                            ) { text ->
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = upcomingInfo.second,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                            AnimatedContent(
+                                targetState = upcomingInfo.second,
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+                                label = "upcomingSecondText"
+                            ) { text ->
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }
@@ -190,7 +220,7 @@ fun AlarmsScreen(
 
             items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
                 val isSelected = alarm.id in selectedAlarms
-                
+
                 AlarmRow(
                     alarm = alarm,
                     order = order,
@@ -209,8 +239,8 @@ fun AlarmsScreen(
 
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn() + slideInVertically { it },
-            exit = fadeOut() + slideOutVertically { it },
+            enter = fadeIn(spring()) + slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it },
+            exit = fadeOut(spring()) + slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -277,11 +307,10 @@ fun AlarmsScreen(
     }
 }
 
-private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): Pair<String, String>? {
+private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: LocalDateTime = LocalDateTime.now()): Pair<String, String>? {
     val activeAlarms = alarms.filter { it.enabled }
     if (activeAlarms.isEmpty()) return null
 
-    val now = LocalDateTime.now()
     var minDuration: Duration? = null
     var nextAlarmTime: LocalDateTime? = null
 
@@ -307,7 +336,7 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>): Pair<String, Strin
     }
 
     if (minDuration == null || nextAlarmTime == null) return null
-    
+
     val hours = minDuration.toHours()
     val minutes = minDuration.toMinutes() % 60
 
@@ -354,7 +383,6 @@ private fun GroupCardsSection(
                         group = group,
                         armedCount = armedCount,
                         unarmedCount = unarmedCount,
-                        // Fix: Agar ek bhi alarm on hai toh group toggle ON rahega
                         checked = groupAlarms.any { it.enabled },
                         isSelected = isSelected,
                         inSelectionMode = inSelectionMode,
@@ -382,18 +410,37 @@ private fun GroupCard(
     onToggleSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "groupScale"
+    )
+
+    val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+
+    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "groupContainer")
+    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "groupInk")
 
     val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
 
     Surface(
         color = container,
         shape = RoundedCornerShape(GROUP_CARD_CORNER),
-        modifier = modifier.combinedClickable(
-            onClick = { if (inSelectionMode) onToggleSelect() else onToggle(!checked) },
-            onLongClick = { onToggleSelect() }
-        ),
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { if (inSelectionMode) onToggleSelect() else onToggle(!checked) },
+                onLongClick = { onToggleSelect() }
+            ),
     ) {
         Column(Modifier.padding(GROUP_CARD_PADDING)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -437,9 +484,9 @@ private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
         Icon(Icons.Rounded.Alarm, contentDescription = "On Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(4.dp))
         Text(armed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
-        
+
         Spacer(Modifier.width(12.dp))
-        
+
         Icon(Icons.Rounded.AlarmOff, contentDescription = "Off Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(4.dp))
         Text(unarmed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
@@ -465,24 +512,45 @@ private fun AlarmRow(
     modifier: Modifier = Modifier
 ) {
     val enabled = alarm.enabled
-    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val ink = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "rowScale"
+    )
+
+    val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+
+    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "rowContainer")
+    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "rowInk")
+
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
 
     val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
     val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
-    
+
     val timeFontWeight = if (enabled) FontWeight.Medium else FontWeight.Normal
     val titleFontWeight = if (enabled) FontWeight.SemiBold else FontWeight.Normal
 
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
-        modifier = modifier.fillMaxWidth().combinedClickable(
-            onClick = { if (inSelectionMode) onToggleSelect() else onEdit() },
-            onLongClick = { onToggleSelect() }
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { if (inSelectionMode) onToggleSelect() else onEdit() },
+                onLongClick = { onToggleSelect() }
+            ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
@@ -511,7 +579,7 @@ private fun AlarmRow(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
                 val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = timeFontWeight, fontFeatureSettings = "tnum")
