@@ -278,6 +278,9 @@ private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("type", c.type.name)
     .put("dSec", c.digitalSeconds)
     .put("dDate", c.digitalDate)
+    .put("bg", c.background.name)
+    .put("cities", JSONArray(c.cityKeys))
+    .put("alarmId", c.alarmId ?: -1L)
     .put("shape", c.shape.name)
     .put("pill", c.pillOrientation.name)
     .put("fill", c.faceFill.name)
@@ -305,6 +308,9 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
         type = enumOr(o.optString("type"), WidgetType.ANALOG),
         digitalSeconds = o.optBoolean("dSec", false),
         digitalDate = o.optBoolean("dDate", true),
+        background = enumOr(o.optString("bg"), WidgetBackground.FILLED),
+        cityKeys = o.optJSONArray("cities")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+        alarmId = o.optLong("alarmId", -1L).takeIf { it >= 0L },
         shape = enumOr(o.optString("shape"), FaceShape.CIRCLE),
         pillOrientation = enumOr(o.optString("pill"), PillOrientation.HORIZONTAL),
         faceFill = enumOr(o.optString("fill"), FaceFill.CONTAINER),
