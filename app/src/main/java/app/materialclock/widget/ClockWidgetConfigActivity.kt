@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
 import app.materialclock.data.WidgetConfig
+import app.materialclock.data.WidgetType
 import app.materialclock.ui.theme.ClockTheme
 import kotlinx.coroutines.launch
 
@@ -55,11 +56,15 @@ class ClockWidgetConfigActivity : ComponentActivity() {
             return
         }
         // The activity is exported, so anyone can launch it with any id. Only act on ids that
-        // really belong to this provider.
-        val manager = AppWidgetManager.getInstance(this)
-        if (manager.getAppWidgetInfo(appWidgetId)?.provider != ClockWidgetProvider.component(this)) {
-            finish()
-            return
+        // really belong to an analog or digital widget of this app. The entry the widget was
+        // added from decides the type, so there is nothing to choose between the two here.
+        val locked = when (WidgetProviders.kindOf(this, appWidgetId)) {
+            WidgetKind.ANALOG -> WidgetType.ANALOG
+            WidgetKind.DIGITAL -> WidgetType.DIGITAL
+            else -> {
+                finish()
+                return
+            }
         }
 
         val store = ClockStore(applicationContext)
@@ -71,9 +76,10 @@ class ClockWidgetConfigActivity : ComponentActivity() {
 
             ClockTheme(settings.theme) {
                 WidgetConfigScreen(
-                    initial = existing ?: WidgetConfig(),
+                    initial = (existing ?: WidgetConfig()).copy(type = locked),
                     settings = settings,
                     isNew = existing == null,
+                    lockedType = locked,
                     onCancel = { finish() },
                     onSave = { config -> commit(appWidgetId, config) },
                 )
