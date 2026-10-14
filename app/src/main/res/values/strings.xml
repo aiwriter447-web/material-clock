@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Clock</string>
-    <string name="widget_description">An analog clock you can shape</string>
+
+    <!-- The names shown in the launcher's widget picker. -->
+    <string name="widget_name_clock">Analog &amp; Digital Clock</string>
+    <string name="widget_name_world">World Clock</string>
+    <string name="widget_name_alarm">Alarm Clock</string>
+
+    <string name="widget_description">An analog or digital clock you can style</string>
     <string name="widget_world_description">Two cities, side by side</string>
     <string name="widget_alarm_description">Your next alarm, with an on/off button</string>
 </resources>
