@@ -8,6 +8,13 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Delete
@@ -29,13 +38,13 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -62,7 +71,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,7 +88,7 @@ import java.time.LocalTime
 import java.time.format.TextStyle
 import java.util.Locale
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmEditSheet(
     initial: Alarm,
@@ -97,7 +108,7 @@ fun AlarmEditSheet(
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
     var discard by remember(initial.id) { mutableStateOf(false) }
-    
+
     var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
 
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
@@ -211,6 +222,14 @@ fun AlarmEditSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val soundInteraction = remember { MutableInteractionSource() }
+                val isSoundPressed by soundInteraction.collectIsPressedAsState()
+                val soundScale by animateFloatAsState(
+                    targetValue = if (isSoundPressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "soundScale"
+                )
+
                 FilledTonalButton(
                     onClick = {
                         ringtonePicker.launch(
@@ -225,8 +244,15 @@ fun AlarmEditSheet(
                                 )
                         )
                     },
+                    interactionSource = soundInteraction,
                     contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier.weight(1f).height(ROW_H),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = soundScale
+                            scaleY = soundScale
+                        },
                 ) {
                     Icon(Icons.Outlined.MusicNote, contentDescription = null, Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
@@ -234,9 +260,11 @@ fun AlarmEditSheet(
                         ringtoneName(soundUri),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLargeEmphasized,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
+
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
@@ -256,33 +284,80 @@ fun AlarmEditSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (onDelete != null) {
+                    val deleteInteraction = remember { MutableInteractionSource() }
+                    val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                    val deleteScale by animateFloatAsState(
+                        targetValue = if (isDeletePressed) 0.93f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                        label = "deleteScale"
+                    )
+
                     FilledTonalButton(
                         onClick = { onDelete(initial.id); onDismiss() },
+                        interactionSource = deleteInteraction,
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier = Modifier.weight(1f).height(ROW_H),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(ROW_H)
+                            .graphicsLayer {
+                                scaleX = deleteScale
+                                scaleY = deleteScale
+                            },
                     ) {
                         Icon(Icons.Outlined.Delete, contentDescription = null, Modifier.size(20.dp))
                     }
                 }
+
+                val cancelInteraction = remember { MutableInteractionSource() }
+                val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                val cancelScale by animateFloatAsState(
+                    targetValue = if (isCancelPressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "cancelScale"
+                )
+
                 OutlinedButton(
                     onClick = { discard = true; onDismiss() },
+                    interactionSource = cancelInteraction,
                     contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.weight(1.2f).height(ROW_H),
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = cancelScale
+                            scaleY = cancelScale
+                        },
                 ) {
-                    Text("Cancel", style = MaterialTheme.typography.labelLargeEmphasized)
+                    Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 }
+
+                val saveInteraction = remember { MutableInteractionSource() }
+                val isSavePressed by saveInteraction.collectIsPressedAsState()
+                val saveScale by animateFloatAsState(
+                    targetValue = if (isSavePressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "saveScale"
+                )
+
                 Button(
                     onClick = { commitAndClose(explicit = true) },
+                    interactionSource = saveInteraction,
                     contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.weight(if (onDelete != null) 1.8f else 2.4f).height(ROW_H),
+                    modifier = Modifier
+                        .weight(if (onDelete != null) 1.8f else 2.4f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = saveScale
+                            scaleY = saveScale
+                        },
                 ) {
                     Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Save", style = MaterialTheme.typography.labelLargeEmphasized)
+                    Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -391,24 +466,36 @@ private fun ManualTimeEntry(state: TimePickerState) {
 
 @Composable
 private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "fieldPillScale"
+    )
+
+    val targetContainer = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+    val targetContent = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+
+    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "pillContainer")
+    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "pillContent")
+
     Surface(
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        },
+        color = containerColor,
         shape = CircleShape,
         onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
     ) {
         Box(Modifier.padding(horizontal = 22.dp, vertical = FIELD_PAD_V)) {
             Numerals(
                 text = text,
                 capHeight = FIELD_CAP,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color = contentColor,
                 width = 151f,
                 weight = 460,
             )
@@ -416,29 +503,46 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-// FIXED: MeridiemChip now has fixed static height and width, avoiding overlaps
 @Composable
 private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "meridiemScale"
+    )
+
+    val targetContainer = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+    val targetContent = if (selected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+
+    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "meridiemBg")
+    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "meridiemFg")
+
     Surface(
-        modifier = Modifier.height(38.dp).width(54.dp), 
-        color = if (selected) {
-            MaterialTheme.colorScheme.tertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        },
-        contentColor = if (selected) {
-            MaterialTheme.colorScheme.onTertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
+        modifier = Modifier
+            .height(38.dp)
+            .width(54.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }, 
+        color = containerColor,
+        contentColor = contentColor,
         shape = CircleShape,
         onClick = onClick,
+        interactionSource = interactionSource,
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text(text, style = MaterialTheme.typography.labelLargeEmphasized)
+            Text(
+                text = text, 
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -454,11 +558,27 @@ private fun GroupPicker(
     var showCreate by remember { mutableStateOf(false) }
     val selectedName = groups.firstOrNull { it.id == selectedId }?.name ?: "No group"
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "groupPickerScale"
+    )
+
     Box(Modifier.fillMaxWidth().padding(horizontal = EDGE)) {
         FilledTonalButton(
             onClick = { expanded = true },
+            interactionSource = interactionSource,
             contentPadding = PaddingValues(horizontal = 18.dp),
-            modifier = Modifier.fillMaxWidth().height(ROW_H),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ROW_H)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
         ) {
             Icon(Icons.Outlined.Group, contentDescription = null, Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
@@ -466,7 +586,8 @@ private fun GroupPicker(
                 selectedName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelLargeEmphasized,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
             )
@@ -543,7 +664,7 @@ private fun ringtoneName(uri: String?): String {
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) {
     Row(
@@ -551,15 +672,32 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         order.forEach { day ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.90f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                label = "dayToggleScale"
+            )
+
             ToggleButton(
                 checked = day in selected,
                 onCheckedChange = { onToggle(day) },
+                interactionSource = interactionSource,
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.weight(1f).height(52.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
             ) {
                 Text(
                     day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
-                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
             }
