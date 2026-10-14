@@ -36,7 +36,7 @@ import kotlin.math.min
 object DigitalRenderer {
 
     /** Height (dp) from which the date is shown: a two-row widget and taller. */
-    private const val DATE_MIN_HEIGHT_DP = 90f
+    private const val DATE_MIN_HEIGHT_DP = 100f
 
     /** Width (dp) from which the long date ("Tuesday, 13 October") is used. */
     private const val LONG_DATE_MIN_WIDTH_DP = 200f
@@ -65,7 +65,7 @@ object DigitalRenderer {
         val time = min(byWidth, byHeight)
 
         // One-row widgets are pills; taller ones get a Material-style rounded card.
-        val radius = if (hDp < DATE_MIN_HEIGHT_DP) h / 2f else min(28f * d, min(w, h) / 2f)
+        val radius = if (hDp < DATE_MIN_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
 
         return Layout(
             timePx = time,
@@ -91,8 +91,21 @@ object DigitalRenderer {
             if (longDate) "EEEEdMMMM" else "EEEdMMM",
         )
 
-    /** The real widget. */
+    /** The real widget, kept a little inside its cell (see [WidgetInset]). */
     fun build(
+        context: Context,
+        config: WidgetConfig,
+        settings: ClockSettings,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
+        val m = WidgetInset.px(context)
+        val views = buildInner(context, config, settings, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
+        views.setViewPadding(android.R.id.background, m, m, m, m)
+        return views
+    }
+
+    private fun buildInner(
         context: Context,
         config: WidgetConfig,
         settings: ClockSettings,
