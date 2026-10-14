@@ -10,82 +10,132 @@ import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.Animatable
+import androidx.activity.OnBackPressedCallback
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.AlarmOff
+import androidx.compose.material.icons.rounded.Snooze
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
 import app.materialclock.data.DismissMethod
 import app.materialclock.ui.rememberWallTicker
-import app.materialclock.ui.screens.WidePill
 import app.materialclock.ui.theme.ClockTheme
-import app.materialclock.data.ClockSettings
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalTime
+import java.time.ZoneId
 import kotlin.math.roundToInt
+
+/* ───────────────────────────────────────────────
+   EXPRESSIVE ANIMATION CONFIGURATION
+   ─────────────────────────────────────────────── */
+
+private const val EXIT_DURATION = 240L
+
+private val ExpressiveSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMedium
+)
+
+private val SoftSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioLowBouncy,
+    stiffness = Spring.StiffnessLow
+)
+
+private val FastSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMedium
+)
+
+/* ───────────────────────────────────────────────
+   ALARM ACTIVITY
+   ─────────────────────────────────────────────── */
 
 class AlarmRingActivity : ComponentActivity() {
 
-    @Volatile private var volumeButtonsControlVolume = true
+    @Volatile
+    private var volumeButtonsControlVolume = true
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (volumeButtonsControlVolume &&
+
+        if (
+            volumeButtonsControlVolume &&
             event.action == KeyEvent.ACTION_DOWN &&
-            (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+            (
+                event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+                event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+            )
         ) {
-            val direction = if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                AudioManager.ADJUST_RAISE
-            } else {
-                AudioManager.ADJUST_LOWER
-            }
+
+            val direction =
+                if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                    AudioManager.ADJUST_RAISE
+                } else {
+                    AudioManager.ADJUST_LOWER
+                }
+
             getSystemService<AudioManager>()
-                ?.adjustStreamVolume(AudioManager.STREAM_ALARM, direction, AudioManager.FLAG_SHOW_UI)
+                ?.adjustStreamVolume(
+                    AudioManager.STREAM_ALARM,
+                    direction,
+                    AudioManager.FLAG_SHOW_UI
+                )
+
             return true
         }
+
         return super.dispatchKeyEvent(event)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
+
+        /* Lock screen support */
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+
             setShowWhenLocked(true)
             setTurnScreenOn(true)
+
         } else {
+
             @Suppress("DEPRECATION")
             window.addFlags(
                 android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
@@ -93,308 +143,1146 @@ class AlarmRingActivity : ComponentActivity() {
                     android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             )
         }
-        getSystemService<KeyguardManager>()?.requestDismissKeyguard(this, null)
 
-        val id = intent.getLongExtra(AlarmReceiver.EXTRA_ID, -1L)
-        val label = intent.getStringExtra(EXTRA_LABEL).orEmpty()
+        getSystemService<KeyguardManager>()
+            ?.requestDismissKeyguard(this, null)
+
+        val id = intent.getLongExtra(
+            AlarmReceiver.EXTRA_ID,
+            -1L
+        )
+
+        val label = intent.getStringExtra(
+            EXTRA_LABEL
+        ).orEmpty()
+
         val store = ClockStore(applicationContext)
 
-        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() = Unit
-        })
+        /* Disable accidental back dismissal */
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() = Unit
+            }
+        )
 
         setContent {
-            val settings by store.settings
-                .map { it }
-                .collectAsStateWithLifecycle(initialValue = ClockSettings())
 
-            LaunchedEffect(settings.alarms.volumeButtonsControlVolume) {
-                volumeButtonsControlVolume = settings.alarms.volumeButtonsControlVolume
+            val settings by store.settings
+                .collectAsStateWithLifecycle(
+                    initialValue = ClockSettings()
+                )
+
+            LaunchedEffect(
+                settings.alarms.volumeButtonsControlVolume
+            ) {
+                volumeButtonsControlVolume =
+                    settings.alarms.volumeButtonsControlVolume
             }
 
             ClockTheme(settings.theme) {
-                Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxSize()) {
-                    Ringing(
+
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+
+                    ExpressiveRingingScreen(
                         label = label,
                         snoozeMinutes = settings.alarms.snoozeMinutes,
                         dismissMethod = settings.alarms.dismissMethod,
+
                         onSnooze = {
-                            sendBroadcast(action(ClockActionReceiver.ACTION_SNOOZE, id))
-                            finish()
+
+                            sendBroadcast(
+                                action(
+                                    ClockActionReceiver.ACTION_SNOOZE,
+                                    id
+                                )
+                            )
+
+                            finishAfterAnimation()
                         },
+
                         onDismiss = {
-                            sendBroadcast(action(ClockActionReceiver.ACTION_DISMISS, id))
-                            finish()
-                        },
+
+                            sendBroadcast(
+                                action(
+                                    ClockActionReceiver.ACTION_DISMISS,
+                                    id
+                                )
+                            )
+
+                            finishAfterAnimation()
+                        }
                     )
                 }
             }
         }
     }
 
-    private fun action(name: String, id: Long) =
-        Intent(this, ClockActionReceiver::class.java)
+    private fun finishAfterAnimation() {
+
+        lifecycleScope.launch {
+            delay(EXIT_DURATION)
+            if (!isFinishing && !isDestroyed) {
+                finish()
+            }
+        }
+    }
+
+    private fun action(
+        name: String,
+        id: Long
+    ): Intent {
+
+        return Intent(
+            this,
+            ClockActionReceiver::class.java
+        )
             .setPackage(packageName)
             .setAction(name)
-            .putExtra(AlarmReceiver.EXTRA_ID, id)
-
-    companion object {
-        const val EXTRA_LABEL = "label"
-
-        fun intent(context: Context, id: Long, label: String): PendingIntent =
-            PendingIntent.getActivity(
-                context,
-                id.toInt(),
-                Intent(context, AlarmRingActivity::class.java)
-                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                    .putExtra(AlarmReceiver.EXTRA_ID, id)
-                    .putExtra(EXTRA_LABEL, label),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            .putExtra(
+                AlarmReceiver.EXTRA_ID,
+                id
             )
     }
-}
 
-@androidx.compose.runtime.Composable
-private fun Ringing(
-    label: String,
-    snoozeMinutes: Int,
-    dismissMethod: DismissMethod,
-    onSnooze: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val nowMillis by rememberWallTicker()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-    val time = remember(nowMillis) {
-        java.time.Instant.ofEpochMilli(nowMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
-    }
+    companion object {
 
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (maxWidth > maxHeight) {
-            RingingLandscape(label, time, is24Hour, snoozeMinutes, dismissMethod, onSnooze, onDismiss)
-        } else {
-            RingingPortrait(label, time, is24Hour, snoozeMinutes, dismissMethod, onSnooze, onDismiss)
+        const val EXTRA_LABEL = "label"
+
+        fun intent(
+            context: Context,
+            id: Long,
+            label: String
+        ): PendingIntent {
+
+            return PendingIntent.getActivity(
+                context,
+                id.toInt(),
+                Intent(
+                    context,
+                    AlarmRingActivity::class.java
+                )
+                    .setFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    )
+                    .putExtra(
+                        AlarmReceiver.EXTRA_ID,
+                        id
+                    )
+                    .putExtra(
+                        EXTRA_LABEL,
+                        label
+                    ),
+
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
         }
     }
 }
 
-@androidx.compose.runtime.Composable
-private fun RingingPortrait(
+/* ───────────────────────────────────────────────
+   EXPRESSIVE RINGING SCREEN
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveRingingScreen(
     label: String,
-    time: LocalTime,
-    is24Hour: Boolean,
     snoozeMinutes: Int,
     dismissMethod: DismissMethod,
     onSnooze: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+
+    val nowMillis by rememberWallTicker()
+
+    val context = LocalContext.current
+
+    val is24Hour = android.text.format.DateFormat
+        .is24HourFormat(context)
+
+    val time = remember(nowMillis) {
+        Instant.ofEpochMilli(nowMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalTime()
+    }
+
+    var entered by remember {
+        mutableStateOf(false)
+    }
+
+    var exiting by remember {
+        mutableStateOf(false)
+    }
+
+    var actionTaken by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(Unit) {
+        entered = true
+    }
+
+    val screenAlpha by animateFloatAsState(
+        targetValue = when {
+            exiting -> 0f
+            entered -> 1f
+            else -> 0f
+        },
+        animationSpec = tween(
+            durationMillis = 220
+        ),
+        label = "screenAlpha"
+    )
+
+    val screenScale by animateFloatAsState(
+        targetValue = when {
+            exiting -> 0.94f
+            entered -> 1f
+            else -> 0.92f
+        },
+        animationSpec = ExpressiveSpring,
+        label = "screenScale"
+    )
+
+    val handleSnooze = {
+        if (!actionTaken) {
+            actionTaken = true
+            exiting = true
+            onSnooze()
+        }
+    }
+
+    val handleDismiss = {
+        if (!actionTaken) {
+            actionTaken = true
+            exiting = true
+            onDismiss()
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                alpha = screenAlpha
+                scaleX = screenScale
+                scaleY = screenScale
+            }
     ) {
-        Text(
-            label.ifBlank { "Alarm" },
-            style = MaterialTheme.typography.headlineMediumEmphasized,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(24.dp))
-        RingTime(time, is24Hour)
-        Spacer(Modifier.height(56.dp))
-        DismissControl(
-            dismissMethod = dismissMethod,
-            onDismiss = onDismiss,
-            height = 96.dp,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        WidePill(
-            text = "Snooze $snoozeMinutes min",
-            onClick = onSnooze,
-            outlined = true,
-            content = MaterialTheme.colorScheme.onSurface,
-            height = 72.dp,
-            modifier = Modifier.fillMaxWidth(),
-        )
+
+        AnimatedAmbientBackground()
+
+        if (maxWidth > maxHeight) {
+
+            ExpressiveLandscape(
+                label = label,
+                time = time,
+                is24Hour = is24Hour,
+                snoozeMinutes = snoozeMinutes,
+                dismissMethod = dismissMethod,
+                onSnooze = handleSnooze,
+                onDismiss = handleDismiss
+            )
+
+        } else {
+
+            ExpressivePortrait(
+                label = label,
+                time = time,
+                is24Hour = is24Hour,
+                snoozeMinutes = snoozeMinutes,
+                dismissMethod = dismissMethod,
+                onSnooze = handleSnooze,
+                onDismiss = handleDismiss
+            )
+        }
     }
 }
 
-@androidx.compose.runtime.Composable
-private fun RingingLandscape(
+/* ───────────────────────────────────────────────
+   ANIMATED AMBIENT BACKGROUND
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun AnimatedAmbientBackground() {
+
+    val infinite = rememberInfiniteTransition(
+        label = "ambientAnimation"
+    )
+
+    val glowAlpha by infinite.animateFloat(
+        initialValue = 0.025f,
+        targetValue = 0.085f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 3200,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambientGlow"
+    )
+
+    val primary = MaterialTheme.colorScheme.primary
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        primary.copy(alpha = glowAlpha),
+                        Color.Transparent,
+                        primary.copy(
+                            alpha = glowAlpha * 0.45f
+                        )
+                    )
+                )
+            )
+    )
+}
+
+/* ───────────────────────────────────────────────
+   PORTRAIT LAYOUT
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressivePortrait(
     label: String,
     time: LocalTime,
     is24Hour: Boolean,
     snoozeMinutes: Int,
     dismissMethod: DismissMethod,
     onSnooze: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    androidx.compose.foundation.layout.Row(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                horizontal = 24.dp,
+                vertical = 36.dp
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+
+        AnimatedEntrance(
+            delayMillis = 0
+        ) {
+
+            Text(
+                text = label.ifBlank { "Alarm" },
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(
+            Modifier.height(24.dp)
+        )
+
+        AnimatedEntrance(
+            delayMillis = 90
+        ) {
+
+            ExpressiveClock(
+                time = time,
+                is24Hour = is24Hour,
+                compact = false
+            )
+        }
+
+        Spacer(
+            Modifier.height(56.dp)
+        )
+
+        AnimatedEntrance(
+            delayMillis = 170
+        ) {
+
+            ExpressiveDismissControl(
+                dismissMethod = dismissMethod,
+                onDismiss = onDismiss,
+                height = 96.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(
+            Modifier.height(14.dp)
+        )
+
+        AnimatedEntrance(
+            delayMillis = 250
+        ) {
+
+            ExpressiveSnoozeButton(
+                snoozeMinutes = snoozeMinutes,
+                onSnooze = onSnooze,
+                height = 72.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/* ───────────────────────────────────────────────
+   LANDSCAPE LAYOUT
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveLandscape(
+    label: String,
+    time: LocalTime,
+    is24Hour: Boolean,
+    snoozeMinutes: Int,
+    dismissMethod: DismissMethod,
+    onSnooze: () -> Unit,
+    onDismiss: () -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                horizontal = 32.dp,
+                vertical = 20.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                label.ifBlank { "Alarm" },
-                style = MaterialTheme.typography.headlineSmallEmphasized,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+            AnimatedEntrance(
+                delayMillis = 0
+            ) {
+
+                Text(
+                    text = label.ifBlank { "Alarm" },
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(
+                Modifier.height(12.dp)
             )
-            Spacer(Modifier.height(12.dp))
-            RingTime(time, is24Hour)
+
+            AnimatedEntrance(
+                delayMillis = 90
+            ) {
+
+                ExpressiveClock(
+                    time = time,
+                    is24Hour = is24Hour,
+                    compact = true
+                )
+            }
         }
-        Spacer(Modifier.width(24.dp))
+
+        Spacer(
+            Modifier.width(24.dp)
+        )
+
         Column(
-            modifier = Modifier.weight(0.62f),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(0.75f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DismissControl(
-                dismissMethod = dismissMethod,
-                onDismiss = onDismiss,
-                height = 76.dp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            WidePill(
-                text = "Snooze $snoozeMinutes min",
-                onClick = onSnooze,
-                outlined = true,
-                content = MaterialTheme.colorScheme.onSurface,
-                height = 60.dp,
-                modifier = Modifier.fillMaxWidth(),
-            )
+
+            AnimatedEntrance(
+                delayMillis = 170
+            ) {
+
+                ExpressiveDismissControl(
+                    dismissMethod = dismissMethod,
+                    onDismiss = onDismiss,
+                    height = 76.dp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            AnimatedEntrance(
+                delayMillis = 250
+            ) {
+
+                ExpressiveSnoozeButton(
+                    snoozeMinutes = snoozeMinutes,
+                    onSnooze = onSnooze,
+                    height = 60.dp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
 
-@androidx.compose.runtime.Composable
-private fun DismissControl(
+/* ───────────────────────────────────────────────
+   STAGGERED ENTRANCE ANIMATION
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun AnimatedEntrance(
+    delayMillis: Int,
+    content: @Composable () -> Unit
+) {
+
+    var visible by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(Unit) {
+        delay(delayMillis.toLong())
+        visible = true
+    }
+
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 350,
+            easing = FastOutSlowInEasing
+        ),
+        label = "entranceAlpha"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.86f,
+        animationSpec = SoftSpring,
+        label = "entranceScale"
+    )
+
+    val translationY by animateFloatAsState(
+        targetValue = if (visible) 0f else 35f,
+        animationSpec = ExpressiveSpring,
+        label = "entranceTranslation"
+    )
+
+    Box(
+        modifier = Modifier.graphicsLayer {
+            this.alpha = alpha
+            scaleX = scale
+            scaleY = scale
+            this.translationY = translationY
+        }
+    ) {
+        content()
+    }
+}
+
+/* ───────────────────────────────────────────────
+   EXPRESSIVE CLOCK
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveClock(
+    time: LocalTime,
+    is24Hour: Boolean,
+    compact: Boolean
+) {
+
+    val hour = if (is24Hour) {
+        time.hour
+    } else {
+        (time.hour % 12).takeIf {
+            it != 0
+        } ?: 12
+    }
+
+    val timeText = "%02d:%02d".format(
+        hour,
+        time.minute
+    )
+
+    val infinite = rememberInfiniteTransition(
+        label = "clockBreathing"
+    )
+
+    val breathingScale by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.025f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1900,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "clockScale"
+    )
+
+    val glowAlpha by infinite.animateFloat(
+        initialValue = 0.06f,
+        targetValue = 0.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1900,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "clockGlow"
+    )
+
+    val primary = MaterialTheme.colorScheme.primary
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.graphicsLayer {
+            scaleX = breathingScale
+            scaleY = breathingScale
+        }
+    ) {
+
+        Box(
+            modifier = Modifier
+                .size(
+                    width = if (compact) 180.dp else 250.dp,
+                    height = if (compact) 80.dp else 120.dp
+                )
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primary.copy(
+                                alpha = glowAlpha
+                            ),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center
+        ) {
+
+            Text(
+                text = timeText,
+                fontSize = if (compact) 64.sp else 88.sp,
+                fontWeight = FontWeight.Medium,
+                color = primary,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.alignByBaseline()
+            )
+
+            if (!is24Hour) {
+
+                Spacer(
+                    Modifier.width(8.dp)
+                )
+
+                Text(
+                    text = if (time.hour < 12) {
+                        "AM"
+                    } else {
+                        "PM"
+                    },
+                    fontSize = if (compact) 22.sp else 28.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .alignByBaseline()
+                        .padding(bottom = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+/* ───────────────────────────────────────────────
+   DISMISS METHOD SELECTOR
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveDismissControl(
     dismissMethod: DismissMethod,
     onDismiss: () -> Unit,
-    height: androidx.compose.ui.unit.Dp,
-    modifier: Modifier = Modifier,
+    height: Dp,
+    modifier: Modifier = Modifier
 ) {
+
     when (dismissMethod) {
-        DismissMethod.TAP -> WidePill(
-            text = "Dismiss",
-            onClick = onDismiss,
-            container = MaterialTheme.colorScheme.tertiaryContainer,
-            content = MaterialTheme.colorScheme.onTertiaryContainer,
-            height = height,
-            modifier = modifier,
-        )
-        DismissMethod.SWIPE -> SwipeToDismissPill(onDismiss = onDismiss, height = height, modifier = modifier)
+
+        DismissMethod.TAP -> {
+
+            ExpressiveDismissButton(
+                onDismiss = onDismiss,
+                height = height,
+                modifier = modifier
+            )
+        }
+
+        DismissMethod.SWIPE -> {
+
+            ExpressiveSwipeToDismiss(
+                onDismiss = onDismiss,
+                height = height,
+                modifier = modifier
+            )
+        }
     }
 }
 
-@androidx.compose.runtime.Composable
-private fun SwipeToDismissPill(
-    onDismiss: () -> Unit,
-    height: androidx.compose.ui.unit.Dp,
-    modifier: Modifier = Modifier,
-) {
-    val handleInset = 4.dp
-    val handleSize = height - handleInset * 2
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val handlePx = with(density) { handleSize.toPx() }
-    val insetPx = with(density) { handleInset.toPx() }
-    var trackWidthPx by remember { mutableFloatStateOf(0f) }
-    val maxOffset = (trackWidthPx - handlePx - insetPx * 2).coerceAtLeast(0f)
+/* ───────────────────────────────────────────────
+   BOUNCY DISMISS BUTTON
+   ─────────────────────────────────────────────── */
 
-    val offsetX = remember { Animatable(0f) }
-    var dismissed by remember { mutableStateOf(false) }
+@Composable
+private fun ExpressiveDismissButton(
+    onDismiss: () -> Unit,
+    height: Dp,
+    modifier: Modifier = Modifier
+) {
+
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val haptic = LocalHapticFeedback.current
+
+    var activated by remember {
+        mutableStateOf(false)
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = when {
+            activated -> 0.96f
+            pressed -> 0.92f
+            else -> 1f
+        },
+        animationSpec = ExpressiveSpring,
+        label = "dismissScale"
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (pressed || activated) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.tertiaryContainer
+        },
+        animationSpec = tween(180),
+        label = "dismissBackground"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (pressed || activated) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onTertiaryContainer
+        },
+        label = "dismissContent"
+    )
+
+    Surface(
+        onClick = {
+
+            if (!activated) {
+
+                activated = true
+
+                haptic.performHapticFeedback(
+                    HapticFeedbackType.LongPress
+                )
+
+                onDismiss()
+            }
+        },
+        enabled = !activated,
+        modifier = modifier
+            .height(height)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = CircleShape,
+        color = backgroundColor,
+        interactionSource = interactionSource
+    ) {
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Icon(
+                imageVector = Icons.Rounded.AlarmOff,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(28.dp)
+            )
+
+            Spacer(
+                Modifier.width(12.dp)
+            )
+
+            Text(
+                text = "Dismiss",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = contentColor
+            )
+        }
+    }
+}
+
+/* ───────────────────────────────────────────────
+   EXPRESSIVE SNOOZE BUTTON
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveSnoozeButton(
+    snoozeMinutes: Int,
+    onSnooze: () -> Unit,
+    height: Dp,
+    modifier: Modifier = Modifier
+) {
+
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val haptic = LocalHapticFeedback.current
+
+    var activated by remember {
+        mutableStateOf(false)
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.94f else 1f,
+        animationSpec = ExpressiveSpring,
+        label = "snoozeScale"
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (pressed) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        animationSpec = tween(180),
+        label = "snoozeBackground"
+    )
+
+    Surface(
+        onClick = {
+
+            if (!activated) {
+
+                activated = true
+
+                haptic.performHapticFeedback(
+                    HapticFeedbackType.TextHandleMove
+                )
+
+                onSnooze()
+            }
+        },
+        enabled = !activated,
+        modifier = modifier
+            .height(height)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = CircleShape,
+        color = backgroundColor,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        ),
+        interactionSource = interactionSource
+    ) {
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Icon(
+                imageVector = Icons.Rounded.Snooze,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(26.dp)
+            )
+
+            Spacer(
+                Modifier.width(12.dp)
+            )
+
+            Text(
+                text = "Snooze $snoozeMinutes min",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/* ───────────────────────────────────────────────
+   FLUID SWIPE TO DISMISS
+   ─────────────────────────────────────────────── */
+
+@Composable
+private fun ExpressiveSwipeToDismiss(
+    onDismiss: () -> Unit,
+    height: Dp,
+    modifier: Modifier = Modifier
+) {
+
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+
     val scope = rememberCoroutineScope()
 
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val handleColor = MaterialTheme.colorScheme.tertiaryContainer
-    val handleContent = MaterialTheme.colorScheme.onTertiaryContainer
-    val label = MaterialTheme.colorScheme.onSurfaceVariant
+    val inset = 4.dp
+
+    val handleSize = height - inset * 2
+
+    val handlePx = with(density) {
+        handleSize.toPx()
+    }
+
+    val insetPx = with(density) {
+        inset.toPx()
+    }
+
+    var trackWidth by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    val maxOffset = (
+        trackWidth - handlePx - insetPx * 2
+    ).coerceAtLeast(0f)
+
+    var dragOffset by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    var dragging by remember {
+        mutableStateOf(false)
+    }
+
+    var dismissed by remember {
+        mutableStateOf(false)
+    }
+
+    var thresholdReached by remember {
+        mutableStateOf(false)
+    }
+
+    var springJob by remember {
+        mutableStateOf<Job?>(null)
+    }
+
+    val progress = if (maxOffset > 0f) {
+        (dragOffset / maxOffset).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+    val backgroundColor = lerp(
+        MaterialTheme.colorScheme.surfaceVariant,
+        MaterialTheme.colorScheme.primaryContainer,
+        progress
+    )
+
+    val handleColor = lerp(
+        MaterialTheme.colorScheme.tertiaryContainer,
+        MaterialTheme.colorScheme.primary,
+        progress
+    )
+
+    val handleContentColor = lerp(
+        MaterialTheme.colorScheme.onTertiaryContainer,
+        MaterialTheme.colorScheme.onPrimary,
+        progress
+    )
+
+    val handleScale by animateFloatAsState(
+        targetValue = when {
+            dismissed -> 1.08f
+            dragging -> 1.05f
+            else -> 1f
+        },
+        animationSpec = ExpressiveSpring,
+        label = "swipeHandleScale"
+    )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            springJob?.cancel()
+        }
+    }
 
     Box(
         modifier = modifier
             .height(height)
             .clip(CircleShape)
-            .background(trackColor)
-            .onSizeChanged { trackWidthPx = it.width.toFloat() },
-        contentAlignment = Alignment.CenterStart,
+            .background(backgroundColor)
+            .onSizeChanged {
+                trackWidth = it.width.toFloat()
+            },
+        contentAlignment = Alignment.CenterStart
     ) {
-        val labelAlpha = if (maxOffset > 0f) 1f - (offsetX.value / maxOffset).coerceIn(0f, 1f) else 1f
+
         Text(
-            "Swipe to dismiss",
-            style = MaterialTheme.typography.titleMediumEmphasized,
-            color = label.copy(alpha = labelAlpha),
+            text = if (thresholdReached) {
+                "Release to dismiss"
+            } else {
+                "Swipe to dismiss"
+            },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                alpha = 1f - progress * 0.65f
+            ),
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         Box(
             modifier = Modifier
-                .padding(start = handleInset)
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .padding(start = inset)
+                .offset {
+                    IntOffset(
+                        dragOffset.roundToInt(),
+                        0
+                    )
+                }
                 .size(handleSize)
+                .graphicsLayer {
+                    scaleX = handleScale
+                    scaleY = handleScale
+                }
                 .clip(CircleShape)
                 .background(handleColor)
                 .draggable(
                     orientation = Orientation.Horizontal,
                     enabled = !dismissed,
+
+                    onDragStarted = {
+
+                        springJob?.cancel()
+                        springJob = null
+
+                        dragging = true
+                    },
+
                     state = rememberDraggableState { delta ->
-                        scope.launch {
-                            offsetX.snapTo((offsetX.value + delta).coerceIn(0f, maxOffset))
+
+                        if (!dismissed) {
+
+                            dragOffset = (
+                                dragOffset + delta
+                            ).coerceIn(0f, maxOffset)
+
+                            val reached =
+                                maxOffset > 0f &&
+                                    dragOffset >= maxOffset * 0.7f
+
+                            if (
+                                reached &&
+                                !thresholdReached
+                            ) {
+
+                                haptic.performHapticFeedback(
+                                    HapticFeedbackType.LongPress
+                                )
+                            }
+
+                            thresholdReached = reached
                         }
                     },
+
                     onDragStopped = {
-                        if (maxOffset > 0f) {
-                            if (offsetX.value >= maxOffset * 0.7f) {
-                                dismissed = true
+
+                        dragging = false
+
+                        if (dismissed) {
+                            return@draggable
+                        }
+
+                        val shouldDismiss =
+                            maxOffset > 0f &&
+                                dragOffset >= maxOffset * 0.7f
+
+                        if (shouldDismiss) {
+
+                            dismissed = true
+
+                            springJob?.cancel()
+
+                            springJob = scope.launch {
+
+                                val animation = Animatable(
+                                    dragOffset
+                                )
+
+                                animation.animateTo(
+                                    targetValue = maxOffset,
+                                    animationSpec = FastSpring
+                                ) {
+                                    dragOffset = value
+                                }
+
                                 onDismiss()
-                                offsetX.animateTo(maxOffset)
-                            } else {
-                                offsetX.animateTo(0f)
+                            }
+
+                        } else {
+
+                            thresholdReached = false
+
+                            springJob?.cancel()
+
+                            springJob = scope.launch {
+
+                                val animation = Animatable(
+                                    dragOffset
+                                )
+
+                                animation.animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = SoftSpring
+                                ) {
+                                    dragOffset = value
+                                }
                             }
                         }
-                    },
+                    }
                 ),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
-            Text("›", style = MaterialTheme.typography.headlineSmallEmphasized, color = handleContent)
-        }
-    }
-}
 
-/** 
- * FONT FIX: 
- * Removed the old Numerals() that used a condensed custom font.
- * Replaced it with standard MaterialTheme typography (Google Sans Flex).
- * Increased the size of AM/PM considerably to match modern design language.
- */
-@androidx.compose.runtime.Composable
-private fun RingTime(
-    time: LocalTime,
-    is24Hour: Boolean,
-) {
-    val hour = if (is24Hour) time.hour else ((time.hour % 12).takeIf { it != 0 } ?: 12)
-    val timeText = "%02d:%02d".format(hour, time.minute)
-    
-    androidx.compose.foundation.layout.Row(
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = timeText,
-            fontSize = 96.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.alignByBaseline()
-        )
-        
-        if (!is24Hour) {
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = if (time.hour < 12) "AM" else "PM",
-                fontSize = 32.sp, // INCREASED SIZE
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.alignByBaseline().padding(bottom = 8.dp)
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                contentDescription = "Swipe to dismiss",
+                tint = handleContentColor,
+                modifier = Modifier.size(34.dp)
             )
         }
     }
