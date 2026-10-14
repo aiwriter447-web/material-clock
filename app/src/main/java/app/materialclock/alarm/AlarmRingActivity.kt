@@ -11,6 +11,7 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.OnBackPressedCallback
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -22,7 +23,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.AlarmOff
 import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material3.*
@@ -1279,7 +1280,7 @@ private fun ExpressiveSwipeToDismiss(
         ) {
 
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = "Swipe to dismiss",
                 tint = handleContentColor,
                 modifier = Modifier.size(34.dp)
