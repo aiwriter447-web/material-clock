@@ -131,27 +131,27 @@ object AlarmWidgetRenderer {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        views.setOnClickPendingIntent(android.R.id.background, openApp)
-
         if (alarm != null) {
             val toggle = Intent(context, AlarmWidgetToggleReceiver::class.java)
                 .setAction(AlarmWidgetToggleReceiver.ACTION_TOGGLE)
                 .setData(Uri.parse("alarm-widget://toggle/${alarm.id}"))
                 .putExtra(AlarmWidgetToggleReceiver.EXTRA_ID, alarm.id)
-            views.setOnClickPendingIntent(
-                R.id.alarm_toggle,
-                PendingIntent.getBroadcast(
-                    context,
-                    0,
-                    toggle,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
+            val toggleIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                toggle,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+            // A tap anywhere on the widget switches the alarm. It never opens the app.
+            views.setOnClickPendingIntent(android.R.id.background, toggleIntent)
+            views.setOnClickPendingIntent(R.id.alarm_toggle, toggleIntent)
             views.setContentDescription(
                 R.id.alarm_toggle,
                 if (alarm.enabled) "Turn alarm off" else "Turn alarm on",
             )
         } else {
+            // Nothing to switch yet: open the app, so an alarm can be added.
+            views.setOnClickPendingIntent(android.R.id.background, openApp)
             views.setOnClickPendingIntent(R.id.alarm_toggle, openApp)
             views.setContentDescription(R.id.alarm_toggle, "Open alarms")
         }
@@ -164,6 +164,8 @@ object AlarmWidgetRenderer {
         val hf = h.toFloat()
         val oneRow = hf / d < ONE_ROW_MAX_HEIGHT_DP
         val wide = wf / d >= WIDE_MIN_WIDTH_DP
+        // How wide the one-row widget is compared with its height decides the arrangement.
+        val ratio = wf / hf
         val square = !oneRow && wf < 1.3f * hf
         val is24 = DateFormat.is24HourFormat(context)
         val on = alarm?.enabled == true
@@ -261,7 +263,7 @@ object AlarmWidgetRenderer {
         val button: RectF
         when {
             // 2x1: button, then time with AM/PM underneath.
-            oneRow && !wide -> {
+            oneRow && ratio < 3.0f -> {
                 val dia = hf * 0.70f
                 val left = hf * 0.15f
                 button = drawButton(left + dia / 2f, hf / 2f, dia)
@@ -277,9 +279,9 @@ object AlarmWidgetRenderer {
                 if (ampm.isNotEmpty()) c.drawText(ampm, x0, top + total, paint(textColour, ts * 0.46f, 500))
             }
 
-            // 4x1: button, time, and the weekdays on the right. The weekdays only get the room
-            // the time leaves them, so the two can never overlap.
-            oneRow -> {
+            // 4x1 and wider: button, time, and the weekdays on the right. The weekdays only get
+            // the room the time leaves them, so the two can never overlap.
+            oneRow && ratio >= 5.2f -> {
                 val dia = hf * 0.70f
                 val left = hf * 0.15f
                 button = drawButton(left + dia / 2f, hf / 2f, dia)
@@ -293,6 +295,24 @@ object AlarmWidgetRenderer {
                 val cell = min(hf * 0.30f * 1.9f, avail / 7f)
                 val ls = min(hf * 0.30f, cell * 0.85f)
                 if (ls > hf * 0.12f) drawDays(rightEdge - cell * 7f, cell, hf / 2f + ls * 0.4f, ls)
+            }
+
+            // 3x1: wide but not wide enough for time and weekdays side by side, so the weekdays
+            // go under the time. Both come out bigger than when they share one line.
+            oneRow -> {
+                val dia = hf * 0.70f
+                val left = hf * 0.15f
+                button = drawButton(left + dia / 2f, hf / 2f, dia)
+                val x0 = left + dia + hf * 0.16f
+                val ts = hf * 0.42f
+                val cap = ts * 0.72f
+                val availW = wf - x0 - hf * 0.20f
+                val cell = min(hf * 0.26f * 1.9f, availW / 7f)
+                val ls = cell / 1.9f
+                val total = cap + ts * 0.10f + ls * 1.37f
+                val timeBase = (hf - total) / 2f + cap
+                drawTimeInline(x0, timeBase, ts)
+                drawDays(x0, cell, timeBase + ts * 0.10f + ls * 1.37f, ls)
             }
 
             // 2x2: time on top, weekdays under it, button at the bottom.
