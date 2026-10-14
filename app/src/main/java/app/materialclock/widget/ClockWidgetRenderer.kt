@@ -4,6 +4,9 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
@@ -12,6 +15,7 @@ import android.util.SizeF
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import app.materialclock.MainActivity
 import app.materialclock.R
 import app.materialclock.data.ClockStore
@@ -100,16 +104,131 @@ object ClockWidgetRenderer {
         w: Int,
         h: Int,
     ): RemoteViews {
-        // Digital widgets have their own layout and drawing; see DigitalRenderer.
+        // Digital widgets have their own layout and drawing; see DigitalRenderer. It keeps its
+        // own margin.
         if (config.type == WidgetType.DIGITAL) {
             return DigitalRenderer.build(context, config, settings, w, h)
         }
+
+        // Every other widget is kept a little inside its cell (see WidgetInset).
+        val m = WidgetInset.px(context)
+        val iw = (w - 2 * m).coerceAtLeast(1)
+        val ih = (h - 2 * m).coerceAtLeast(1)
+        val d = context.resources.displayMetrics.density
+
+        // One row and wide (2x1): a capsule with a small clock on the left and the date on the
+        // right. Anything taller is the normal shaped face.
+        val views = if (ih / d < PILL_MAX_HEIGHT_DP && iw >= 1.5f * ih) {
+            pill(context, config, settings, iw, ih)
+        } else {
+            oneInner(context, config, settings, iw, ih)
+        }
+        views.setViewPadding(android.R.id.background, m, m, m, m)
+        return views
+    }
+
+    /** The 2x1 capsule: a small clock on the left, the date (two lines) on the right. */
+    private fun pill(
+        context: Context,
+        config: WidgetConfig,
+        settings: app.materialclock.data.ClockSettings,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
+        val colours = WidgetColours.resolve(context, config, settings)
+        val scheme = WidgetColours.scheme(context, config, settings)
+
+        val side = (h * 0.84f).roundToInt()
+        val top = ((h - side) / 2f).roundToInt()
+        val left = top + (h * 0.06f).roundToInt()
+        val face = FaceRenderer.render(context, config, colours, side, side)
+
+        // Capsule and dial in one picture.
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        canvas.drawRoundRect(
+            RectF(0f, 0f, w.toFloat(), h.toFloat()), h / 2f, h / 2f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = scheme.surface.toArgb() },
+        )
+        canvas.drawBitmap(face.bitmap, left.toFloat(), top.toFloat(), null)
+
+        val views = RemoteViews(context.packageName, R.layout.widget_clock)
+        views.setImageViewIcon(R.id.face, bmp.toIcon())
+        applyHands(views, config, colours, face)
+        // The platform's hands must sit over the small dial only.
+        views.setViewPadding(
+            R.id.hands_slot,
+            left, top,
+            (w - left - side).coerceAtLeast(0),
+            (h - top - side).coerceAtLeast(0),
+        )
+
+        // The date, two lines ("Wed," over "14 Oct"). A TextClock, so it rolls over at midnight
+        // without this app doing anything.
+        val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM")
+            .replaceFirst(Regex("\\s+"), "'\n'")
+        val size = h * 0.30f
+        views.setViewVisibility(R.id.date, View.VISIBLE)
+        views.setCharSequence(R.id.date, "setFormat12Hour", pattern)
+        views.setCharSequence(R.id.date, "setFormat24Hour", pattern)
+        views.setTextColor(R.id.date, colours.onFace)
+        views.setTextViewTextSize(R.id.date, TypedValue.COMPLEX_UNIT_PX, size)
+        views.setViewPadding(
+            R.id.date_slot,
+            (left + side + h * 0.16f).roundToInt(),
+            ((h - size * 2.5f) / 2f).roundToInt().coerceAtLeast(0),
+            0,
+            0,
+        )
+
+        views.setOnClickPendingIntent(
+            android.R.id.background,
+            android.app.PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+        return views
+    }
+
+    private fun oneInner(
+        context: Context,
+        config: WidgetConfig,
+        settings: app.materialclock.data.ClockSettings,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
         val colours = WidgetColours.resolve(context, config, settings)
         val face = FaceRenderer.render(context, config, colours, w, h)
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
 
         views.setImageViewIcon(R.id.face, face.bitmap.toIcon())
 
+        applyHands(views, config, colours, face)
+
+        applyDate(context, views, config, colours, face, w, h)
+
+        views.setOnClickPendingIntent(
+            android.R.id.background,
+            android.app.PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+        return views
+    }
+
+    /** The platform's own AnalogClock: dial blank, hands drawn by [HandRenderer]. */
+    private fun applyHands(
+        views: RemoteViews,
+        config: WidgetConfig,
+        colours: FaceRenderer.Colours,
+        face: FaceRenderer.Face,
+    ) {
         // The dial itself is empty: the face underneath is what the user sees, and AnalogClock
         // would otherwise draw its own default clock face over it.
         views.setIcon(R.id.hands, "setDial", HandRenderer.blank().toIcon())
@@ -154,19 +273,6 @@ object ClockWidgetRenderer {
                 ).toIcon(),
             )
         }
-
-        applyDate(context, views, config, colours, face, w, h)
-
-        views.setOnClickPendingIntent(
-            android.R.id.background,
-            android.app.PendingIntent.getActivity(
-                context,
-                0,
-                Intent(context, MainActivity::class.java),
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
-        return views
     }
 
     private fun applyDate(
@@ -243,4 +349,7 @@ object ClockWidgetRenderer {
     }
 
     private const val BUFFER = 64 * 1024
+
+    /** Below this inner height (dp) a wide widget becomes the capsule. */
+    private const val PILL_MAX_HEIGHT_DP = 100f
 }
