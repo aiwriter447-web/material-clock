@@ -27,6 +27,7 @@ import app.materialclock.data.WidgetType
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -170,9 +171,12 @@ object ClockWidgetRenderer {
 
         // The date, two lines ("Wed," over "14 Oct"). A TextClock, so it rolls over at midnight
         // without this app doing anything.
-        val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM")
+        // A wider capsule has room for the full date ("Wednesday," over "14 October").
+        val wide = w / context.resources.displayMetrics.density >= 200f
+        val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), if (wide) "EEEEdMMMM" else "EEEdMMM")
             .replaceFirst(Regex("\\s+"), "'\n'")
-        val size = h * 0.30f
+        val textLeft = left + side + h * 0.16f
+        val size = if (wide) min(h * 0.36f, (w - textLeft - h * 0.2f) / 5.4f) else h * 0.30f
         views.setViewVisibility(R.id.date, View.VISIBLE)
         views.setCharSequence(R.id.date, "setFormat12Hour", pattern)
         views.setCharSequence(R.id.date, "setFormat24Hour", pattern)
@@ -180,7 +184,7 @@ object ClockWidgetRenderer {
         views.setTextViewTextSize(R.id.date, TypedValue.COMPLEX_UNIT_PX, size)
         views.setViewPadding(
             R.id.date_slot,
-            (left + side + h * 0.16f).roundToInt(),
+            textLeft.roundToInt(),
             ((h - size * 2.5f) / 2f).roundToInt().coerceAtLeast(0),
             0,
             0,
