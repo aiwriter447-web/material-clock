@@ -43,11 +43,9 @@ class WidgetOptionsActivity : ComponentActivity() {
         }
 
         // Exported, so anyone can launch it with any id: only act on our own two widget kinds.
-        val manager = AppWidgetManager.getInstance(this)
-        val provider = manager.getAppWidgetInfo(appWidgetId)?.provider
-        val kind = when (provider) {
-            WorldClockWidgetProvider.component(this) -> WidgetOptionsKind.WORLD
-            AlarmWidgetProvider.component(this) -> WidgetOptionsKind.ALARM
+        val kind = when (WidgetProviders.kindOf(this, appWidgetId)) {
+            WidgetKind.WORLD -> WidgetOptionsKind.WORLD
+            WidgetKind.ALARM -> WidgetOptionsKind.ALARM
             else -> {
                 finish()
                 return
