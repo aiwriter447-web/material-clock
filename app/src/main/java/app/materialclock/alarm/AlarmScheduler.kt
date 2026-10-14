@@ -5,15 +5,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.content.getSystemService
 import app.materialclock.MainActivity
 import app.materialclock.core.Alarm
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-/**
- * Puts alarms into `AlarmManager` and takes them out again.
- */
 object AlarmScheduler {
 
     fun canScheduleExact(context: Context): Boolean {
@@ -28,12 +26,28 @@ object AlarmScheduler {
             cancel(context, alarm.id)
             return
         }
+        
         val at = next.toInstant().toEpochMilli()
+        val now = System.currentTimeMillis()
+        
+        if (at <= now) {
+            Log.e("AlarmScheduler", "Error: Past time. Status bar icon won't stick.")
+        }
+
         val fire = firePendingIntent(context, alarm.id)
         
         if (canScheduleExact(context)) {
-            // सिस्टम को एक स्टैंडर्ड ऐप लॉन्च इंटेंट दिया गया है ताकि स्टेटस बार आइकॉन इनेबल हो सके
-            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showPendingIntent(context)), fire)
+            val showIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val showPi = PendingIntent.getActivity(
+                context,
+                alarm.id.toInt(), 
+                showIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showPi), fire)
         } else {
             am.setWindow(AlarmManager.RTC_WAKEUP, at, 60_000L, fire)
         }
@@ -85,19 +99,6 @@ object AlarmScheduler {
                 .putExtra(AlarmReceiver.EXTRA_ID, id),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-
-    private fun showPendingIntent(context: Context): PendingIntent {
-        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?: Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-        return PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
 
     private const val UPCOMING_REQUEST_CODE_OFFSET = 1_000_000_000L
 }
