@@ -17,6 +17,8 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import app.materialclock.MainActivity
+import app.materialclock.alarm.Notifications
+import app.materialclock.ui.Tab
 import app.materialclock.R
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
@@ -229,7 +231,8 @@ object WorldClockRenderer {
             PendingIntent.getActivity(
                 context,
                 1,
-                Intent(context, MainActivity::class.java),
+                // Opens the app on the World Clock tab.
+                Intent(context, MainActivity::class.java).putExtra(Notifications.EXTRA_TAB, Tab.WORLD.key),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             ),
         )
