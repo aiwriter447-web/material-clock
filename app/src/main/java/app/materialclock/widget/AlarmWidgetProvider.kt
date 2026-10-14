@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
  * whenever the app saves its alarms ([ClockStore.putAlarms] calls [refreshAll]): editing an
  * alarm, switching one, or one ringing and rescheduling itself.
  */
-class AlarmWidgetProvider : AppWidgetProvider() {
+open class AlarmWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val app = context.applicationContext
@@ -74,13 +74,11 @@ class AlarmWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        fun component(context: Context) = ComponentName(context, AlarmWidgetProvider::class.java)
-
-        /** Redraw every placed Alarm widget. */
+        /** Redraw every placed widget of this kind, whatever size it was added at. */
         fun refreshAll(context: Context) {
             val app = context.applicationContext
             val manager = AppWidgetManager.getInstance(app)
-            val ids = manager.getAppWidgetIds(component(app))
+            val ids = WidgetProviders.ids(app, WidgetKind.ALARM)
             if (ids.isEmpty()) return
             CoroutineScope(Dispatchers.Default).launch {
                 ids.forEach { AlarmWidgetRenderer.update(app, manager, it) }
