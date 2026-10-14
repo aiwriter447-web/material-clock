@@ -2,6 +2,7 @@ package app.materialclock.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -47,7 +48,7 @@ object WidgetEntryPoints {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
         AppWidgetManager.getInstance(context).requestPinAppWidget(
-            ClockWidgetProvider.component(context),
+            ComponentName(context, AnalogClock2x2Provider::class.java),
             null,
             callback,
         )
