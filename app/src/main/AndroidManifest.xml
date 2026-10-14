@@ -1,16 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      Nothing here reaches the network, and there is no INTERNET permission: everything the app
+      shows it computes locally from the platform's clock and tz database.
+
+      USE_EXACT_ALARM rather than a runtime prompt. It is install-granted, and it is granted
+      specifically to apps whose core function is an alarm clock or calendar, which this one is.
+      SCHEDULE_EXACT_ALARM is declared alongside it capped at API 32, the last release before
+      USE_EXACT_ALARM existed; above that the capped one is inert and the app never asks for
+      anything.
+    -->
+
+    <!-- Alarm scheduling -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+
+    <!-- Rescheduling after a reboot: AlarmManager keeps nothing across one. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- The ringer: looping audio and a repeating waveform with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!--
+      LiveUpdateService: reposting a timer/stopwatch notification once a second is not one of
+      the platform's named foreground-service categories, so it is specialUse with the
+      justification property below rather than any of the other typed permissions.
+    -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Puts the dismiss screen in front of a locked phone. Degrades to a heads-up banner. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
@@ -37,12 +67,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- So "set an alarm for 7" from Assistant or another app lands here. -->
             <intent-filter>
                 <action android:name="android.intent.action.SHOW_ALARMS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
+        <!--
+          The ringing screen. Its own task, excluded from recents: it is a modal interruption, not
+          a place you navigate back to, and finding a dead alarm screen in the switcher an hour
+          later is confusing. showOnLockScreen + turnScreenOn are set in code as well, because the
+          manifest attributes alone do not turn a dark display on.
+        -->
         <activity
             android:name=".alarm.AlarmRingActivity"
             android:exported="false"
@@ -75,6 +112,11 @@
             android:directBootAware="true">
 
             <intent-filter>
+                <!--
+                  All four mean the same thing to this app: every AlarmManager entry it owns is now
+                  gone or wrong. LOCKED_BOOT_COMPLETED as well as BOOT_COMPLETED so an alarm can be
+                  rearmed before the user has unlocked after a reboot.
+                -->
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />
@@ -87,6 +129,16 @@
             android:name=".alarm.ClockActionReceiver"
             android:exported="false" />
 
+        <!--
+          The clock widget. exported="false" is correct: every one of these broadcasts comes from
+          system_server, and AMS short-circuits the export check for its own pid. The
+          APPWIDGET_UPDATE filter is NOT optional, because AppWidgetServiceImpl discovers providers
+          by querying for exactly that intent.
+
+          The four extra actions are the only things that can invalidate the drawing. All are on
+          the implicit-broadcast exception list, so they may be declared here; ACTION_DATE_CHANGED
+          and ACTION_CONFIGURATION_CHANGED are not, and are handled from the app instead.
+        -->
         <receiver
             android:name=".widget.ClockWidgetProvider"
             android:label="@string/widget_name_clock"
@@ -105,6 +157,10 @@
                 android:resource="@xml/clock_widget_info" />
         </receiver>
 
+        <!--
+          The World Clock widget: your first two cities side by side. No configuration screen;
+          the cities come from the World Clock tab (pinned cities first).
+        -->
         <receiver
             android:name=".widget.WorldClockWidgetProvider"
             android:label="@string/widget_name_world"
@@ -123,6 +179,10 @@
                 android:resource="@xml/world_clock_widget_info" />
         </receiver>
 
+        <!--
+          The Alarm widget: your next alarm, its weekdays, and a round button that turns it on or
+          off. The button sends a broadcast to AlarmWidgetToggleReceiver.
+        -->
         <receiver
             android:name=".widget.AlarmWidgetProvider"
             android:label="@string/widget_name_alarm"
@@ -145,12 +205,34 @@
             android:name=".widget.AlarmWidgetToggleReceiver"
             android:exported="false" />
 
+        <!-- Receives the launcher's pin callback, which carries the new widget's id. -->
         <receiver
             android:name=".widget.WidgetPinnedReceiver"
             android:exported="false" />
 
+        <!--
+          No launchMode, no taskAffinity, no noHistory, no dialog theme. See the class docs. The
+          launcher starts this inside its OWN task with no NEW_TASK flag; anything that forces a
+          separate task returns RESULT_CANCELED instantly and the widget is deleted before the user
+          sees it.
+        -->
         <activity
             android:name=".widget.ClockWidgetConfigActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
+            android:theme="@style/Theme.MaterialClock">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Settings for the World Clock and Alarm widgets. Same rules as the activity above:
+          no launchMode, taskAffinity or translucent theme.
+        -->
+        <activity
+            android:name=".widget.WidgetOptionsActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
             android:theme="@style/Theme.MaterialClock">
