@@ -130,18 +130,19 @@
             android:exported="false" />
 
         <!--
-          The clock widget. exported="false" is correct: every one of these broadcasts comes from
-          system_server, and AMS short-circuits the export check for its own pid. The
-          APPWIDGET_UPDATE filter is NOT optional, because AppWidgetServiceImpl discovers providers
-          by querying for exactly that intent.
+          The widgets. Every size is its own entry, so the widget picker can show a preview for
+          each one and group them under one name (see WidgetProviders.kt). All of them do the same
+          work as the kind they belong to.
 
-          The four extra actions are the only things that can invalidate the drawing. All are on
-          the implicit-broadcast exception list, so they may be declared here; ACTION_DATE_CHANGED
-          and ACTION_CONFIGURATION_CHANGED are not, and are handled from the app instead.
+          exported="false" is correct: every one of these broadcasts comes from system_server, and
+          AMS short-circuits the export check for its own pid. The APPWIDGET_UPDATE filter is NOT
+          optional, because AppWidgetServiceImpl discovers providers by querying for exactly that
+          intent. The other four actions are the only things that can invalidate the drawing; all
+          are on the implicit-broadcast exception list, so they may be declared here.
         -->
         <receiver
-            android:name=".widget.ClockWidgetProvider"
-            android:label="@string/widget_name_clock"
+            android:name=".widget.AnalogClock2x1Provider"
+            android:label="@string/widget_name_analog"
             android:exported="false">
 
             <intent-filter>
@@ -154,15 +155,101 @@
 
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/clock_widget_info" />
+                android:resource="@xml/widget_info_analog_2x1" />
         </receiver>
 
-        <!--
-          The World Clock widget: your first two cities side by side. No configuration screen;
-          the cities come from the World Clock tab (pinned cities first).
-        -->
         <receiver
-            android:name=".widget.WorldClockWidgetProvider"
+            android:name=".widget.AnalogClock2x2Provider"
+            android:label="@string/widget_name_analog"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_analog_2x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DigitalClock2x1Provider"
+            android:label="@string/widget_name_digital"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_digital_2x1" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DigitalClock2x2Provider"
+            android:label="@string/widget_name_digital"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_digital_2x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DigitalClock4x1Provider"
+            android:label="@string/widget_name_digital"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_digital_4x1" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DigitalClock4x2Provider"
+            android:label="@string/widget_name_digital"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_digital_4x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WorldClock2x1Provider"
             android:label="@string/widget_name_world"
             android:exported="false">
 
@@ -176,15 +263,65 @@
 
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/world_clock_widget_info" />
+                android:resource="@xml/widget_info_world_2x1" />
         </receiver>
 
-        <!--
-          The Alarm widget: your next alarm, its weekdays, and a round button that turns it on or
-          off. The button sends a broadcast to AlarmWidgetToggleReceiver.
-        -->
         <receiver
-            android:name=".widget.AlarmWidgetProvider"
+            android:name=".widget.WorldClock2x2Provider"
+            android:label="@string/widget_name_world"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_world_2x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WorldClock4x1Provider"
+            android:label="@string/widget_name_world"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_world_4x1" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WorldClock4x2Provider"
+            android:label="@string/widget_name_world"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_world_4x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AlarmWidget2x1Provider"
             android:label="@string/widget_name_alarm"
             android:exported="false">
 
@@ -198,7 +335,61 @@
 
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/alarm_widget_info" />
+                android:resource="@xml/widget_info_alarm_2x1" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AlarmWidget2x2Provider"
+            android:label="@string/widget_name_alarm"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_alarm_2x2" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AlarmWidget4x1Provider"
+            android:label="@string/widget_name_alarm"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_alarm_4x1" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AlarmWidget4x2Provider"
+            android:label="@string/widget_name_alarm"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_alarm_4x2" />
         </receiver>
 
         <receiver
