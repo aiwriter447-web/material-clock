@@ -110,20 +110,25 @@ object ClockWidgetRenderer {
             return DigitalRenderer.build(context, config, settings, w, h)
         }
 
-        // Every other widget is kept a little inside its cell (see WidgetInset).
         val m = WidgetInset.px(context)
-        val iw = (w - 2 * m).coerceAtLeast(1)
-        val ih = (h - 2 * m).coerceAtLeast(1)
         val d = context.resources.displayMetrics.density
+        val pillW = (w - 2 * m).coerceAtLeast(1)
+        val pillH = (h - 2 * m).coerceAtLeast(1)
 
         // One row and wide (2x1): a capsule with a small clock on the left and the date on the
-        // right. Anything taller is the normal shaped face.
-        val views = if (ih / d < PILL_MAX_HEIGHT_DP && iw >= 1.5f * ih) {
-            pill(context, config, settings, iw, ih)
-        } else {
-            oneInner(context, config, settings, iw, ih)
+        // right, kept a little inside its cell like other launchers' capsules.
+        if (pillH / d < PILL_MAX_HEIGHT_DP && pillW >= 1.5f * pillH) {
+            val views = pill(context, config, settings, pillW, pillH)
+            views.setViewPadding(android.R.id.background, m, m, m, m)
+            return views
         }
-        views.setViewPadding(android.R.id.background, m, m, m, m)
+
+        // The shaped clock fills its whole cell: other clocks do, and a margin made ours visibly
+        // smaller. The padding is set to zero rather than left alone, because a launcher may
+        // re-use the previous views when the widget is resized, and a margin left over from the
+        // capsule would push the hands off the dial.
+        val views = oneInner(context, config, settings, w, h)
+        views.setViewPadding(android.R.id.background, 0, 0, 0, 0)
         return views
     }
 
@@ -205,6 +210,8 @@ object ClockWidgetRenderer {
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
 
         views.setImageViewIcon(R.id.face, face.bitmap.toIcon())
+        // Reset, for the reason given in one(): the capsule squeezes the hands into a corner.
+        views.setViewPadding(R.id.hands_slot, 0, 0, 0, 0)
 
         applyHands(views, config, colours, face)
 
