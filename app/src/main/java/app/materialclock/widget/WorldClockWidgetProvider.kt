@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  * the time zone or locale, a new app version, or the city list / theme (the app calls
  * [refreshAll] for those).
  */
-class WorldClockWidgetProvider : AppWidgetProvider() {
+open class WorldClockWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         background { ids.forEach { id -> WorldClockRenderer.update(context.applicationContext, manager, id) } }
@@ -76,13 +76,11 @@ class WorldClockWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        fun component(context: Context) = ComponentName(context, WorldClockWidgetProvider::class.java)
-
-        /** Redraw every placed World Clock widget. */
+        /** Redraw every placed widget of this kind, whatever size it was added at. */
         fun refreshAll(context: Context) {
             val app = context.applicationContext
             val manager = AppWidgetManager.getInstance(app)
-            val ids = manager.getAppWidgetIds(component(app))
+            val ids = WidgetProviders.ids(app, WidgetKind.WORLD)
             if (ids.isEmpty()) return
             CoroutineScope(Dispatchers.Default).launch {
                 ids.forEach { WorldClockRenderer.update(app, manager, it) }
