@@ -42,12 +42,16 @@ object DigitalRenderer {
     /** Width (dp) from which the long date ("Tuesday, 13 October") is used. */
     private const val LONG_DATE_MIN_WIDTH_DP = 200f
 
+    /** A one-row widget at least this wide (dp) puts the date beside the time. */
+    private const val ROW_MIN_WIDTH_DP = 200f
+
     private class Layout(
         val timePx: Float,
         val ampmPx: Float,
         val datePx: Float,
         val showDate: Boolean,
         val longDate: Boolean,
+        val rowLayout: Boolean,
         val is24: Boolean,
         val radiusPx: Float,
     )
@@ -56,14 +60,19 @@ object DigitalRenderer {
         val d = context.resources.displayMetrics.density
         val hDp = h / d
         val wDp = w / d
-        val showDate = config.digitalDate && hDp >= DATE_MIN_HEIGHT_DP
+        val oneRow = hDp < DATE_MIN_HEIGHT_DP
+        val rowLayout = config.digitalDate && oneRow && wDp >= ROW_MIN_WIDTH_DP
+        val showDate = config.digitalDate && (!oneRow || rowLayout)
         val is24 = DateFormat.is24HourFormat(context)
 
         // Rough width of the time string, in multiples of the text size: "12:45" is about 2.8.
         val timeWidthEm = (if (config.digitalSeconds) 4.4f else 2.8f) + (if (is24) 0f else 1.0f)
-        val byWidth = w * 0.84f / timeWidthEm
-        val byHeight = h * (if (showDate) 0.40f else 0.52f)
+        val longRowDate = wDp >= 280f
+        val byWidth = if (rowLayout) w * 0.52f / timeWidthEm else w * 0.84f / timeWidthEm
+        val byHeight = if (rowLayout) h * 0.56f else h * (if (showDate) 0.40f else 0.52f)
         val time = min(byWidth, byHeight)
+        // In the one-row layout the date has its own two lines beside the time.
+        val dateRowPx = min(h * 0.30f, w * 0.34f / (if (longRowDate) 5.4f else 3.4f))
 
         // One-row widgets are pills; taller ones get a Material-style rounded card.
         val radius = if (hDp < DATE_MIN_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
@@ -71,9 +80,10 @@ object DigitalRenderer {
         return Layout(
             timePx = time,
             ampmPx = time * 0.36f,
-            datePx = time * 0.30f,
+            datePx = if (rowLayout) dateRowPx else time * 0.30f,
             showDate = showDate,
-            longDate = wDp >= LONG_DATE_MIN_WIDTH_DP,
+            longDate = if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP,
+            rowLayout = rowLayout,
             is24 = is24,
             radiusPx = radius,
         )
@@ -115,7 +125,10 @@ object DigitalRenderer {
     ): RemoteViews {
         val colours = WidgetColours.resolve(context, config, settings)
         val l = layoutFor(context, config, w, h)
-        val views = RemoteViews(context.packageName, R.layout.widget_digital)
+        val views = RemoteViews(
+            context.packageName,
+            if (l.rowLayout) R.layout.widget_digital_row else R.layout.widget_digital,
+        )
 
         if (config.background == WidgetBackground.NONE) {
             // No card: the time sits straight on the wallpaper.
@@ -144,7 +157,10 @@ object DigitalRenderer {
 
         // Date.
         if (l.showDate) {
-            val pattern = datePattern(context, l.longDate)
+            // Beside the time the date gets two lines ("Wed," over "14 Oct").
+            val pattern = datePattern(context, l.longDate).let {
+                if (l.rowLayout) it.replaceFirst(Regex("\\s+"), "'\n'") else it
+            }
             views.setViewVisibility(R.id.digital_date, View.VISIBLE)
             views.setCharSequence(R.id.digital_date, "setFormat12Hour", pattern)
             views.setCharSequence(R.id.digital_date, "setFormat24Hour", pattern)
