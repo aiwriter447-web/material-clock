@@ -633,12 +633,22 @@ fun StopwatchSettingsSheet(
                 )
             }
 
+            // ── Widgets Section ──
             item {
                 Spacer(Modifier.height(14.dp))
-                SectionLabel("Widgets") 
+                SectionLabel("Widgets")
             }
+
             item {
-                SettingsCard { WidgetRows() }
+                SettingsCard {
+                    WidgetRows()
+                }
+            }
+
+            // ── About Section ──
+            item {
+                Spacer(Modifier.height(14.dp))
+                AboutRows()
             }
         }
     }
