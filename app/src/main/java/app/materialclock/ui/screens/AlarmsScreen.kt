@@ -178,7 +178,7 @@ fun AlarmsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item(key = "upcoming-alarm-text", contentType = "upcoming") {
                 val upcomingInfo = remember(alarms, nowTime) { calculateTimeUntilNextAlarm(alarms, nowTime) }
@@ -362,8 +362,8 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime)
 
 private val GROUP_SECTION_PADDING_H = 4.dp
 private val GROUP_CARD_GAP = 10.dp
-private val GROUP_CARD_PADDING = 16.dp
-private val GROUP_CARD_CORNER = 28.dp
+private val GROUP_CARD_PADDING = 14.dp
+private val GROUP_CARD_CORNER = 18.dp
 
 @Composable
 private fun GroupCardsSection(
@@ -466,7 +466,7 @@ private fun GroupCard(
             Surface(
                 shape = CircleShape,
                 color = iconBackground,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(40.dp)
             ) {
                 Box(
                     contentAlignment = Alignment.Center, 
@@ -476,12 +476,12 @@ private fun GroupCard(
                         imageVector = iconVector,
                         contentDescription = null,
                         tint = iconTint,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
             
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
             
             Column(
                 verticalArrangement = Arrangement.Center
@@ -493,7 +493,7 @@ private fun GroupCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 GroupCount(armed = armedCount, unarmed = unarmedCount, ink = ink)
             }
         }
@@ -503,22 +503,22 @@ private fun GroupCard(
 @Composable
 private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.Alarm, contentDescription = "On Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(armed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
+        Icon(Icons.Rounded.Alarm, contentDescription = "On Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(3.dp))
+        Text(armed.toString(), style = MaterialTheme.typography.labelMedium, color = ink)
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(8.dp))
 
-        Icon(Icons.Rounded.AlarmOff, contentDescription = "Off Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(unarmed.toString(), style = MaterialTheme.typography.labelLarge, color = ink)
+        Icon(Icons.Rounded.AlarmOff, contentDescription = "Off Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(3.dp))
+        Text(unarmed.toString(), style = MaterialTheme.typography.labelMedium, color = ink)
     }
 }
 
 private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 16.dp
-private val ROW_CORNER_RADIUS = 28.dp
-private val ROW_LABEL_TO_TIME = 8.dp
+private val ROW_VERTICAL_PADDING = 14.dp
+private val ROW_CORNER_RADIUS = 18.dp
+private val ROW_LABEL_TO_TIME = 6.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -604,8 +604,8 @@ private fun AlarmRow(
 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
-                val timeStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = timeFontWeight, fontFeatureSettings = "tnum")
-                val amPmStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = timeFontWeight)
+                val timeStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = timeFontWeight, fontFeatureSettings = "tnum")
+                val amPmStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = timeFontWeight)
 
                 if (is24Hour) {
                     Text(
@@ -620,12 +620,12 @@ private fun AlarmRow(
                             style = timeStyle,
                             color = ink
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = meridiem,
                             style = amPmStyle,
                             color = ink,
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
                 }
@@ -638,7 +638,7 @@ private fun AlarmRow(
                 verticalArrangement = Arrangement.Top,
             ) {
                 DayLetters(alarm = alarm, order = order, ink = ink, enabled = enabled)
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Switch(
                     checked = enabled,
                     onCheckedChange = { if (!inSelectionMode) onToggle() },
@@ -682,7 +682,7 @@ private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color, enabled
 
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, letterSpacing = 2.sp), 
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, letterSpacing = 2.5.sp), 
         maxLines = 1
     )
 }
