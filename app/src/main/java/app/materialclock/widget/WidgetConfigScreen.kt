@@ -95,6 +95,8 @@ fun WidgetConfigScreen(
     settings: ClockSettings,
     /** False when the widget already exists and this is a reconfigure, which renames the button. */
     isNew: Boolean = true,
+    /** Set when the widget was added as a specific type: the type picker is then hidden. */
+    lockedType: WidgetType? = null,
     onCancel: () -> Unit,
     onSave: (WidgetConfig) -> Unit,
 ) {
@@ -108,14 +110,19 @@ fun WidgetConfigScreen(
     Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Text(
-                if (custom) "Custom clock" else "Clock widget",
+                when {
+                    custom -> "Custom clock"
+                    lockedType == WidgetType.DIGITAL -> "Digital clock"
+                    lockedType == WidgetType.ANALOG -> "Analog clock"
+                    else -> "Clock widget"
+                },
                 style = MaterialTheme.typography.headlineSmallEmphasized,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
             )
 
             // The type picker is hidden inside the Custom analog editor, where Back returns to
             // the grid first.
-            if (!custom) {
+            if (!custom && lockedType == null) {
                 OptionGroup("Widget type", config.type, WidgetType.entries, { it.label }) {
                     config = config.copy(type = it)
                 }
