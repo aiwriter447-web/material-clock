@@ -15,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,8 +33,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -69,6 +70,10 @@ import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.ClockWidgetProvider
 import app.materialclock.widget.WidgetEntryPoints
+
+/* ── Constants ──────────────────────────────────────────────────────── */
+
+private const val SILENT = "silent"
 
 /* ── Modern Card & Row UI Helpers ─────────────────────────────────────────────────── */
 
@@ -173,6 +178,7 @@ private fun ItemDivider() {
     )
 }
 
+// Ensure there is only one declaration of NavigateRow without ambiguity.
 @Composable
 private fun NavigateRow(title: String, subtitle: String? = null, onClick: () -> Unit) {
     SettingsItemRow(
@@ -181,7 +187,7 @@ private fun NavigateRow(title: String, subtitle: String? = null, onClick: () -> 
         onClick = onClick,
         trailingContent = {
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.size(22.dp)
@@ -190,6 +196,7 @@ private fun NavigateRow(title: String, subtitle: String? = null, onClick: () -> 
     )
 }
 
+// Ensure ChoiceRow parameter signature is unambiguous.
 @Composable
 private fun <T> ChoiceRow(
     title: String,
@@ -209,7 +216,7 @@ private fun <T> ChoiceRow(
                     ValueBadge(text = label(value))
                     Spacer(Modifier.width(4.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                        imageVector = Icons.Rounded.ChevronRight,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(18.dp)
@@ -247,6 +254,7 @@ private fun <T> ChoiceRow(
     }
 }
 
+// Simplify SwitchRow signature.
 @Composable
 private fun SwitchRow(
     title: String,
@@ -268,6 +276,27 @@ private fun SwitchRow(
                 )
             )
         }
+    )
+}
+
+@Composable
+private fun SheetTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
     )
 }
 
@@ -308,7 +337,7 @@ fun AlarmSettingsSheet(
                         value = settings.alarms.weekStart,
                         options = WeekStart.entries,
                         label = { it.label },
-                        onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
+                        onSelect = { v: WeekStart -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
                     )
                     ItemDivider()
                     ChoiceRow(
@@ -316,7 +345,7 @@ fun AlarmSettingsSheet(
                         value = settings.alarms.dismissMethod,
                         options = DismissMethod.entries,
                         label = { it.label },
-                        onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
+                        onSelect = { v: DismissMethod -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
                     )
                 }
             }
@@ -332,7 +361,7 @@ fun AlarmSettingsSheet(
                         value = settings.alarms.silenceAfterMinutes,
                         options = listOf(1, 5, 10, 15, 20, 25, 30, 0),
                         label = ::minutesLabel,
-                        onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) } },
+                        onSelect = { v: Int -> onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) } },
                     )
                     ItemDivider()
                     ChoiceRow(
@@ -340,7 +369,7 @@ fun AlarmSettingsSheet(
                         value = settings.alarms.snoozeMinutes,
                         options = listOf(1, 5, 10, 15, 20, 30),
                         label = ::minutesLabel,
-                        onSelect = { v -> onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) } },
+                        onSelect = { v: Int -> onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) } },
                     )
                     ItemDivider()
                     ChoiceRow(
@@ -348,26 +377,26 @@ fun AlarmSettingsSheet(
                         value = settings.alarms.upcomingNotificationMinutes,
                         options = listOf(0, 5, 10, 15, 30, 60),
                         label = { if (it == 0) "Off" else "$it minutes before" },
-                        onSelect = { v ->
+                        onSelect = { v: Int ->
                             onChange { it.copy(alarms = it.alarms.copy(upcomingNotificationMinutes = v)) }
                         },
                     )
                     ItemDivider()
                     DefaultToneRow(
                         soundUri = settings.alarms.defaultSoundUri,
-                        onPick = { v -> onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) } },
+                        onPick = { v: String? -> onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) } },
                     )
                     ItemDivider()
                     VolumeRow(
                         volume = settings.alarms.volume,
-                        onChange = { v -> onChange { it.copy(alarms = it.alarms.copy(volume = v)) } },
+                        onChange = { v: Float -> onChange { it.copy(alarms = it.alarms.copy(volume = v)) } },
                     )
                     ItemDivider()
                     SwitchRow(
                         title = "Volume buttons during alarm",
                         subtitle = "Control alarm volume with hardware keys",
                         checked = settings.alarms.volumeButtonsControlVolume,
-                        onChange = { v ->
+                        onChange = { v: Boolean ->
                             onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
                         },
                     )
@@ -435,7 +464,7 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
                 ValueBadge(text = name)
                 Spacer(Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(18.dp)
@@ -574,7 +603,7 @@ private fun PaletteRow(
     onDynamic: () -> Unit,
     onSelect: (Palette) -> Unit,
 ) {
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val dark = isSystemInDarkTheme()
     val context = LocalContext.current
     val wallpaper = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         if (dark) {
@@ -615,7 +644,7 @@ private fun Swatch(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else if (selected) 1.1f else 1f,
         animationSpec = spring(
@@ -699,21 +728,21 @@ fun StopwatchSettingsSheet(
                         value = settings.theme.darkMode,
                         options = DarkMode.entries,
                         label = { it.label },
-                        onSelect = { v -> onChange { it.copy(theme = it.theme.copy(darkMode = v)) } },
+                        onSelect = { v: DarkMode -> onChange { it.copy(theme = it.theme.copy(darkMode = v)) } },
                     )
                     ItemDivider()
                     SwitchRow(
                         title = "Pure black",
                         subtitle = "True black surfaces in dark mode for OLED",
                         checked = settings.theme.amoledBlack,
-                        onChange = { v -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
+                        onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
                     )
                     ItemDivider()
                     SwitchRow(
                         title = "One-hand mode",
                         subtitle = "Long-press dock to pull screen into thumb reach",
                         checked = settings.theme.oneHandMode,
-                        onChange = { v -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
+                        onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
                     )
                 }
             }
@@ -725,7 +754,7 @@ fun StopwatchSettingsSheet(
                     dynamic = settings.theme.dynamicColor,
                     selected = settings.theme.palette,
                     onDynamic = { onChange { it.copy(theme = it.theme.copy(dynamicColor = true)) } },
-                    onSelect = { v ->
+                    onSelect = { v: Palette ->
                         onChange { it.copy(theme = it.theme.copy(palette = v, dynamicColor = false)) }
                     },
                 )
@@ -738,7 +767,9 @@ fun StopwatchSettingsSheet(
             item {
                 SettingsCard { WidgetRows() }
             }
-
+            
+            // Note: Make sure you have a composable named AboutRows() in your project, 
+            // otherwise this line might also cause an issue.
             item {
                 Spacer(Modifier.height(14.dp))
                 SettingsCard { AboutRows() }
@@ -785,13 +816,13 @@ fun WorldSettingsSheet(
                         value = settings.world.style,
                         options = WorldClockStyle.entries,
                         label = { it.label },
-                        onSelect = { v -> onChange { it.copy(world = it.world.copy(style = v)) } },
+                        onSelect = { v: WorldClockStyle -> onChange { it.copy(world = it.world.copy(style = v)) } },
                     )
                     ItemDivider()
                     SwitchRow(
                         title = "Display time with seconds",
                         checked = settings.world.showSeconds,
-                        onChange = { v -> onChange { it.copy(world = it.world.copy(showSeconds = v)) } },
+                        onChange = { v: Boolean -> onChange { it.copy(world = it.world.copy(showSeconds = v)) } },
                     )
                     ItemDivider()
                     ChoiceRow(
@@ -799,7 +830,7 @@ fun WorldSettingsSheet(
                         value = settings.world.hourFormat,
                         options = HourFormat.entries,
                         label = { it.label },
-                        onSelect = { v -> onChange { it.copy(world = it.world.copy(hourFormat = v)) } },
+                        onSelect = { v: HourFormat -> onChange { it.copy(world = it.world.copy(hourFormat = v)) } },
                     )
                 }
             }
@@ -814,7 +845,7 @@ fun WorldSettingsSheet(
                         title = "Automatic home clock",
                         subtitle = "Add a clock for home while travelling",
                         checked = settings.world.homeZoneOverride == null,
-                        onChange = { v ->
+                        onChange = { v: Boolean ->
                             if (v) {
                                 onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
                             } else {
@@ -842,7 +873,8 @@ fun WorldSettingsSheet(
             }
         }
     }
-
+    
+    // Note: Make sure you have a composable named AddCitySheet in your project.
     if (pickingHome) {
         AddCitySheet(
             existing = emptyList(),
@@ -915,14 +947,14 @@ fun TimerSettingsSheet(
                     SwitchRow(
                         title = "Timer vibrate",
                         checked = settings.timers.vibrate,
-                        onChange = { v -> onChange { it.copy(timers = it.timers.copy(vibrate = v)) } },
+                        onChange = { v: Boolean -> onChange { it.copy(timers = it.timers.copy(vibrate = v)) } },
                     )
                     ItemDivider()
                     SwitchRow(
                         title = "Gradually increase volume",
                         subtitle = "Starts quiet and builds up over first 20s",
                         checked = settings.timers.gradualVolume,
-                        onChange = { v -> onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) } },
+                        onChange = { v: Boolean -> onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) } },
                     )
                 }
             }
