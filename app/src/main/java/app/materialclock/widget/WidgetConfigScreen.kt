@@ -73,6 +73,7 @@ import app.materialclock.data.NumeralSystem
 import app.materialclock.data.NumeralWeight
 import app.materialclock.data.NumeralWidth
 import app.materialclock.data.PillOrientation
+import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import app.materialclock.data.WidgetType
 import app.materialclock.data.WidgetPreset
@@ -570,7 +571,7 @@ private fun HandCarousel(
 
 /** The palettes, as the three-accent gradients the app's own picker uses. */
 @Composable
-private fun PaletteCarousel(value: Palette, onSelect: (Palette) -> Unit) {
+internal fun PaletteCarousel(value: Palette, onSelect: (Palette) -> Unit) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     OptionCarousel(
         label = "Palette",
@@ -841,6 +842,9 @@ private fun DigitalEditor(
                 checked = config.digitalDate,
                 onChange = { onChange(config.copy(digitalDate = it)) },
             )
+            OptionGroup("Background", config.background, WidgetBackground.entries, { it.label }) {
+                onChange(config.copy(background = it))
+            }
             OptionGroup("Colour", config.colour, ColourSource.entries, { it.label }) {
                 onChange(config.copy(colour = it))
             }
