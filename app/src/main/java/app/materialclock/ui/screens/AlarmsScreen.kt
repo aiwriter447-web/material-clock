@@ -363,7 +363,7 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime)
 private val GROUP_SECTION_PADDING_H = 4.dp
 private val GROUP_CARD_GAP = 10.dp
 private val GROUP_CARD_PADDING = 16.dp
-private val GROUP_CARD_CORNER = 22.dp
+private val GROUP_CARD_CORNER = 28.dp
 
 @Composable
 private fun GroupCardsSection(
@@ -436,7 +436,12 @@ private fun GroupCard(
 
     val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
 
-    val iconBackground = if (checked) Color(0xFF53A6E4) else Color(0xFFA0A0A0)
+    val targetIconBackground = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val targetIconTint = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+    val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessMediumLow), label = "iconBg")
+    val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessMediumLow), label = "iconTint")
+    
     val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
     Surface(
@@ -470,7 +475,7 @@ private fun GroupCard(
                     Icon(
                         imageVector = iconVector,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = iconTint,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -512,7 +517,7 @@ private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
 
 private val ROW_HORIZONTAL_PADDING = 16.dp
 private val ROW_VERTICAL_PADDING = 16.dp
-private val ROW_CORNER_RADIUS = 24.dp
+private val ROW_CORNER_RADIUS = 28.dp
 private val ROW_LABEL_TO_TIME = 8.dp
 
 @OptIn(ExperimentalFoundationApi::class)
