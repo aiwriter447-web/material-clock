@@ -141,6 +141,7 @@
         -->
         <receiver
             android:name=".widget.ClockWidgetProvider"
+            android:label="@string/widget_name_clock"
             android:exported="false">
 
             <intent-filter>
@@ -162,6 +163,7 @@
         -->
         <receiver
             android:name=".widget.WorldClockWidgetProvider"
+            android:label="@string/widget_name_world"
             android:exported="false">
 
             <intent-filter>
@@ -183,6 +185,7 @@
         -->
         <receiver
             android:name=".widget.AlarmWidgetProvider"
+            android:label="@string/widget_name_alarm"
             android:exported="false">
 
             <intent-filter>
