@@ -20,6 +20,8 @@ import app.materialclock.MainActivity
 import app.materialclock.R
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
+import app.materialclock.core.WorldCity
+import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import java.io.ByteArrayOutputStream
 import java.time.ZoneId
@@ -47,9 +49,10 @@ object WorldClockRenderer {
     suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
         val store = ClockStore(context)
         val settings = store.settingsNow()
+        val config = store.widgetConfigNow(appWidgetId) ?: WidgetConfig()
         val cities = store.cities.first()
             .sortedWith(
-                compareByDescending<app.materialclock.core.WorldCity> { it.pinnedAt != null }
+                compareByDescending<WorldCity> { it.pinnedAt != null }
                     .thenByDescending { it.pinnedAt ?: 0L }
                     .thenBy { it.city },
             )
@@ -57,25 +60,31 @@ object WorldClockRenderer {
         val home = settings.world.homeZoneOverride
             ?.let { runCatching { ZoneId.of(it) }.getOrNull() }
             ?: ZoneId.systemDefault()
+        val homeSide = Side("Home", home)
 
-        // Your first two cities from the World Clock tab (pinned ones first). If there are fewer
-        // than two, the gap is filled: one city is shown next to Home, none shows Home and UTC.
-        val picked = cities.take(2).map { Side(it.city, it.zone) }
-        val left: Side
-        val right: Side
-        when (picked.size) {
-            2 -> { left = picked[0]; right = picked[1] }
-            1 -> { left = Side("Home", home); right = picked[0] }
-            else -> { left = Side("Home", home); right = Side("UTC", ZoneId.of("UTC")) }
+        // 1. The cities chosen in this widget's settings (Home is one of the choices).
+        val chosen = config.cityKeys.mapNotNull { key ->
+            if (key == HOME_CITY_KEY) homeSide
+            else cities.firstOrNull { worldCityKey(it) == key }?.let { Side(it.city, it.zone) }
         }
 
+        // 2. Whatever is missing is filled from the app: its first two cities, or Home next to
+        //    the only city there is.
+        val fallback = if (cities.size >= 2) cities.take(2).map { Side(it.city, it.zone) }
+        else listOf(homeSide) + cities.map { Side(it.city, it.zone) }
+
+        val sides = (chosen + fallback + Side("UTC", ZoneId.of("UTC")))
+            .distinctBy { it.label + it.zone.id }
+            .take(2)
+
         val options = manager.getAppWidgetOptions(appWidgetId)
-        manager.updateAppWidget(appWidgetId, build(context, settings, left, right, options))
+        manager.updateAppWidget(appWidgetId, build(context, settings, config, sides[0], sides[1], options))
     }
 
     private fun build(
         context: Context,
         settings: ClockSettings,
+        config: WidgetConfig,
         left: Side,
         right: Side,
         options: Bundle,
@@ -94,7 +103,7 @@ object WorldClockRenderer {
 
         if (sizes.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val map = sizes.associateWith { size ->
-                one(context, settings, left, right, px(size.width), px(size.height))
+                one(context, settings, config, left, right, px(size.width), px(size.height))
             }
             return RemoteViews(map)
         }
@@ -103,8 +112,8 @@ object WorldClockRenderer {
         val maxW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
         val minH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
         val maxH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
-        val portrait = one(context, settings, left, right, px(minW.toFloat()), px(maxH.toFloat()))
-        val landscape = one(context, settings, left, right, px(maxW.toFloat()), px(minH.toFloat()))
+        val portrait = one(context, settings, config, left, right, px(minW.toFloat()), px(maxH.toFloat()))
+        val landscape = one(context, settings, config, left, right, px(maxW.toFloat()), px(minH.toFloat()))
         return RemoteViews(landscape, portrait)
     }
 
@@ -112,13 +121,14 @@ object WorldClockRenderer {
     private fun one(
         context: Context,
         settings: ClockSettings,
+        config: WidgetConfig,
         left: Side,
         right: Side,
         w: Int,
         h: Int,
     ): RemoteViews {
         val m = WidgetInset.px(context)
-        val views = oneInner(context, settings, left, right, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
+        val views = oneInner(context, settings, config, left, right, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
         views.setViewPadding(android.R.id.background, m, m, m, m)
         return views
     }
@@ -126,6 +136,7 @@ object WorldClockRenderer {
     private fun oneInner(
         context: Context,
         settings: ClockSettings,
+        config: WidgetConfig,
         left: Side,
         right: Side,
         w: Int,
@@ -144,18 +155,23 @@ object WorldClockRenderer {
 
         // Text sizes: the time is as big as the panel's width and height allow; city and date
         // hang off it in fixed proportions.
-        val timeWidthEm = 2.8f + (if (showAmpm) 0.55f else 0f)
+        // A narrow panel (the 2x1 widget) gets proportionally bigger city names and a smaller
+        // AM/PM, so the words stay readable at that size.
+        val compact = pwDp < 110f
+        val timeWidthEm = 2.8f + (if (showAmpm) (if (compact) 0.42f else 0.55f) else 0f)
         val heightEm = 0.85f + 0.50f + (if (showDate) 0.44f else 0f)
-        val timePx = min(panelW * 0.92f / timeWidthEm, panelH * 0.84f / heightEm)
-        val cityPx = timePx * 0.40f
+        val timePx = min(panelW * 0.96f / timeWidthEm, panelH * 0.84f / heightEm)
+        val cityPx = timePx * (if (compact) 0.46f else 0.40f)
         val datePx = timePx * 0.34f
-        val ampmPx = timePx * 0.40f
+        val ampmPx = timePx * (if (compact) 0.34f else 0.40f)
 
-        val scheme = WidgetColours.scheme(context, WidgetConfig(), settings)
+        val scheme = WidgetColours.scheme(context, config, settings)
+        val filled = config.background == WidgetBackground.FILLED
         val bgA = scheme.primaryContainer.toArgb()
-        val onA = scheme.onPrimaryContainer.toArgb()
         val bgB = scheme.primary.toArgb()
-        val onB = scheme.onPrimary.toArgb()
+        // With no card the text sits on the wallpaper, so both halves use the plain text colour.
+        val onA = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
+        val onB = if (filled) scheme.onPrimary.toArgb() else scheme.onSurface.toArgb()
 
         val views = RemoteViews(
             context.packageName,
@@ -163,7 +179,12 @@ object WorldClockRenderer {
         )
 
         val radius = if (h / d < ONE_ROW_MAX_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
-        views.setImageViewIcon(R.id.world_bg, background(bgA, bgB, w, h, radius, horizontal).toIcon())
+        if (filled) {
+            views.setViewVisibility(R.id.world_bg, View.VISIBLE)
+            views.setImageViewIcon(R.id.world_bg, background(bgA, bgB, w, h, radius, horizontal).toIcon())
+        } else {
+            views.setViewVisibility(R.id.world_bg, View.GONE)
+        }
 
         val datePattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM")
 
@@ -247,3 +268,9 @@ object WorldClockRenderer {
         return Icon.createWithData(bytes, 0, bytes.size)
     }
 }
+
+/** The key a World Clock widget stores for "my home time zone". */
+internal const val HOME_CITY_KEY = "home"
+
+/** The key a World Clock widget stores for one of the app's cities. */
+internal fun worldCityKey(city: WorldCity): String = "${city.zone.id}|${city.city}"
