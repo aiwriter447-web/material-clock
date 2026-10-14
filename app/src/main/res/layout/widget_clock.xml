@@ -22,10 +22,21 @@
         android:scaleType="fitXY"
         android:importantForAccessibility="no" />
 
-    <AnalogClock
-        android:id="@+id/hands"
+    <!--
+      The hands sit in their own box so the 2x1 capsule can squeeze them over the small dial on
+      the left (setViewPadding on this box). In every other size the box has no padding and fills
+      the widget.
+    -->
+    <FrameLayout
+        android:id="@+id/hands_slot"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+
+        <AnalogClock
+            android:id="@+id/hands"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
 
     <!--
       Positioned at runtime with setViewPadding, which is API 16. setViewLayoutMargin would be
@@ -42,7 +53,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="top|start"
             android:includeFontPadding="false"
-            android:maxLines="1"
-            android:fontFamily="@font/google_sans_flex" />
+            android:maxLines="2"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 600" />
     </FrameLayout>
 </FrameLayout>
