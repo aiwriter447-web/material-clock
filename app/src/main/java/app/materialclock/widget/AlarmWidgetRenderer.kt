@@ -24,6 +24,7 @@ import app.materialclock.R
 import app.materialclock.core.Alarm
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
+import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import app.materialclock.data.order
 import java.io.ByteArrayOutputStream
@@ -47,16 +48,20 @@ import kotlin.math.roundToInt
 object AlarmWidgetRenderer {
 
     private const val ONE_ROW_MAX_HEIGHT_DP = 100f
-    private const val WIDE_MIN_WIDTH_DP = 170f
+    private const val WIDE_MIN_WIDTH_DP = 270f
 
     private class Scene(val bitmap: Bitmap, val button: RectF)
 
     suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
         val store = ClockStore(context)
         val settings = store.settingsNow()
-        val alarm = pick(store.alarmsNow())
+        val config = store.widgetConfigNow(appWidgetId) ?: WidgetConfig()
+        val alarms = store.alarmsNow()
+        // The alarm chosen in this widget's settings; if none was chosen (or it was deleted), the
+        // next one to ring.
+        val alarm = alarms.firstOrNull { it.id == config.alarmId } ?: pick(alarms)
         val options = manager.getAppWidgetOptions(appWidgetId)
-        manager.updateAppWidget(appWidgetId, build(context, settings, alarm, options))
+        manager.updateAppWidget(appWidgetId, build(context, settings, config, alarm, options))
     }
 
     /** The alarm that rings next; if none is switched on, the earliest one of the day (shown as off). */
@@ -70,7 +75,7 @@ object AlarmWidgetRenderer {
         return next ?: alarms.minByOrNull { it.time }
     }
 
-    private fun build(context: Context, settings: ClockSettings, alarm: Alarm?, options: Bundle): RemoteViews {
+    private fun build(context: Context, settings: ClockSettings, config: WidgetConfig, alarm: Alarm?, options: Bundle): RemoteViews {
         val density = context.resources.displayMetrics.density
         fun px(dp: Float) = (dp * density).roundToInt().coerceAtLeast(1)
 
@@ -84,7 +89,7 @@ object AlarmWidgetRenderer {
         }
 
         if (sizes.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val map = sizes.associateWith { size -> one(context, settings, alarm, px(size.width), px(size.height)) }
+            val map = sizes.associateWith { size -> one(context, settings, config, alarm, px(size.width), px(size.height)) }
             return RemoteViews(map)
         }
 
@@ -92,21 +97,21 @@ object AlarmWidgetRenderer {
         val maxW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
         val minH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
         val maxH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
-        val portrait = one(context, settings, alarm, px(minW.toFloat()), px(maxH.toFloat()))
-        val landscape = one(context, settings, alarm, px(maxW.toFloat()), px(minH.toFloat()))
+        val portrait = one(context, settings, config, alarm, px(minW.toFloat()), px(maxH.toFloat()))
+        val landscape = one(context, settings, config, alarm, px(maxW.toFloat()), px(minH.toFloat()))
         return RemoteViews(landscape, portrait)
     }
 
     /** One size, kept a little inside its cell (see [WidgetInset]). */
-    private fun one(context: Context, settings: ClockSettings, alarm: Alarm?, w: Int, h: Int): RemoteViews {
+    private fun one(context: Context, settings: ClockSettings, config: WidgetConfig, alarm: Alarm?, w: Int, h: Int): RemoteViews {
         val m = WidgetInset.px(context)
-        val views = oneInner(context, settings, alarm, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
+        val views = oneInner(context, settings, config, alarm, (w - 2 * m).coerceAtLeast(1), (h - 2 * m).coerceAtLeast(1))
         views.setViewPadding(android.R.id.background, m, m, m, m)
         return views
     }
 
-    private fun oneInner(context: Context, settings: ClockSettings, alarm: Alarm?, w: Int, h: Int): RemoteViews {
-        val scene = draw(context, settings, alarm, w, h)
+    private fun oneInner(context: Context, settings: ClockSettings, config: WidgetConfig, alarm: Alarm?, w: Int, h: Int): RemoteViews {
+        val scene = draw(context, settings, config, alarm, w, h)
         val views = RemoteViews(context.packageName, R.layout.widget_alarm)
         views.setImageViewIcon(R.id.alarm_art, scene.bitmap.toIcon())
 
@@ -153,7 +158,7 @@ object AlarmWidgetRenderer {
         return views
     }
 
-    private fun draw(context: Context, settings: ClockSettings, alarm: Alarm?, w: Int, h: Int): Scene {
+    private fun draw(context: Context, settings: ClockSettings, config: WidgetConfig, alarm: Alarm?, w: Int, h: Int): Scene {
         val d = context.resources.displayMetrics.density
         val wf = w.toFloat()
         val hf = h.toFloat()
@@ -163,16 +168,20 @@ object AlarmWidgetRenderer {
         val is24 = DateFormat.is24HourFormat(context)
         val on = alarm?.enabled == true
 
-        val scheme = WidgetColours.scheme(context, WidgetConfig(), settings)
+        val scheme = WidgetColours.scheme(context, config, settings)
+        val filled = config.background == WidgetBackground.FILLED
         val bg = scheme.primaryContainer.toArgb()
-        val fg = scheme.onPrimaryContainer.toArgb()
+        // With no card the text sits on the wallpaper, so it uses the plain text colour.
+        val fg = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
         fun alpha(color: Int, a: Float) = ColorUtils.setAlphaComponent(color, (255 * a).roundToInt())
         val textColour = if (on || alarm == null) fg else alpha(fg, 0.55f)
 
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val radius = if (oneRow) hf / 2f else min(36f * d, min(wf, hf) / 2f)
-        c.drawRoundRect(RectF(0f, 0f, wf, hf), radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg })
+        if (filled) {
+            c.drawRoundRect(RectF(0f, 0f, wf, hf), radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg })
+        }
 
         val typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex)
         fun paint(color: Int, size: Float, weight: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -268,17 +277,22 @@ object AlarmWidgetRenderer {
                 if (ampm.isNotEmpty()) c.drawText(ampm, x0, top + total, paint(textColour, ts * 0.46f, 500))
             }
 
-            // 4x1: button, time, and the weekdays on the right.
+            // 4x1: button, time, and the weekdays on the right. The weekdays only get the room
+            // the time leaves them, so the two can never overlap.
             oneRow -> {
                 val dia = hf * 0.70f
                 val left = hf * 0.15f
                 button = drawButton(left + dia / 2f, hf / 2f, dia)
                 val x0 = left + dia + hf * 0.16f
-                val ts = hf * 0.42f
+                val ts = hf * 0.36f
                 drawTimeInline(x0, hf / 2f + ts * 0.72f / 2f, ts)
-                val ls = hf * 0.30f
-                val cell = min(ls * 2.0f, wf * 0.40f / 7f)
-                drawDays(wf - hf * 0.20f - cell * 7f, cell, hf / 2f + ls * 0.4f, ls)
+
+                val timeEnd = x0 + inlineWidth(ts)
+                val rightEdge = wf - hf * 0.20f
+                val avail = rightEdge - (timeEnd + hf * 0.20f)
+                val cell = min(hf * 0.30f * 1.9f, avail / 7f)
+                val ls = min(hf * 0.30f, cell * 0.85f)
+                if (ls > hf * 0.12f) drawDays(rightEdge - cell * 7f, cell, hf / 2f + ls * 0.4f, ls)
             }
 
             // 2x2: time on top, weekdays under it, button at the bottom.
