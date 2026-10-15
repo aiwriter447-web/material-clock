@@ -99,6 +99,10 @@ object HandRenderer {
                 )
             }
 
+            // A dot at the tip's distance from the pivot, as wide as the hand's width: the
+            // seconds mark that rides the rim.
+            HandStyle.ORBIT -> canvas.drawCircle(cx, cy - tip, w / 2f, fill)
+
             HandStyle.OFF -> Unit
         }
 
