@@ -62,10 +62,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,6 +89,8 @@ import app.materialclock.alarm.AlarmScheduler
 import app.materialclock.alarm.Notifications
 import app.materialclock.core.Alarm
 import app.materialclock.core.TimerPreset
+import app.materialclock.data.ScreensaverRepository
+import app.materialclock.data.ScreensaverSettings
 import app.materialclock.ui.screens.AlarmsScreen
 import app.materialclock.ui.screens.StopwatchScreen
 import app.materialclock.ui.screens.TimersScreen
@@ -96,6 +100,7 @@ import app.materialclock.ui.sheets.AlarmEditSheet
 import app.materialclock.ui.sheets.AlarmGroupsSheet
 import app.materialclock.ui.sheets.AlarmSettingsSheet
 import app.materialclock.ui.sheets.PresetEditSheet
+import app.materialclock.ui.sheets.ScreensaverSettingsSheet
 import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
@@ -120,10 +125,20 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
+fun ClockApp(
+    startTab: String? = null,
+    onOpenWorldSettings: (() -> Unit)? = null,
+    onOpenScreensaverSettings: (() -> Unit)? = null,
+    vm: ClockViewModel = viewModel()
+) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     
+    // Screensaver Repository & State Initialization
+    val ctx = LocalContext.current
+    val screensaverRepository = remember { ScreensaverRepository(ctx) }
+    val screensaverSettings by screensaverRepository.settingsFlow.collectAsState(initial = ScreensaverSettings())
+
     // Timer state hoisted to control FAB visibility globally
     val timer by vm.timer.collectAsStateWithLifecycle()
 
@@ -133,7 +148,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             return@ClockTheme
         }
 
-        val ctx = LocalContext.current
         val nm = remember { ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
 
         var hasFullScreenPermission by remember {
@@ -197,8 +211,13 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
             return@ClockTheme
         }
 
+        // State restoration for Tab Page selection across background app switches
+        val initialPageIndex = rememberSaveable {
+            startTab?.let { k -> Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 } } ?: 0
+        }
+
         val pagerState = rememberPagerState(
-            initialPage = startTab?.let { k -> Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 } } ?: 0,
+            initialPage = initialPageIndex,
             pageCount = { Tab.entries.size }
         )
 
@@ -208,6 +227,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
+        var showScreensaverSettingsSheet by remember { mutableStateOf(false) }
         var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
         var selectionActive by remember { mutableStateOf(false) }
@@ -264,7 +284,7 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                                             .togetherWith(slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
                                     } else {
                                         (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeIn(tween(100)))
-                                            .togetherWith(slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> width / 3 } + fadeOut(tween(80)))
+                                            .togetherWith(slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
                                     }
                                 },
                                 label = "TopBarTitleAnim"
@@ -450,7 +470,6 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     )
                 }
 
-                // Updated FAB logic: Now appears on the TIMERS tab as well (when no timer is running)
                 FloatingAddButton(
                     visible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
                     label = when (targetTab) {
@@ -529,10 +548,30 @@ fun ClockApp(startTab: String? = null, vm: ClockViewModel = viewModel()) {
                     onManageGroups = { showGroupsManager = true },
                     onDismiss = { showSettings = false },
                 )
-                Tab.WORLD -> WorldSettingsSheet(settings, vm::updateSettings) { showSettings = false }
+                Tab.WORLD -> WorldSettingsSheet(
+                    settings = settings,
+                    onChange = vm::updateSettings,
+                    onOpenScreensaverSettings = {
+                        showSettings = false
+                        showScreensaverSettingsSheet = true
+                    },
+                    onDismiss = { showSettings = false },
+                )
                 Tab.TIMERS -> TimerSettingsSheet(settings, vm::updateSettings) { showSettings = false }
                 Tab.STOPWATCH -> StopwatchSettingsSheet(settings, vm::updateSettings) { showSettings = false }
             }
+        }
+
+        if (showScreensaverSettingsSheet) {
+            ScreensaverSettingsSheet(
+                settings = screensaverSettings,
+                onChange = { transform ->
+                    scope.launch {
+                        screensaverRepository.updateSettings(transform)
+                    }
+                },
+                onDismiss = { showScreensaverSettingsSheet = false }
+            )
         }
     }
 }
