@@ -36,8 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,8 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
@@ -659,6 +655,7 @@ fun StopwatchSettingsSheet(
 fun WorldSettingsSheet(
     settings: ClockSettings,
     onChange: ((ClockSettings) -> ClockSettings) -> Unit,
+    onOpenScreensaverSettings: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var pickingHome by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
@@ -706,6 +703,12 @@ fun WorldSettingsSheet(
                         options = HourFormat.entries,
                         label = { it.label },
                         onSelect = { v: HourFormat -> onChange { it.copy(world = it.world.copy(hourFormat = v)) } },
+                    )
+                    ItemDivider()
+                    NavigateRow(
+                        title = "Screensaver",
+                        subtitle = "Bedside charging clock & setup",
+                        onClick = onOpenScreensaverSettings,
                     )
                 }
             }
