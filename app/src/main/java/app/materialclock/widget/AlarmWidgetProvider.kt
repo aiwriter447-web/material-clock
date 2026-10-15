@@ -1,6 +1,5 @@
 package app.materialclock.widget
 
-import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -27,7 +26,9 @@ open class AlarmWidgetProvider : AppWidgetProvider() {
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val componentName = android.content.ComponentName(context, javaClass)
         val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-        onUpdate(context, appWidgetManager, appWidgetIds)
+        if (appWidgetIds != null) {
+            onUpdate(context, appWidgetManager, appWidgetIds)
+        }
     }
 
     companion object {
@@ -38,14 +39,14 @@ open class AlarmWidgetProvider : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_alarm)
 
-            // Intent to open MainActivity when widget is clicked
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 0,
                 Intent(context, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(R.id.background, pendingIntent)
+            
+            views.setOnClickPendingIntent(android.R.id.background, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
