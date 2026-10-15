@@ -7,6 +7,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
+import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ColourSource
 import app.materialclock.data.DarkMode
@@ -43,7 +45,7 @@ object WidgetColours {
         //
         // The minor indices drop to `onSurfaceVariant` so a dial with four numerals and eight dots
         // reads as two levels rather than twelve equal marks.
-        return FaceRenderer.Colours(
+        val classic = FaceRenderer.Colours(
             face = scheme.surfaceContainerHigh.toArgb(),
             onFace = scheme.onSurface.toArgb(),
             minor = scheme.onSurfaceVariant.toArgb(),
@@ -55,6 +57,38 @@ object WidgetColours {
             // Neutral, because the pin sits on top of all three hands and matching any one of them
             // would make that hand look severed at the centre.
             pin = scheme.onSurface.toArgb(),
+        )
+        if (config.look == AnalogLook.CLASSIC) return classic
+
+        // The finished designs (Ripple, Bold, Digit, Orbit) share one colour story: a dark dial,
+        // the main colour for the minute hand, a softer step of it for the hour hand, and the
+        // tertiary colour as the one accent. Text and marks that should sit *behind* the hands are
+        // drawn in a tone close to the dial's own.
+        fun mix(a: Int, b: Int, t: Float) = ColorUtils.blendARGB(a, b, t)
+        val face = classic.face
+        val primary = scheme.primary.toArgb()
+        val tonal = when (config.look) {
+            AnalogLook.BOLD -> scheme.primaryContainer.toArgb()
+            else -> mix(scheme.primaryContainer.toArgb(), primary, 0.45f)
+        }
+        val tonalText = config.look == AnalogLook.BOLD || config.look == AnalogLook.DIGIT
+        return FaceRenderer.Colours(
+            face = face,
+            onFace = if (tonalText) tonal else scheme.onSurface.toArgb(),
+            minor = if (config.look == AnalogLook.DIGIT) tonal else mix(primary, face, 0.55f),
+            outline = classic.outline,
+            accent = primary,
+            hourHand = mix(primary, face, 0.40f),
+            minuteHand = primary,
+            secondHand = scheme.tertiary.toArgb(),
+            pin = primary,
+            orbitTop = primary,
+            orbitOnTop = scheme.onPrimary.toArgb(),
+            orbitBottom = scheme.secondary.toArgb(),
+            orbitOnBottom = scheme.onSecondary.toArgb(),
+            orbitRight = scheme.tertiary.toArgb(),
+            orbitOnRight = scheme.onTertiary.toArgb(),
+            orbitTrack = scheme.surfaceContainerHighest.toArgb(),
         )
     }
 
