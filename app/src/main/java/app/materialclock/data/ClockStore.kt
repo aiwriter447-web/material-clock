@@ -276,6 +276,7 @@ private fun parseGroups(s: String): List<AlarmGroup> = runCatching {
 private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("v", 1)
     .put("type", c.type.name)
+    .put("look", c.look.name)
     .put("dSec", c.digitalSeconds)
     .put("dDate", c.digitalDate)
     .put("bg", c.background.name)
@@ -306,6 +307,7 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
     val o = JSONObject(s)
     WidgetConfig(
         type = enumOr(o.optString("type"), WidgetType.ANALOG),
+        look = enumOr(o.optString("look"), AnalogLook.CLASSIC),
         digitalSeconds = o.optBoolean("dSec", false),
         digitalDate = o.optBoolean("dDate", true),
         background = enumOr(o.optString("bg"), WidgetBackground.FILLED),
