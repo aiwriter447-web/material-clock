@@ -8,8 +8,7 @@ package app.materialclock.data
  * is on the tile is exactly what lands on the home screen.
  *
  * They are chosen to span the axes rather than to be five variations of a circle: between them they
- * cover several face shapes, all three numeral treatments plus none, all four mark styles plus
- * none, and most of the hand styles. Anything a preset does not reach is one tap away in Custom.
+ * cover the plain classic dial and four finished designs: Ripple, Bold, Digit and Orbit. Anything a preset does not reach is one tap away in Custom.
  */
 enum class WidgetPreset(val label: String, val config: WidgetConfig) {
 
@@ -19,62 +18,73 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
         WidgetConfig(),
     ),
 
-    /** Nothing on the dial at all: two needles and a seconds hand. */
-    BARE(
-        "Bare",
+    /**
+     * A scalloped dial with two thick short hands, and a small dot that circles the rim once a
+     * minute in place of a seconds hand. No numerals, no marks: the shape is the design.
+     */
+    RIPPLE(
+        "Ripple",
         WidgetConfig(
-            hourHand = HandStyle.NEEDLE,
+            look = AnalogLook.RIPPLE,
+            shape = FaceShape.RIPPLE,
+            hourHand = HandStyle.BATON,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.ORBIT,
+            centrePin = false,
+            numerals = NumeralSystem.NONE,
+            indexSet = IndexSet.NONE,
+            minorIndices = MinorIndex.NONE,
+        ),
+    ),
+
+    /** Four huge numerals in a tone only a little off the dial's own, with bold hands over them. */
+    BOLD(
+        "Bold",
+        WidgetConfig(
+            look = AnalogLook.BOLD,
+            shape = FaceShape.CIRCLE,
+            hourHand = HandStyle.BATON,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.NEEDLE,
+            numerals = NumeralSystem.ARABIC,
+            indexSet = IndexSet.QUARTERS,
+            minorIndices = MinorIndex.NONE,
+            numeralSize = NumeralSize.HUGE,
+            numeralWeight = NumeralWeight.BLACK,
+        ),
+    ),
+
+    /** The time itself, hours over minutes, as big numerals behind the hands. */
+    DIGIT(
+        "Digit",
+        WidgetConfig(
+            look = AnalogLook.DIGIT,
+            shape = FaceShape.RIPPLE,
+            hourHand = HandStyle.BATON,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.NEEDLE,
+            numerals = NumeralSystem.NONE,
+            indexSet = IndexSet.NONE,
+            minorIndices = MinorIndex.DOTS,
+        ),
+    ),
+
+    /**
+     * A round dial with four complications: a small clock on top, the date below, the time on
+     * the right and the battery on the left. The three hands here belong to the small clock.
+     */
+    ORBIT(
+        "Orbit",
+        WidgetConfig(
+            look = AnalogLook.ORBIT,
+            shape = FaceShape.CIRCLE,
+            hourHand = HandStyle.BATON,
             minuteHand = HandStyle.NEEDLE,
             secondHand = HandStyle.NEEDLE,
+            centrePin = true,
             numerals = NumeralSystem.NONE,
             indexSet = IndexSet.NONE,
             minorIndices = MinorIndex.NONE,
-        ),
-    ),
-
-    /** Twelve Roman numerals turned with the outline, the way a dial has always set them. */
-    ROMAN(
-        "Roman",
-        WidgetConfig(
-            shape = FaceShape.SQUIRCLE,
-            hourHand = HandStyle.LEAF,
-            minuteHand = HandStyle.LEAF,
-            numerals = NumeralSystem.ROMAN,
-            indexSet = IndexSet.ALL_TWELVE,
-            minorIndices = MinorIndex.NONE,
-            numeralSize = NumeralSize.SMALL,
-            // Upright, not turned. Turning is right for a bezel of digits, but a Roman numeral
-            // turned onto its side stops being read as a number at all. `III` at three o'clock
-            // becomes three stacked dashes.
-            numeralLayout = NumeralLayout.SHAPE_UPRIGHT,
-            numeralWeight = NumeralWeight.LIGHT,
-        ),
-    ),
-
-    /** Sixty ticks and arrowheads: no numerals, and none needed. */
-    RAILWAY(
-        "Railway",
-        WidgetConfig(
-            shape = FaceShape.ROUNDED_SQUARE,
-            hourHand = HandStyle.ARROW,
-            minuteHand = HandStyle.ARROW,
-            secondHand = HandStyle.NEEDLE,
-            numerals = NumeralSystem.NONE,
-            indexSet = IndexSet.NONE,
-            minorIndices = MinorIndex.TICKS_60,
-        ),
-    ),
-
-    /** The expressive one: a scalloped outline, open rings for the hours, leaf hands. */
-    BLOOM(
-        "Bloom",
-        WidgetConfig(
-            shape = FaceShape.COOKIE_7,
-            hourHand = HandStyle.LEAF,
-            minuteHand = HandStyle.LEAF,
-            numerals = NumeralSystem.NONE,
-            indexSet = IndexSet.NONE,
-            minorIndices = MinorIndex.RINGS,
         ),
     ),
     ;
