@@ -2,6 +2,7 @@ package app.materialclock.screensaver
 
 import android.service.dreams.DreamService
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -19,7 +20,6 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import app.materialclock.data.ScreensaverRepository
-import app.materialclock.ui.theme.MaterialClockTheme
 
 class ClockDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
 
@@ -62,7 +62,7 @@ class ClockDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwne
                 val settings by repository.settingsFlow.collectAsState(initial = null)
 
                 settings?.let { screensaverSettings ->
-                    MaterialClockTheme {
+                    MaterialTheme {
                         ScreensaverContent(
                             settings = screensaverSettings,
                             modifier = Modifier.fillMaxSize()
