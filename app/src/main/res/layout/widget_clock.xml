@@ -23,6 +23,30 @@
         android:importantForAccessibility="no" />
 
     <!--
+      Digit: the time as two lines of big numerals, hours over minutes. It sits BELOW the hands,
+      which is why it comes first. Switched on only for that design.
+    -->
+    <FrameLayout
+        android:id="@+id/readout_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/readout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:includeFontPadding="false"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 800" />
+    </FrameLayout>
+
+    <!--
       The hands sit in their own box so the 2x1 capsule can squeeze them over the small dial on
       the left (setViewPadding on this box). In every other size the box has no padding and fills
       the widget.
@@ -34,6 +58,19 @@
 
         <AnalogClock
             android:id="@+id/hands"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
+
+    <!-- Orbit: the small clock in the top disc. Placed with padding, like every slot. -->
+    <FrameLayout
+        android:id="@+id/orbit_hands_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <AnalogClock
+            android:id="@+id/orbit_hands"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </FrameLayout>
@@ -56,5 +93,44 @@
             android:maxLines="2"
             android:fontFamily="@font/google_sans_flex"
             android:fontVariationSettings="'wght' 600" />
+    </FrameLayout>
+    <!-- Orbit: the time in the right-hand circle ... -->
+    <FrameLayout
+        android:id="@+id/orbit_time_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/orbit_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 700" />
+    </FrameLayout>
+
+    <!-- ... and the date in the disc below. -->
+    <FrameLayout
+        android:id="@+id/orbit_date_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/orbit_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 700" />
     </FrameLayout>
 </FrameLayout>
