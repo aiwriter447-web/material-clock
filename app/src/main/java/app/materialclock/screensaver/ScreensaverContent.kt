@@ -63,14 +63,15 @@ fun ScreensaverContent(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // ── System 12/24 Hour Format Dynamic Detection ────────────────────
+    // 1. Time State (Fix: Declared first before using it)
+    var currentTime by remember { mutableStateOf(Date()) }
+
+    // 2. System 12/24 Hour Format Dynamic Detection
     val is24HourSystem = remember(currentTime) {
         DateFormat.is24HourFormat(context)
     }
 
-    // ── Time & Date Live Updates ──────────────────────────────────────
-    var currentTime by remember { mutableStateOf(Date()) }
-
+    // 3. Start Time Updates
     LaunchedEffect(settings.showSeconds) {
         val interval = if (settings.showSeconds) 1000L else 10000L
         while (true) {
@@ -193,7 +194,6 @@ fun ScreensaverContent(
                 .padding(24.dp)
         ) {
             if (isLandscape) {
-                // ── Landscape Layout ──────────────────────────────────
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(36.dp)
@@ -202,14 +202,12 @@ fun ScreensaverContent(
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Time-Based Greeting Text
                         Text(
                             text = greetingText,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White.copy(alpha = 0.9f)
                         )
-
                         if (settings.showDate) {
                             Text(
                                 text = dateString,
@@ -218,7 +216,6 @@ fun ScreensaverContent(
                                 color = Color.White
                             )
                         }
-
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (settings.showBattery) {
                                 InfoChip(
@@ -248,35 +245,21 @@ fun ScreensaverContent(
                             }
                         }
                     }
-
-                    // Main Clock Display
-                    TimeDisplay(
-                        timeText = timeMainString,
-                        amPmText = amPmString
-                    )
+                    TimeDisplay(timeText = timeMainString, amPmText = amPmString)
                 }
             } else {
-                // ── Portrait Layout ───────────────────────────────────
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Time-Based Greeting Text Above Clock
                     Text(
                         text = greetingText,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.9f)
                     )
-
                     Spacer(modifier = Modifier.height(4.dp))
-
-                    // Main Clock Display
-                    TimeDisplay(
-                        timeText = timeMainString,
-                        amPmText = amPmString
-                    )
-
+                    TimeDisplay(timeText = timeMainString, amPmText = amPmString)
                     if (settings.showDate) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
@@ -286,10 +269,7 @@ fun ScreensaverContent(
                             color = Color.White
                         )
                     }
-
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // Pill Badges Row
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -328,10 +308,7 @@ fun ScreensaverContent(
 }
 
 @Composable
-private fun TimeDisplay(
-    timeText: String,
-    amPmText: String
-) {
+private fun TimeDisplay(timeText: String, amPmText: String) {
     Row(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.Center
@@ -356,10 +333,7 @@ private fun TimeDisplay(
 }
 
 @Composable
-private fun InfoChip(
-    icon: @Composable () -> Unit,
-    text: String
-) {
+private fun InfoChip(icon: @Composable () -> Unit, text: String) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color(0xFF222222),
