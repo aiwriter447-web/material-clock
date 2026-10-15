@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import app.materialclock.data.AnalogLook
 import app.materialclock.data.FaceFill
 import app.materialclock.data.IndexSet
 import app.materialclock.data.MinorIndex
@@ -38,6 +39,14 @@ object FaceRenderer {
         val minuteHand: Int,
         val secondHand: Int,
         val pin: Int,
+        // The Orbit design's complications. Zero, and unused, for every other design.
+        val orbitTop: Int = 0,
+        val orbitOnTop: Int = 0,
+        val orbitBottom: Int = 0,
+        val orbitOnBottom: Int = 0,
+        val orbitRight: Int = 0,
+        val orbitOnRight: Int = 0,
+        val orbitTrack: Int = 0,
     )
 
     /**
@@ -66,6 +75,11 @@ object FaceRenderer {
                 fill.color = colours.face
                 canvas.drawPath(path, fill)
             }
+        }
+        if (config.look == AnalogLook.ORBIT) {
+            // Orbit has no indices or numerals: its four complications are the whole dial.
+            OrbitDesign.drawStatic(context, canvas, wf / 2f, hf / 2f, r, colours)
+            return Face(bitmap, r, wf / 2f, hf / 2f)
         }
         drawIndices(context, canvas, config, colours, outline, path, r)
         drawNumerals(context, canvas, config, colours, outline, r)
@@ -131,7 +145,8 @@ object FaceRenderer {
     ) {
         if (config.numerals == NumeralSystem.NONE || config.indexSet == IndexSet.NONE) return
 
-        val ringR = maxOf(
+        // Bold's huge numerals sit further in, or the "12" would run off the top of the dial.
+        val ringR = if (config.look == AnalogLook.BOLD) 0.62f else maxOf(
             DialGeometry.NUMERAL_RING,
             if (config.indexSet == IndexSet.ALL_TWELVE) DialGeometry.MIN_RING_FOR_TWELVE else 0f,
         )
