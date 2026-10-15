@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ColourSource
 import app.materialclock.data.DateMode
@@ -783,14 +784,22 @@ private fun renderStill(
         canvas.drawBitmap(bmp, face.cx - bmp.width / 2f, face.cy - bmp.height / 2f, null)
         canvas.restore()
     }
-    hand(config.hourHand, colours.hourHand, DialGeometry.HOUR_LENGTH, DialGeometry.HOUR_WIDTH, DialGeometry.HOUR_TAIL, 50.75f)
-    hand(config.minuteHand, colours.minuteHand, DialGeometry.MINUTE_LENGTH, DialGeometry.MINUTE_WIDTH, DialGeometry.MINUTE_TAIL, 9f)
-    hand(config.secondHand, colours.secondHand, DialGeometry.SECOND_LENGTH, DialGeometry.SECOND_WIDTH, DialGeometry.SECOND_TAIL, 35f)
-    if (config.centrePin) {
-        canvas.drawCircle(
-            face.cx, face.cy, DialGeometry.PIN_DIAMETER * face.rMin / 2f,
-            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).also { it.color = colours.pin },
-        )
+    val g = LookGeometry.hands(config.look)
+    // Digit's numerals sit behind the hands, so they are drawn first.
+    LookOverlay.underHands(context, canvas, config, colours, face)
+    if (config.look == AnalogLook.ORBIT) {
+        // Orbit has no main hands: its small clock, time and date are drawn instead.
+        LookOverlay.orbitLive(context, canvas, config, colours, face)
+    } else {
+        hand(config.hourHand, colours.hourHand, g.hourL, g.hourW, g.hourTail, 50.75f)
+        hand(config.minuteHand, colours.minuteHand, g.minuteL, g.minuteW, g.minuteTail, 9f)
+        hand(config.secondHand, colours.secondHand, g.secondL, g.secondW, g.secondTail, 35f)
+        if (config.centrePin) {
+            canvas.drawCircle(
+                face.cx, face.cy, DialGeometry.PIN_DIAMETER * face.rMin / 2f,
+                android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).also { it.color = colours.pin },
+            )
+        }
     }
     return face.bitmap
 }
