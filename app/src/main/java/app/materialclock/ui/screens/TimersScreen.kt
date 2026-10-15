@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,7 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -83,7 +84,7 @@ fun TimersScreen(
     onCancel: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
-    onAddPreset: () -> Unit, // Parameter kept for compatibility
+    onAddPreset: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -140,7 +141,7 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         Keypad(
             onDigit = onDigit, 
@@ -149,25 +150,23 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
         Box(modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
             WidePill(
                 text = "Start",
                 icon = Icons.Rounded.PlayArrow,
                 onClick = onStart,
-                height = 68.dp,
+                height = 60.dp,
                 container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // Updated 3-Row Grid Layout for Presets
-        PresetGrid(presets, onStartPreset, onEditPreset)
-
-        Spacer(Modifier.height(8.dp))
+        // 3-Column Vertical Grid for Presets (Top-to-Bottom scrolling)
+        PresetGrid(presets, onStartPreset, onEditPreset, modifier = Modifier.weight(1f))
     }
 }
 
@@ -176,17 +175,14 @@ private fun PresetGrid(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val gridHeight = if (presets.size <= 1) 52.dp else if (presets.size == 2) 110.dp else 168.dp
-
-    LazyHorizontalGrid(
-        rows = GridCells.Fixed(3),
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(gridHeight),
-        contentPadding = PaddingValues(start = 20.dp, end = 88.dp) // Extra 88dp right padding avoids FAB overlap
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp)
     ) {
         items(presets, key = { it.id }) { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
@@ -211,6 +207,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = CircleShape, 
         color = MaterialTheme.colorScheme.primaryContainer, 
         modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -222,21 +220,23 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
                 onLongClick = onLongClick
             ),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
-                preset.name,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                text = preset.name,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
             )
-            Spacer(Modifier.width(6.dp))
             Text(
-                "${minutes}m",
-                style = MaterialTheme.typography.labelMedium,
+                text = "${minutes}m",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                maxLines = 1
             )
         }
     }
@@ -244,8 +244,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 
 @Composable
 private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    val cap = 52.dp
-    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+    val cap = 48.dp
+    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
 
@@ -267,28 +267,28 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
                 indication = null, 
                 onClick = onClear 
             )
-            .padding(top = 4.dp, bottom = 4.dp)
+            .padding(top = 2.dp, bottom = 2.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes,$ss seconds" },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Hours", style = labelStyle, color = hColor)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 4.dp))
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Minutes", style = labelStyle, color = mColor)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 4.dp))
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Seconds", style = labelStyle, color = sColor)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
     }
@@ -299,14 +299,14 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
     val rows = listOf("123", "456", "789")
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { c -> DigitKey(c, onDigit, Modifier.weight(1f)) }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onClearAll,
@@ -332,7 +332,7 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
                     Icons.AutoMirrored.Rounded.Backspace, 
                     contentDescription = null, 
                     tint = MaterialTheme.colorScheme.onSurfaceVariant, 
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -344,7 +344,7 @@ private fun DigitKey(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = 
     KeyBox(modifier = modifier, onClick = { onDigit(digit) }, label = digit.toString()) {
         Text(
             digit.toString(),
-            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = ClockFace.family(opticalSize = 28f, width = 100f, weight = 500)),
+            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = ClockFace.family(opticalSize = 26f, width = 100f, weight = 500)),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -373,7 +373,7 @@ private fun KeyBox(
         color = container, 
         shape = CircleShape, 
         modifier = modifier
-            .height(54.dp)
+            .height(50.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
