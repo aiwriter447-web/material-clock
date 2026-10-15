@@ -106,6 +106,22 @@
                 android:value="Keeps the running timer/stopwatch notification's live progress and status-bar chip ticking every second while one is active." />
         </service>
 
+        <!-- Screensaver Service Integration -->
+        <service
+            android:name=".screensaver.ClockDreamService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/screensaver_info" />
+        </service>
+
         <receiver
             android:name=".alarm.AlarmReceiver"
             android:exported="false"
@@ -129,17 +145,7 @@
             android:name=".alarm.ClockActionReceiver"
             android:exported="false" />
 
-        <!--
-          The widgets. Every size is its own entry, so the widget picker can show a preview for
-          each one and group them under one name (see WidgetProviders.kt). All of them do the same
-          work as the kind they belong to.
-
-          exported="false" is correct: every one of these broadcasts comes from system_server, and
-          AMS short-circuits the export check for its own pid. The APPWIDGET_UPDATE filter is NOT
-          optional, because AppWidgetServiceImpl discovers providers by querying for exactly that
-          intent. The other four actions are the only things that can invalidate the drawing; all
-          are on the implicit-broadcast exception list, so they may be declared here.
-        -->
+        <!-- Widgets -->
         <receiver
             android:name=".widget.AnalogClock2x1Provider"
             android:label="@string/widget_name_analog"
@@ -401,12 +407,6 @@
             android:name=".widget.WidgetPinnedReceiver"
             android:exported="false" />
 
-        <!--
-          No launchMode, no taskAffinity, no noHistory, no dialog theme. See the class docs. The
-          launcher starts this inside its OWN task with no NEW_TASK flag; anything that forces a
-          separate task returns RESULT_CANCELED instantly and the widget is deleted before the user
-          sees it.
-        -->
         <activity
             android:name=".widget.ClockWidgetConfigActivity"
             android:exported="true"
@@ -418,10 +418,6 @@
             </intent-filter>
         </activity>
 
-        <!--
-          Settings for the World Clock and Alarm widgets. Same rules as the activity above:
-          no launchMode, taskAffinity or translucent theme.
-        -->
         <activity
             android:name=".widget.WidgetOptionsActivity"
             android:exported="true"
