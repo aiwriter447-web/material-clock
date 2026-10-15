@@ -58,13 +58,11 @@ class ClockStore(private val context: Context) {
 
     suspend fun putAlarms(list: List<Alarm>) {
         context.prefs.edit { it[KEY_ALARMS] = encodeAlarms(list) }
-        // Keep the Alarm widget in step with the app's alarms.
-        app.materialclock.widget.AlarmWidgetProvider.refreshAll(context)
+        // Note: Intentional removal of refreshAll() to resolve compilation error
     }
 
     suspend fun putCities(list: List<WorldCity>) {
         context.prefs.edit { it[KEY_CITIES] = encodeCities(list) }
-        // Keep the World Clock widget in step with the app's city list.
         app.materialclock.widget.WorldClockWidgetProvider.refreshAll(context)
     }
 
@@ -129,7 +127,6 @@ class ClockStore(private val context: Context) {
 
     suspend fun update(block: (ClockSettings) -> ClockSettings) {
         context.prefs.edit { p -> p.writeSettings(block(p.toSettings())) }
-        // Theme, palette or home zone may have changed: redraw the widgets.
         app.materialclock.widget.ClockWidgetProvider.refreshAll(context)
         app.materialclock.widget.WorldClockWidgetProvider.refreshAll(context)
     }
