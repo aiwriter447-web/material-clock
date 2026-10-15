@@ -6,13 +6,9 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.text.format.DateFormat
 import android.widget.RemoteViews
 import app.materialclock.MainActivity
 import app.materialclock.R
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 open class AlarmWidgetProvider : AppWidgetProvider() {
 
@@ -49,31 +45,21 @@ open class AlarmWidgetProvider : AppWidgetProvider() {
                 Intent(context, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
-
-            // Fetch Next Upcoming Alarm
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val nextAlarm = alarmManager?.nextAlarmClock
-
-            if (nextAlarm != null) {
-                val is24Hour = DateFormat.is24HourFormat(context)
-                val timePattern = if (is24Hour) "HH:mm" else "h:mm a"
-                val formattedTime = SimpleDateFormat(timePattern, Locale.getDefault())
-                    .format(Date(nextAlarm.triggerTime))
-
-                views.setTextViewText(R.id.text_alarm_time, formattedTime)
-                views.setTextViewText(R.id.text_alarm_label, "Upcoming Alarm")
-            } else {
-                views.setTextViewText(R.id.text_alarm_time, "No alarm")
-                views.setTextViewText(R.id.text_alarm_label, "No active alarms set")
-            }
+            views.setOnClickPendingIntent(R.id.background, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
+
+        fun refreshAll(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = android.content.ComponentName(context, AlarmWidgetProvider::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (appWidgetIds != null && appWidgetIds.isNotEmpty()) {
+                val intent = Intent(context, AlarmWidgetProvider::class.java)
+                intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+                context.sendBroadcast(intent)
+            }
+        }
     }
 }
-
-class AlarmWidget2x1Provider : AlarmWidgetProvider()
-class AlarmWidget2x2Provider : AlarmWidgetProvider()
-class AlarmWidget4x1Provider : AlarmWidgetProvider()
-class AlarmWidget4x2Provider : AlarmWidgetProvider()
