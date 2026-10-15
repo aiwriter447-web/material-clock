@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
 import android.os.BatteryManager
+import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import app.materialclock.data.ScreensaverBackgroundType
 import app.materialclock.data.ScreensaverSettings
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
@@ -61,6 +63,11 @@ fun ScreensaverContent(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    // ── System 12/24 Hour Format Dynamic Detection ────────────────────
+    val is24HourSystem = remember(currentTime) {
+        DateFormat.is24HourFormat(context)
+    }
+
     // ── Time & Date Live Updates ──────────────────────────────────────
     var currentTime by remember { mutableStateOf(Date()) }
 
@@ -69,6 +76,22 @@ fun ScreensaverContent(
         while (true) {
             currentTime = Date()
             delay(interval)
+        }
+    }
+
+    // ── Greeting Text Based on Time ───────────────────────────────────
+    val hourOfDay = remember(currentTime) {
+        val calendar = Calendar.getInstance()
+        calendar.time = currentTime
+        calendar.get(Calendar.HOUR_OF_DAY)
+    }
+
+    val greetingText = remember(hourOfDay) {
+        when (hourOfDay) {
+            in 5..11 -> "Morning"
+            in 12..16 -> "Afternoon"
+            in 17..20 -> "Evening"
+            else -> "Night"
         }
     }
 
@@ -99,7 +122,8 @@ fun ScreensaverContent(
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         val nextAlarm = alarmManager?.nextAlarmClock
         nextAlarmString = if (nextAlarm != null) {
-            SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(nextAlarm.triggerTime)).lowercase()
+            val alarmPattern = if (is24HourSystem) "HH:mm" else "h:mm a"
+            SimpleDateFormat(alarmPattern, Locale.getDefault()).format(Date(nextAlarm.triggerTime)).lowercase()
         } else {
             null
         }
@@ -134,13 +158,24 @@ fun ScreensaverContent(
     val clockAlpha = if (settings.nightModeEnabled) settings.clockDimmingFactor else 1.0f
 
     // ── Time & Date Formatting ────────────────────────────────────────
-    val mainTimePattern = if (settings.showSeconds) "h:mm:ss" else "h:mm"
+    val mainTimePattern = if (is24HourSystem) {
+        if (settings.showSeconds) "HH:mm:ss" else "HH:mm"
+    } else {
+        if (settings.showSeconds) "h:mm:ss" else "h:mm"
+    }
+
     val timeMainString = remember(currentTime, mainTimePattern) {
         SimpleDateFormat(mainTimePattern, Locale.getDefault()).format(currentTime)
     }
-    val amPmString = remember(currentTime) {
-        SimpleDateFormat("a", Locale.getDefault()).format(currentTime).lowercase()
+
+    val amPmString = remember(currentTime, is24HourSystem) {
+        if (!is24HourSystem) {
+            SimpleDateFormat("a", Locale.getDefault()).format(currentTime).lowercase()
+        } else {
+            ""
+        }
     }
+
     val dateString = remember(currentTime, settings.dateFormat) {
         SimpleDateFormat("EEEE, d MMM yyyy", Locale.getDefault()).format(currentTime)
     }
@@ -158,15 +193,23 @@ fun ScreensaverContent(
                 .padding(24.dp)
         ) {
             if (isLandscape) {
-                // ── Landscape Layout (Matches Pic 2) ──────────────────
+                // ── Landscape Layout ──────────────────────────────────
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(36.dp)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // Time-Based Greeting Text
+                        Text(
+                            text = greetingText,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+
                         if (settings.showDate) {
                             Text(
                                 text = dateString,
@@ -175,6 +218,7 @@ fun ScreensaverContent(
                                 color = Color.White
                             )
                         }
+
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (settings.showBattery) {
                                 InfoChip(
@@ -212,11 +256,21 @@ fun ScreensaverContent(
                     )
                 }
             } else {
-                // ── Portrait Layout (Matches Pic 1) ───────────────────
+                // ── Portrait Layout ───────────────────────────────────
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Time-Based Greeting Text Above Clock
+                    Text(
+                        text = greetingText,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     // Main Clock Display
                     TimeDisplay(
                         timeText = timeMainString,
@@ -224,7 +278,7 @@ fun ScreensaverContent(
                     )
 
                     if (settings.showDate) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = dateString,
                             fontSize = 20.sp,
@@ -233,7 +287,7 @@ fun ScreensaverContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Pill Badges Row
                     Row(
@@ -288,14 +342,16 @@ private fun TimeDisplay(
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = amPmText,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.padding(bottom = 14.dp)
-        )
+        if (amPmText.isNotEmpty()) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = amPmText,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 14.dp)
+            )
+        }
     }
 }
 
