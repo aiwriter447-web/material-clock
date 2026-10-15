@@ -867,11 +867,22 @@ private fun ExpressiveDismissButton(
         mutableStateOf(false)
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "dismissPulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dismissPulseScale"
+    )
+
     val scale by animateFloatAsState(
         targetValue = when {
             activated -> 0.96f
             pressed -> 0.92f
-            else -> 1f
+            else -> pulseScale
         },
         animationSpec = ExpressiveSpring,
         label = "dismissScale"
@@ -972,8 +983,23 @@ private fun ExpressiveSnoozeButton(
         mutableStateOf(false)
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "snoozePulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "snoozePulseScale"
+    )
+
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.94f else 1f,
+        targetValue = when {
+            activated -> 0.96f
+            pressed -> 0.92f
+            else -> pulseScale
+        },
         animationSpec = ExpressiveSpring,
         label = "snoozeScale"
     )
@@ -1134,6 +1160,27 @@ private fun ExpressiveSwipeToDismiss(
         label = "swipeHandleScale"
     )
 
+    val infiniteTransition = rememberInfiniteTransition(label = "slideHint")
+    val hintOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "hintOffset"
+    )
+
+    val hintAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "hintAlpha"
+    )
+
     DisposableEffect(Unit) {
         onDispose {
             springJob?.cancel()
@@ -1282,8 +1329,12 @@ private fun ExpressiveSwipeToDismiss(
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = "Swipe to dismiss",
-                tint = handleContentColor,
-                modifier = Modifier.size(34.dp)
+                tint = handleContentColor.copy(
+                    alpha = if (dragging || dismissed) 1f else hintAlpha
+                ),
+                modifier = Modifier
+                    .size(34.dp)
+                    .offset(x = if (dragging || dismissed) 0.dp else hintOffset.dp)
             )
         }
     }
