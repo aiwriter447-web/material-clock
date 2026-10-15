@@ -12,6 +12,8 @@ import androidx.graphics.shapes.toPath
 import app.materialclock.data.FaceShape
 import app.materialclock.data.PillOrientation
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -129,6 +131,8 @@ fun facePath(
             RoundedPolygon.circle(numVertices = 24, radius = 0.5f, centerX = 0.5f, centerY = 0.5f)
                 .fillRect(0f, 0f, w, h, uniform, out)
 
+        FaceShape.RIPPLE -> ripplePath(w, h, out)
+
         FaceShape.ROUNDED_SQUARE ->
             RoundedPolygon.rectangle(
                 width = w,
@@ -172,4 +176,30 @@ fun FaceShape.materialShape(): RoundedPolygon = when (this) {
     FaceShape.SQUIRCLE -> MaterialShapes.Square
     FaceShape.SUNNY -> MaterialShapes.Sunny
     else -> MaterialShapes.Circle
+}
+
+/**
+ * A circle with twelve shallow scallops, one of them at twelve o'clock, filling the box.
+ *
+ * Built from the polar curve `r = r0 (1 + a cos 12t)` and sampled finely enough (720 points) that
+ * the polyline is smooth at any widget size. It stays a true circle's size: the scallops reach the
+ * box edge and no further, whatever the box's proportions.
+ */
+fun ripplePath(w: Float, h: Float, out: Path = Path()): Path {
+    val depth = 0.05f
+    val bumps = 12
+    val r0 = min(w, h) / 2f / (1f + depth)
+    val cx = w / 2f
+    val cy = h / 2f
+    val steps = 720
+    out.rewind()
+    for (i in 0..steps) {
+        val t = (i * 2.0 * Math.PI / steps).toFloat()
+        val r = r0 * (1f + depth * cos(bumps * t))
+        val x = cx + r * sin(t)
+        val y = cy - r * cos(t)
+        if (i == 0) out.moveTo(x, y) else out.lineTo(x, y)
+    }
+    out.close()
+    return out
 }
