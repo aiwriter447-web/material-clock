@@ -13,6 +13,13 @@ data class WidgetConfig(
     /* ── Type ───────────────────────────────────────────────────────────────────────────── */
     val type: WidgetType = WidgetType.ANALOG,
 
+    /**
+     * The design family of an analog clock. [AnalogLook.CLASSIC] is the plain dial that every
+     * other setting below shapes; the others (Ripple, Bold, Digit, Orbit) are finished designs
+     * that also change colours and proportions, and are chosen from the presets.
+     */
+    val look: AnalogLook = AnalogLook.CLASSIC,
+
     /* ── Digital (only read when [type] is [WidgetType.DIGITAL]) ───────────────────────── */
     val digitalSeconds: Boolean = false,
     val digitalDate: Boolean = true,
@@ -59,6 +66,19 @@ data class WidgetConfig(
     val palette: Palette = Palette.EXPRESSIVE,
 )
 
+/** The ready-made analog designs. */
+enum class AnalogLook(val label: String) {
+    CLASSIC("Classic"),
+    /** A scalloped dial, thick short hands, and a dot that circles the rim for the seconds. */
+    RIPPLE("Ripple"),
+    /** Huge tone-on-tone numerals behind thick hands. */
+    BOLD("Bold"),
+    /** The time as big numerals behind the hands, on a scalloped dial with twelve dots. */
+    DIGIT("Digit"),
+    /** A plain dial carrying four small complications: a clock, the date, the time and the battery. */
+    ORBIT("Orbit"),
+}
+
 /** Card behind a Digital, World Clock or Alarm widget. */
 enum class WidgetBackground(val label: String) {
     FILLED("Filled"),
@@ -87,6 +107,8 @@ enum class WidgetType(val label: String) {
  */
 enum class FaceShape(val label: String, val parametric: Boolean = false) {
     CIRCLE("Circle", true),
+    /** A circle with twelve shallow scallops. Drawn by [facePath] itself, not a Material shape. */
+    RIPPLE("Ripple", true),
     ROUNDED_SQUARE("Rounded square", true),
     PILL("Pill", true),
 
@@ -146,6 +168,11 @@ enum class HandStyle(val label: String) {
     LEAF("Leaf"),
     /** Straight stick with a triangular arrowhead. */
     ARROW("Arrow"),
+    /**
+     * No hand at all: a dot riding the rim at the hand's angle. Meant for the seconds, where it
+     * turns the sweep into a small moving mark (the Ripple design).
+     */
+    ORBIT("Orbit dot"),
 }
 
 enum class NumeralSystem(val label: String) {
@@ -186,6 +213,7 @@ enum class NumeralSize(val label: String, val capR: Float) {
     SMALL("Small", 0.10f),
     MEDIUM("Medium", 0.15f),
     LARGE("Large", 0.22f),
+    HUGE("Huge", 0.42f),
 }
 
 enum class NumeralLayout(val label: String) {
