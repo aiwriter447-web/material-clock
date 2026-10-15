@@ -18,11 +18,14 @@ import android.widget.RemoteViews
 import androidx.compose.ui.graphics.toArgb
 import app.materialclock.MainActivity
 import app.materialclock.R
+import androidx.core.graphics.ColorUtils
+import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockStore
 import app.materialclock.data.DateMode
 import app.materialclock.data.DatePosition
 import app.materialclock.data.HandStyle
 import app.materialclock.data.WidgetConfig
+import app.materialclock.data.WidgetPreset
 import app.materialclock.data.WidgetType
 import java.io.ByteArrayOutputStream
 import java.util.Locale
@@ -136,11 +139,18 @@ object ClockWidgetRenderer {
     /** The 2x1 capsule: a small clock on the left, the date (two lines) on the right. */
     private fun pill(
         context: Context,
-        config: WidgetConfig,
+        requested: WidgetConfig,
         settings: app.materialclock.data.ClockSettings,
         w: Int,
         h: Int,
     ): RemoteViews {
+        // Orbit needs room for four complications, which a capsule's small dial cannot give, so
+        // there it shows the Ripple dial instead.
+        val config = if (requested.look == AnalogLook.ORBIT) {
+            WidgetPreset.RIPPLE.config.copy(colour = requested.colour, palette = requested.palette)
+        } else {
+            requested
+        }
         val colours = WidgetColours.resolve(context, config, settings)
         val scheme = WidgetColours.scheme(context, config, settings)
 
@@ -161,6 +171,7 @@ object ClockWidgetRenderer {
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
         views.setImageViewIcon(R.id.face, bmp.toIcon())
         applyHands(views, config, colours, face)
+        applyLook(context, views, config, colours, face, left.toFloat(), top.toFloat(), w, h)
         // The platform's hands must sit over the small dial only.
         views.setViewPadding(
             R.id.hands_slot,
@@ -218,6 +229,7 @@ object ClockWidgetRenderer {
         views.setViewPadding(R.id.hands_slot, 0, 0, 0, 0)
 
         applyHands(views, config, colours, face)
+        applyLook(context, views, config, colours, face, 0f, 0f, w, h)
 
         applyDate(context, views, config, colours, face, w, h)
 
@@ -240,6 +252,8 @@ object ClockWidgetRenderer {
         colours: FaceRenderer.Colours,
         face: FaceRenderer.Face,
     ) {
+        val g = LookGeometry.hands(config.look)
+
         // The dial itself is empty: the face underneath is what the user sees, and AnalogClock
         // would otherwise draw its own default clock face over it.
         views.setIcon(R.id.hands, "setDial", HandRenderer.blank().toIcon())
@@ -257,7 +271,7 @@ object ClockWidgetRenderer {
             R.id.hands, "setHourHand",
             HandRenderer.render(
                 config.hourHand, colours.hourHand, face.rMin,
-                DialGeometry.HOUR_LENGTH, DialGeometry.HOUR_WIDTH, DialGeometry.HOUR_TAIL,
+                g.hourL, g.hourW, g.hourTail,
                 if (topmost == 0) pinR else 0f, colours.pin,
             ).toIcon(),
         )
@@ -265,7 +279,7 @@ object ClockWidgetRenderer {
             R.id.hands, "setMinuteHand",
             HandRenderer.render(
                 config.minuteHand, colours.minuteHand, face.rMin,
-                DialGeometry.MINUTE_LENGTH, DialGeometry.MINUTE_WIDTH, DialGeometry.MINUTE_TAIL,
+                g.minuteL, g.minuteW, g.minuteTail,
                 if (topmost == 1) pinR else 0f, colours.pin,
             ).toIcon(),
         )
@@ -279,8 +293,121 @@ object ClockWidgetRenderer {
                 R.id.hands, "setSecondHand",
                 HandRenderer.render(
                     config.secondHand, colours.secondHand, face.rMin,
-                    DialGeometry.SECOND_LENGTH, DialGeometry.SECOND_WIDTH, DialGeometry.SECOND_TAIL,
+                    g.secondL, g.secondW, g.secondTail,
                     if (topmost == 2) pinR else 0f, colours.pin,
+                ).toIcon(),
+            )
+        }
+    }
+
+    /**
+     * Everything that belongs to a finished design rather than to the plain dial.
+     *
+     * Every extra view is switched explicitly, on or off, on every draw. A launcher may re-use the
+     * views it already has when the same widget is redrawn at another size or with another design,
+     * so anything left unset would keep whatever the previous draw gave it.
+     *
+     * ([originX], [originY]) is where the face bitmap sits inside the widget, which is (0, 0)
+     * except in the 2x1 capsule, and ([w], [h]) is the widget's own size.
+     */
+    private fun applyLook(
+        context: Context,
+        views: RemoteViews,
+        config: WidgetConfig,
+        colours: FaceRenderer.Colours,
+        face: FaceRenderer.Face,
+        originX: Float,
+        originY: Float,
+        w: Int,
+        h: Int,
+    ) {
+        /** Squeezes a full-size slot down to the square of half-width [half] around a point. */
+        fun place(id: Int, cx: Float, cy: Float, half: Float) {
+            views.setViewPadding(
+                id,
+                (originX + cx - half).roundToInt().coerceAtLeast(0),
+                (originY + cy - half).roundToInt().coerceAtLeast(0),
+                (w - (originX + cx + half)).roundToInt().coerceAtLeast(0),
+                (h - (originY + cy + half)).roundToInt().coerceAtLeast(0),
+            )
+        }
+
+        // Digit: the time as big numerals behind the hands.
+        val digit = config.look == AnalogLook.DIGIT
+        views.setViewVisibility(R.id.readout_slot, if (digit) View.VISIBLE else View.GONE)
+        if (digit) {
+            place(R.id.readout_slot, face.cx, face.cy, face.rMin)
+            views.setCharSequence(R.id.readout, "setFormat12Hour", "hh'\n'mm")
+            views.setCharSequence(R.id.readout, "setFormat24Hour", "HH'\n'mm")
+            views.setTextColor(R.id.readout, colours.onFace)
+            views.setTextViewTextSize(R.id.readout, TypedValue.COMPLEX_UNIT_PX, 0.50f * face.rMin)
+        }
+
+        // Orbit: the main hands give way to the small clock and the two text complications.
+        val orbit = config.look == AnalogLook.ORBIT
+        val orbitVisibility = if (orbit) View.VISIBLE else View.GONE
+        views.setViewVisibility(R.id.hands_slot, if (orbit) View.GONE else View.VISIBLE)
+        views.setViewVisibility(R.id.orbit_hands_slot, orbitVisibility)
+        views.setViewVisibility(R.id.orbit_time_slot, orbitVisibility)
+        views.setViewVisibility(R.id.orbit_date_slot, orbitVisibility)
+        if (!orbit) return
+
+        val s = OrbitDesign.slots(face.cx, face.cy, face.rMin)
+
+        // The small clock, in the disc on top.
+        val half = s.top.r * 0.92f
+        place(R.id.orbit_hands_slot, s.top.cx, s.top.cy, half)
+        applyMiniHands(views, config, colours, half)
+
+        // The time, in the circle on the right: "12 : 40" over "am", or just "13 : 05".
+        place(R.id.orbit_time_slot, s.right.cx, s.right.cy, s.right.r)
+        views.setCharSequence(R.id.orbit_time, "setFormat12Hour", "h : mm'\n'a")
+        views.setCharSequence(R.id.orbit_time, "setFormat24Hour", "HH : mm")
+        views.setTextColor(R.id.orbit_time, colours.orbitOnRight)
+        views.setTextViewTextSize(R.id.orbit_time, TypedValue.COMPLEX_UNIT_PX, s.right.r * 0.40f)
+
+        // The date, in the disc below: "Wed" over "14".
+        place(R.id.orbit_date_slot, s.bottom.cx, s.bottom.cy, s.bottom.r)
+        views.setCharSequence(R.id.orbit_date, "setFormat12Hour", "EEE'\n'd")
+        views.setCharSequence(R.id.orbit_date, "setFormat24Hour", "EEE'\n'd")
+        views.setTextColor(R.id.orbit_date, colours.orbitOnBottom)
+        views.setTextViewTextSize(R.id.orbit_date, TypedValue.COMPLEX_UNIT_PX, s.bottom.r * 0.50f)
+    }
+
+    /** The three hands of Orbit's small clock, measured against that clock's own radius. */
+    private fun applyMiniHands(
+        views: RemoteViews,
+        config: WidgetConfig,
+        colours: FaceRenderer.Colours,
+        half: Float,
+    ) {
+        val g = LookGeometry.hands(AnalogLook.ORBIT)
+        val dark = colours.orbitOnTop
+        val soft = ColorUtils.blendARGB(dark, colours.orbitTop, 0.45f)
+        val pinR = 0.12f
+
+        views.setIcon(R.id.orbit_hands, "setDial", HandRenderer.blank().toIcon())
+        views.setIcon(
+            R.id.orbit_hands, "setHourHand",
+            HandRenderer.render(
+                config.hourHand, dark, half, g.hourL, g.hourW, g.hourTail,
+                if (config.secondHand == HandStyle.OFF && config.minuteHand == HandStyle.OFF) pinR else 0f, dark,
+            ).toIcon(),
+        )
+        views.setIcon(
+            R.id.orbit_hands, "setMinuteHand",
+            HandRenderer.render(
+                config.minuteHand, soft, half, g.minuteL, g.minuteW, g.minuteTail,
+                if (config.secondHand == HandStyle.OFF) pinR else 0f, dark,
+            ).toIcon(),
+        )
+        if (config.secondHand == HandStyle.OFF) {
+            views.setIcon(R.id.orbit_hands, "setSecondHand", null)
+        } else {
+            views.setIcon(
+                R.id.orbit_hands, "setSecondHand",
+                HandRenderer.render(
+                    config.secondHand, dark, half, g.secondL, g.secondW, g.secondTail, pinR, dark,
                 ).toIcon(),
             )
         }
