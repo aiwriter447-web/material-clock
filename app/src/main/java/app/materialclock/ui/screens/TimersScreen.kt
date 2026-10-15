@@ -26,8 +26,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
@@ -46,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -83,7 +83,7 @@ fun TimersScreen(
     onCancel: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
-    onAddPreset: () -> Unit, // Parameter kept so we don't break compatibility, but unused here
+    onAddPreset: () -> Unit, // Parameter kept for compatibility
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -107,7 +107,7 @@ fun TimersScreen(
     }
 }
 
-/* ── Setting (Updated with Segmented Display & Pill Shapes) ────────────────────────────────── */
+/* ── Setting Display ───────────────────────────────────────────────────────────── */
 
 @Composable
 private fun SetTimer(
@@ -140,7 +140,7 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(24.dp))
 
         Keypad(
             onDigit = onDigit, 
@@ -149,42 +149,48 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         Box(modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
             WidePill(
                 text = "Start",
                 icon = Icons.Rounded.PlayArrow,
                 onClick = onStart,
-                height = 76.dp,
+                height = 68.dp,
                 container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
 
-        PresetRow(presets, onStartPreset, onEditPreset)
+        // Updated 3-Row Grid Layout for Presets
+        PresetGrid(presets, onStartPreset, onEditPreset)
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }
 
 @Composable
-private fun PresetRow(
+private fun PresetGrid(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
 ) {
-    LazyRow(
+    val gridHeight = if (presets.size <= 1) 52.dp else if (presets.size == 2) 110.dp else 168.dp
+
+    LazyHorizontalGrid(
+        rows = GridCells.Fixed(3),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 20.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(gridHeight),
+        contentPadding = PaddingValues(start = 20.dp, end = 88.dp) // Extra 88dp right padding avoids FAB overlap
     ) {
         items(presets, key = { it.id }) { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
-        // Removed the inline `+ Add` button perfectly! Now FAB controls this action.
     }
 }
 
@@ -216,19 +222,21 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
                 onLongClick = onLongClick
             ),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
             Text(
                 preset.name,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
+            Spacer(Modifier.width(6.dp))
             Text(
-                "${minutes} min",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                "${minutes}m",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
             )
         }
     }
@@ -236,8 +244,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 
 @Composable
 private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    val cap = 56.dp
-    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp)
+    val cap = 52.dp
+    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
 
@@ -259,12 +267,12 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
                 indication = null, 
                 onClick = onClear 
             )
-            .padding(top = 8.dp, bottom = 8.dp)
+            .padding(top = 4.dp, bottom = 4.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes,$ss seconds" },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Hours", style = labelStyle, color = hColor)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
@@ -272,7 +280,7 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Minutes", style = labelStyle, color = mColor)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
@@ -280,7 +288,7 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Seconds", style = labelStyle, color = sColor)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
     }
@@ -365,7 +373,7 @@ private fun KeyBox(
         color = container, 
         shape = CircleShape, 
         modifier = modifier
-            .height(58.dp)
+            .height(54.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -376,7 +384,7 @@ private fun KeyBox(
     }
 }
 
-/* ── Running (Consistent UI elements) ──────────────────────────────────────────────────────── */
+/* ── Running View ───────────────────────────────────────────────────────────────── */
 
 @Composable
 private fun RunningTimer(
