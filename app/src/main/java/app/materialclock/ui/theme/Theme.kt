@@ -1,110 +1,529 @@
 package app.materialclock.ui.theme
 
-import android.graphics.Color as AndroidColor
-import android.os.Build
-import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
-import androidx.activity.compose.LocalActivity
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.LocalTonalElevationEnabled
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import app.materialclock.data.DarkMode
-import app.materialclock.data.ThemeSettings
 
-/**
- * The theme root.
- *
- * [MaterialExpressiveTheme] rather than `MaterialTheme` is the single most consequential line here:
- * it installs the expressive motion scheme, shapes and the emphasized type slots. It carries no
- * opt-in annotation in 1.5.0-alpha25; the theming layer went stable ahead of the components.
- *
- * ## One scheme for the whole app
- *
- * An earlier build ran Alarms and World Clock dark while Timers and Stopwatch were light, because
- * that is how the concept renders happened to be published. As a *reconstruction* that was
- * faithful; as an *app* it was indefensible. Light and dark are a user setting and an
- * accessibility one, and no four-tab app should flash white when you press the third tab at 3 a.m.
- * The concept's contrast is preserved instead through surface roles, which is where it belongs.
- *
- * ## Colour source
- *
- * Wallpaper colour is the default from API 31 up. Below that, or with it switched off, the app
- * falls back to one of the [Palette] entries, every one of them the Expressive scheme variant.
- */
-@Composable
-fun ClockTheme(
-    settings: ThemeSettings = ThemeSettings(),
-    content: @Composable () -> Unit,
+enum class Palette(
+    val displayName: String,
+    val light: ColorScheme,
+    val dark: ColorScheme
 ) {
-    val dark = when (settings.darkMode) {
-        DarkMode.SYSTEM -> isSystemInDarkTheme()
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-    }
-
-    val context = LocalContext.current
-    val base = when {
-        settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dark -> settings.palette.dark
-        else -> settings.palette.light
-    }
-    val amoled = dark && settings.amoledBlack
-    val scheme = remember(base, amoled) { if (amoled) base.toAmoledBlack() else base }
-
-    val activity = LocalActivity.current as? ComponentActivity
-    LaunchedEffect(dark, activity) {
-        val bar = if (dark) {
-            SystemBarStyle.dark(AndroidColor.TRANSPARENT)
-        } else {
-            SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
-        }
-        activity?.enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
-    }
-
-    CompositionLocalProvider(
-        // Without this, `Surface` composites `surfaceTint` over its container as elevation rises,
-        // quietly painting grey back over a pure-black AMOLED background, which is the one thing
-        // the setting exists to prevent.
-        LocalTonalElevationEnabled provides !amoled,
-    ) {
-        MaterialExpressiveTheme(
-            colorScheme = scheme,
-            // [M3E-NEW] Under-damped spatial springs paired with critically damped effects
-            // springs. Movement overshoots; colour never does. On a clock that asymmetry has more
-            // to do than usual, since every screen here has something in continuous motion.
-            motionScheme = MotionScheme.expressive(),
-            typography = remember { clockTypography() },
-            content = content,
+    // SLATE: The original default clock UI look (Slate-Blue cards with Soft Lavender FAB)
+    SLATE(
+        displayName = "Slate",
+        light = lightColorScheme(
+            primary = Color(0xFF4A6583),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFD1E0F3),
+            onPrimaryContainer = Color(0xFF142438),
+            secondary = Color(0xFF53647A),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFE2EAF5),
+            onSecondaryContainer = Color(0xFF152231),
+            tertiary = Color(0xFF7863B8),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFDCD4F8),
+            onTertiaryContainer = Color(0xFF2B1664),
+            background = Color(0xFFF6F8FA),
+            onBackground = Color(0xFF191C20),
+            surface = Color(0xFFF6F8FA),
+            onSurface = Color(0xFF191C20),
+            surfaceVariant = Color(0xFFDDE3EA),
+            onSurfaceVariant = Color(0xFF41474D),
+            outline = Color(0xFF71787E)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFA3C2EA),
+            onPrimary = Color(0xFF193652),
+            primaryContainer = Color(0xFF324D6A),
+            onPrimaryContainer = Color(0xFFD1E0F3),
+            secondary = Color(0xFFB1C6DF),
+            onSecondary = Color(0xFF253549),
+            secondaryContainer = Color(0xFF2A3441),
+            onSecondaryContainer = Color(0xFFDDE8F6),
+            tertiary = Color(0xFFC7BFFF),
+            onTertiary = Color(0xFF2D166F),
+            tertiaryContainer = Color(0xFFD8CAFF),
+            onTertiaryContainer = Color(0xFF250D62),
+            background = Color(0xFF0F1115),
+            onBackground = Color(0xFFE1E2E5),
+            surface = Color(0xFF0F1115),
+            onSurface = Color(0xFFE1E2E5),
+            surfaceVariant = Color(0xFF232A32),
+            onSurfaceVariant = Color(0xFFC1C7CE),
+            outline = Color(0xFF8B9198)
         )
-    }
-}
+    ),
 
-/**
- * True-black variant of a dark scheme, for OLED panels.
- *
- * A clock is the app most likely to be showing on a dimmed screen at 3 a.m., which is exactly when
- * a near-black surface still glows. Accent roles and the upper containers are untouched: the alarm
- * tiles live on `surfaceContainer`, so blackening the page increases their separation rather than
- * flattening it.
- */
-fun ColorScheme.toAmoledBlack(): ColorScheme = copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceDim = Color.Black,
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Color(0xFF0A0A0A),
-    surfaceContainer = Color(0xFF141018),
-    scrim = Color.Black,
-)
+    // ARTIST: Soft periwinkle/lavender with sunny yellow/amber cards & dark charcoal accents
+    ARTIST(
+        displayName = "Artist",
+        light = lightColorScheme(
+            primary = Color(0xFF5D5FEF),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE0E0FF),
+            onPrimaryContainer = Color(0xFF111144),
+            secondary = Color(0xFFFFB74D),
+            onSecondary = Color(0xFF4A3200),
+            secondaryContainer = Color(0xFFFFDF9E),
+            onSecondaryContainer = Color(0xFF261900),
+            tertiary = Color(0xFF343A40),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF212529),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF4F5FB),
+            onBackground = Color(0xFF1A1B22),
+            surface = Color(0xFFF4F5FB),
+            onSurface = Color(0xFF1A1B22),
+            surfaceVariant = Color(0xFFE3E4EF),
+            onSurfaceVariant = Color(0xFF464653),
+            outline = Color(0xFF767684)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFBFC0FF),
+            onPrimary = Color(0xFF2B2DAB),
+            primaryContainer = Color(0xFF4345D1),
+            onPrimaryContainer = Color(0xFFE0E0FF),
+            secondary = Color(0xFFFFC672),
+            onSecondary = Color(0xFF4A3200),
+            secondaryContainer = Color(0xFF402D00),
+            onSecondaryContainer = Color(0xFFFFDF9E),
+            tertiary = Color(0xFFE9ECEF),
+            onTertiary = Color(0xFF212529),
+            tertiaryContainer = Color(0xFF343A40),
+            onTertiaryContainer = Color(0xFFF8F9FA),
+            background = Color(0xFF14141B),
+            onBackground = Color(0xFFE4E1E6),
+            surface = Color(0xFF14141B),
+            onSurface = Color(0xFFE4E1E6),
+            surfaceVariant = Color(0xFF262630),
+            onSurfaceVariant = Color(0xFFC7C5D0),
+            outline = Color(0xFF90909A)
+        )
+    ),
+
+    // EARTH: Forest green active elements with sage moss tones
+    EARTH(
+        displayName = "Earth",
+        light = lightColorScheme(
+            primary = Color(0xFF386A34),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFD8F2D1),
+            onPrimaryContainer = Color(0xFF032104),
+            secondary = Color(0xFF52634E),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFD5E8CE),
+            onSecondaryContainer = Color(0xFF101F0E),
+            tertiary = Color(0xFF386A34),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF386A34),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF7FBF2),
+            onBackground = Color(0xFF181D17),
+            surface = Color(0xFFF7FBF2),
+            onSurface = Color(0xFF181D17),
+            surfaceVariant = Color(0xFFDFE4D8),
+            onSurfaceVariant = Color(0xFF43483F),
+            outline = Color(0xFF73796E)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF9CD695),
+            onPrimary = Color(0xFF06390A),
+            primaryContainer = Color(0xFF20511E),
+            onPrimaryContainer = Color(0xFFD8F2D1),
+            secondary = Color(0xFFB9CCB3),
+            onSecondary = Color(0xFF253422),
+            secondaryContainer = Color(0xFF202A1C),
+            onSecondaryContainer = Color(0xFFD5E8CE),
+            tertiary = Color(0xFF9CD695),
+            onTertiary = Color(0xFF06390A),
+            tertiaryContainer = Color(0xFF386A34),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF10140F),
+            onBackground = Color(0xFFE0E4DB),
+            surface = Color(0xFF10140F),
+            onSurface = Color(0xFFE0E4DB),
+            surfaceVariant = Color(0xFF21251E),
+            onSurfaceVariant = Color(0xFFC3C8BC),
+            outline = Color(0xFF8D9387)
+        )
+    ),
+
+    // EXPRESSIVE: Vibrant purple with striking Lime Green contrast cards
+    EXPRESSIVE(
+        displayName = "Expressive",
+        light = lightColorScheme(
+            primary = Color(0xFF8A2BE2),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFF0E5FF),
+            onPrimaryContainer = Color(0xFF2D0060),
+            secondary = Color(0xFF76B900),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFE3FFB3),
+            onSecondaryContainer = Color(0xFF213600),
+            tertiary = Color(0xFF8A2BE2),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF76B900),
+            onTertiaryContainer = Color(0xFF162400),
+            background = Color(0xFFFAF8FC),
+            onBackground = Color(0xFF1D1B20),
+            surface = Color(0xFFFAF8FC),
+            onSurface = Color(0xFF1D1B20),
+            surfaceVariant = Color(0xFFE9E0F2),
+            onSurfaceVariant = Color(0xFF49454E),
+            outline = Color(0xFF7A757F)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFD6B2FF),
+            onPrimary = Color(0xFF4B0096),
+            primaryContainer = Color(0xFF6A00D1),
+            onPrimaryContainer = Color(0xFFF0E5FF),
+            secondary = Color(0xFFA5F03A),
+            onSecondary = Color(0xFF3B6100),
+            secondaryContainer = Color(0xFF284300),
+            onSecondaryContainer = Color(0xFFE3FFB3),
+            tertiary = Color(0xFFA5F03A),
+            onTertiary = Color(0xFF162400),
+            tertiaryContainer = Color(0xFF76B900),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF141217),
+            onBackground = Color(0xFFE6E1E9),
+            surface = Color(0xFF141217),
+            onSurface = Color(0xFFE6E1E9),
+            surfaceVariant = Color(0xFF292430),
+            onSurfaceVariant = Color(0xFFCBC3D4),
+            outline = Color(0xFF958E9B)
+        )
+    ),
+
+    // GALAXY: Cosmic deep space purple with vibrant violet accents
+    GALAXY(
+        displayName = "Galaxy",
+        light = lightColorScheme(
+            primary = Color(0xFF673AB7),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFEADDFF),
+            onPrimaryContainer = Color(0xFF21005D),
+            secondary = Color(0xFF625B71),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFE8DEF8),
+            onSecondaryContainer = Color(0xFF1D192B),
+            tertiary = Color(0xFF7D5260),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF673AB7),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFFDFBFF),
+            onBackground = Color(0xFF1C1B1F),
+            surface = Color(0xFFFDFBFF),
+            onSurface = Color(0xFF1C1B1F),
+            surfaceVariant = Color(0xFFE7E0EC),
+            onSurfaceVariant = Color(0xFF49454F),
+            outline = Color(0xFF79747E)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFD0BCFF),
+            onPrimary = Color(0xFF381E72),
+            primaryContainer = Color(0xFF23144A),
+            onPrimaryContainer = Color(0xFFEADDFF),
+            secondary = Color(0xFFCCC2DC),
+            onSecondary = Color(0xFF332D41),
+            secondaryContainer = Color(0xFF1E1928),
+            onSecondaryContainer = Color(0xFFE8DEF8),
+            tertiary = Color(0xFFEFB8C8),
+            onTertiary = Color(0xFF492532),
+            tertiaryContainer = Color(0xFF8A59FF),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF0F0B17),
+            onBackground = Color(0xFFE6E1E5),
+            surface = Color(0xFF0F0B17),
+            onSurface = Color(0xFFE6E1E5),
+            surfaceVariant = Color(0xFF1C1824),
+            onSurfaceVariant = Color(0xFFCAC4D0),
+            outline = Color(0xFF938F99)
+        )
+    ),
+
+    // INDIGO: Deep Royal Blue with high contrast professional look
+    INDIGO(
+        displayName = "Indigo",
+        light = lightColorScheme(
+            primary = Color(0xFF283593),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE8EAF6),
+            onPrimaryContainer = Color(0xFF0E1442),
+            secondary = Color(0xFF3949AB),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFC5CAE9),
+            onSecondaryContainer = Color(0xFF121B54),
+            tertiary = Color(0xFF283593),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF283593),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF8F9FA),
+            onBackground = Color(0xFF1A1C23),
+            surface = Color(0xFFF8F9FA),
+            onSurface = Color(0xFF1A1C23),
+            surfaceVariant = Color(0xFFE0E2EC),
+            onSurfaceVariant = Color(0xFF434653),
+            outline = Color(0xFF747784)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF7986CB),
+            onPrimary = Color(0xFF0A1045),
+            primaryContainer = Color(0xFF1A237E),
+            onPrimaryContainer = Color(0xFFE8EAF6),
+            secondary = Color(0xFF9FA8DA),
+            onSecondary = Color(0xFF162060),
+            secondaryContainer = Color(0xFF1F2445),
+            onSecondaryContainer = Color(0xFFE8EAF6),
+            tertiary = Color(0xFF7986CB),
+            onTertiary = Color(0xFF0A1045),
+            tertiaryContainer = Color(0xFF3949AB),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF0D1017),
+            onBackground = Color(0xFFE2E2E6),
+            surface = Color(0xFF0D1017),
+            onSurface = Color(0xFFE2E2E6),
+            surfaceVariant = Color(0xFF1A1C26),
+            onSurfaceVariant = Color(0xFFC4C6D0),
+            outline = Color(0xFF8E909D)
+        )
+    ),
+
+    // MOON: Midnight navy background with Cyan/Aqua glowing glassy accents
+    MOON(
+        displayName = "Moon",
+        light = lightColorScheme(
+            primary = Color(0xFF00838F),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE0F7FA),
+            onPrimaryContainer = Color(0xFF00363A),
+            secondary = Color(0xFF006064),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFB2EBF2),
+            onSecondaryContainer = Color(0xFF002022),
+            tertiary = Color(0xFF00838F),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF00E5FF),
+            onTertiaryContainer = Color(0xFF002B30),
+            background = Color(0xFFF4FAFB),
+            onBackground = Color(0xFF14191C),
+            surface = Color(0xFFF4FAFB),
+            onSurface = Color(0xFF14191C),
+            surfaceVariant = Color(0xFFDCE4E6),
+            onSurfaceVariant = Color(0xFF3F484A),
+            outline = Color(0xFF6F797A)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF4DD0E1),
+            onPrimary = Color(0xFF00363A),
+            primaryContainer = Color(0xFF0A1929),
+            onPrimaryContainer = Color(0xFFB2EBF2),
+            secondary = Color(0xFF26C6DA),
+            onSecondary = Color(0xFF00363A),
+            secondaryContainer = Color(0xFF071421),
+            onSecondaryContainer = Color(0xFFE0F7FA),
+            tertiary = Color(0xFF00E5FF),
+            onTertiary = Color(0xFF00363A),
+            tertiaryContainer = Color(0xFF00E5FF),
+            onTertiaryContainer = Color(0xFF002B30),
+            background = Color(0xFF040A10),
+            onBackground = Color(0xFFE0E3E5),
+            surface = Color(0xFF040A10),
+            onSurface = Color(0xFFE0E3E5),
+            surfaceVariant = Color(0xFF111A24),
+            onSurfaceVariant = Color(0xFFBFC8CA),
+            outline = Color(0xFF899294)
+        )
+    ),
+
+    // NOTHING: Minimalist Pure Black & White with stark Bright Red accents
+    NOTHING(
+        displayName = "Nothing",
+        light = lightColorScheme(
+            primary = Color(0xFFD32F2F),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFFFEBEE),
+            onPrimaryContainer = Color(0xFF410002),
+            secondary = Color(0xFF121212),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFE0E0E0),
+            onSecondaryContainer = Color(0xFF000000),
+            tertiary = Color(0xFFD32F2F),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFD32F2F),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFFFFFFF),
+            onBackground = Color(0xFF121212),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF121212),
+            surfaceVariant = Color(0xFFF5F5F5),
+            onSurfaceVariant = Color(0xFF404040),
+            outline = Color(0xFF757575)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFE53935),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFF8E0000),
+            onPrimaryContainer = Color(0xFFFFDAD6),
+            secondary = Color(0xFFE53935),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFF1A1A1A),
+            onSecondaryContainer = Color(0xFFFFFFFF),
+            tertiary = Color(0xFFE53935),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFD32F2F),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF000000),
+            onBackground = Color(0xFFFFFFFF),
+            surface = Color(0xFF000000),
+            onSurface = Color(0xFFFFFFFF),
+            surfaceVariant = Color(0xFF1C1C1C),
+            onSurfaceVariant = Color(0xFFC9C9C9),
+            outline = Color(0xFF616161)
+        )
+    ),
+
+    // OCEAN: Light teal/sky blue tones reflecting water and marine life
+    OCEAN(
+        displayName = "Ocean",
+        light = lightColorScheme(
+            primary = Color(0xFF0277BD),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE1F5FE),
+            onPrimaryContainer = Color(0xFF002741),
+            secondary = Color(0xFF0288D1),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFB3E5FC),
+            onSecondaryContainer = Color(0xFF003049),
+            tertiary = Color(0xFF0277BD),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF0277BD),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF5F9FD),
+            onBackground = Color(0xFF181C1F),
+            surface = Color(0xFFF5F9FD),
+            onSurface = Color(0xFF181C1F),
+            surfaceVariant = Color(0xFFDEE4E8),
+            onSurfaceVariant = Color(0xFF42474B),
+            outline = Color(0xFF72787C)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF4FC3F7),
+            onPrimary = Color(0xFF00344F),
+            primaryContainer = Color(0xFF01579B),
+            onPrimaryContainer = Color(0xFFE1F5FE),
+            secondary = Color(0xFF81D4FA),
+            onSecondary = Color(0xFF003C59),
+            secondaryContainer = Color(0xFF112230),
+            onSecondaryContainer = Color(0xFFE1F5FE),
+            tertiary = Color(0xFF29B6F6),
+            onTertiary = Color(0xFF00344F),
+            tertiaryContainer = Color(0xFF0288D1),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF0B1218),
+            onBackground = Color(0xFFE0E2E5),
+            surface = Color(0xFF0B1218),
+            onSurface = Color(0xFFE0E2E5),
+            surfaceVariant = Color(0xFF1F2830),
+            onSurfaceVariant = Color(0xFFC0C7CB),
+            outline = Color(0xFF8A9195)
+        )
+    ),
+
+    // PIXEL: Elegant Blush Pink and Rose aesthetic
+    PIXEL(
+        displayName = "Pixel",
+        light = lightColorScheme(
+            primary = Color(0xFFD81B60),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFFCE4EC),
+            onPrimaryContainer = Color(0xFF4B001F),
+            secondary = Color(0xFFEC407A),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFF8BBD0),
+            onSecondaryContainer = Color(0xFF5C0028),
+            tertiary = Color(0xFFD81B60),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFEC407A),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFFCF8F9),
+            onBackground = Color(0xFF201A1C),
+            surface = Color(0xFFFCF8F9),
+            onSurface = Color(0xFF201A1C),
+            surfaceVariant = Color(0xFFF2DFE4),
+            onSurfaceVariant = Color(0xFF514347),
+            outline = Color(0xFF837377)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFF48FB1),
+            onPrimary = Color(0xFF5C0028),
+            primaryContainer = Color(0xFF880E4F),
+            onPrimaryContainer = Color(0xFFFCE4EC),
+            secondary = Color(0xFFFF80AB),
+            onSecondary = Color(0xFF4A001F),
+            secondaryContainer = Color(0xFF28141C),
+            onSecondaryContainer = Color(0xFFFCE4EC),
+            tertiary = Color(0xFFFF80AB),
+            onTertiary = Color(0xFF4A001F),
+            tertiaryContainer = Color(0xFFD81B60),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF161012),
+            onBackground = Color(0xFFEBE0E2),
+            surface = Color(0xFF161012),
+            onSurface = Color(0xFFEBE0E2),
+            surfaceVariant = Color(0xFF2C1F23),
+            onSurfaceVariant = Color(0xFFD6C2C6),
+            outline = Color(0xFF9E8C90)
+        )
+    ),
+
+    // SUNSET: Warm Amber and Terracotta accents on dark charcoal
+    SUNSET(
+        displayName = "Sunset",
+        light = lightColorScheme(
+            primary = Color(0xFFD84315),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFFFCCBC),
+            onPrimaryContainer = Color(0xFF4E1400),
+            secondary = Color(0xFFEF6C00),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFFFE0B2),
+            onSecondaryContainer = Color(0xFF4B2000),
+            tertiary = Color(0xFFEF6C00),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFEF6C00),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF8F5F3),
+            onBackground = Color(0xFF201A18),
+            surface = Color(0xFFF8F5F3),
+            onSurface = Color(0xFF201A18),
+            surfaceVariant = Color(0xFFEEDFD8),
+            onSurfaceVariant = Color(0xFF51443E),
+            outline = Color(0xFF84746C)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFFFAB91),
+            onPrimary = Color(0xFF6B1800),
+            primaryContainer = Color(0xFF9E2A00),
+            onPrimaryContainer = Color(0xFFFFCCBC),
+            secondary = Color(0xFFFFB74D),
+            onSecondary = Color(0xFF4B2000),
+            secondaryContainer = Color(0xFF2C2422),
+            onSecondaryContainer = Color(0xFFFFCCBC),
+            tertiary = Color(0xFFFF9800),
+            onTertiary = Color(0xFF4B2000),
+            tertiaryContainer = Color(0xFFE64A19),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF181514),
+            onBackground = Color(0xFFECE0DA),
+            surface = Color(0xFF181514),
+            onSurface = Color(0xFFECE0DA),
+            surfaceVariant = Color(0xFF2C2422),
+            onSurfaceVariant = Color(0xFFD6C3B9),
+            outline = Color(0xFF9E8D85)
+        )
+    );
+}
