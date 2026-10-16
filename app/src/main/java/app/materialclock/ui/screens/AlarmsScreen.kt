@@ -362,8 +362,8 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime)
 
 private val GROUP_SECTION_PADDING_H = 4.dp
 private val GROUP_CARD_GAP = 10.dp
-private val GROUP_CARD_PADDING = 14.dp
-private val GROUP_CARD_CORNER = 18.dp
+private val GROUP_CARD_PADDING = 16.dp
+private val GROUP_CARD_CORNER = 32.dp
 
 @Composable
 private fun GroupCardsSection(
@@ -515,9 +515,9 @@ private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
     }
 }
 
-private val ROW_HORIZONTAL_PADDING = 16.dp
-private val ROW_VERTICAL_PADDING = 14.dp
-private val ROW_CORNER_RADIUS = 18.dp
+private val ROW_HORIZONTAL_PADDING = 20.dp
+private val ROW_VERTICAL_PADDING = 16.dp
+private val ROW_CORNER_RADIUS = 32.dp
 private val ROW_LABEL_TO_TIME = 6.dp
 
 @OptIn(ExperimentalFoundationApi::class)
