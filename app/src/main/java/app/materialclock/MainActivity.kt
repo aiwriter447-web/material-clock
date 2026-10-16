@@ -57,11 +57,13 @@ class MainActivity : ComponentActivity() {
         // Preserve original intent handling
         setIntent(intent)
 
-        // Update tab from new intent
-        startTab = extractStartTab(intent)
+        val newTab = extractStartTab(intent)
 
-        // Rebuild ClockApp to handle new tab
-        openCount++
+        // Rebuild ClockApp only if a specific tab is requested (e.g., from a widget)
+        if (newTab != null) {
+            startTab = newTab
+            openCount++
+        }
     }
 
     // Preserve original helper function
