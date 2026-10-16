@@ -27,9 +27,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Add
@@ -107,7 +107,7 @@ fun TimersScreen(
     }
 }
 
-/* ── Setting Display ───────────────────────────────────────────────────────────── */
+/* ── Setting Display (Matches Pic 2 Layout) ────────────────────────────────────── */
 
 @Composable
 private fun SetTimer(
@@ -125,15 +125,12 @@ private fun SetTimer(
     val mm = "%02d".format((total % 3600) / 60)
     val ss = "%02d".format(total % 60)
     val armed = total > 0
-    val scrollState = rememberScrollState()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(4.dp)) 
+        Spacer(Modifier.height(8.dp)) 
 
         DraftReadout(
             hh = hh, 
@@ -143,7 +140,7 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(28.dp))
 
         Keypad(
             onDigit = onDigit, 
@@ -152,59 +149,41 @@ private fun SetTimer(
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
 
         Box(modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
             WidePill(
                 text = "Start",
                 icon = Icons.Rounded.PlayArrow,
                 onClick = onStart,
-                height = 56.dp,
+                height = 68.dp,
                 container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(18.dp))
 
-        // Presets Grid - 3 Columns (Stacked Vertically)
-        PresetGrid(presets, onStartPreset, onEditPreset)
+        // Horizontal Presets Bar (Pic 2 design)
+        PresetRow(presets, onStartPreset, onEditPreset)
 
-        // Bottom Clearance for smooth scrolling above Dock and FAB
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }
 
 @Composable
-private fun PresetGrid(
+private fun PresetRow(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
 ) {
-    Column(
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        contentPadding = PaddingValues(start = 20.dp, end = 88.dp) // Extra end padding so FAB doesn't hide presets
     ) {
-        presets.chunked(3).forEach { rowPresets ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                rowPresets.forEach { preset ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        PresetChip(
-                            preset = preset,
-                            onClick = { onStart(preset) },
-                            onLongClick = { onEdit(preset) }
-                        )
-                    }
-                }
-                repeat(3 - rowPresets.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+        items(presets, key = { it.id }) { preset ->
+            PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
     }
 }
@@ -226,8 +205,6 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = CircleShape, 
         color = MaterialTheme.colorScheme.primaryContainer, 
         modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -240,22 +217,20 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = preset.name,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
             )
             Text(
-                text = "${minutes}m",
+                text = "${minutes} min",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                maxLines = 1
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
             )
         }
     }
@@ -263,8 +238,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 
 @Composable
 private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    val cap = 44.dp
-    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+    val cap = 52.dp
+    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
 
@@ -286,28 +261,28 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
                 indication = null, 
                 onClick = onClear 
             )
-            .padding(top = 2.dp, bottom = 2.dp)
+            .padding(top = 4.dp, bottom = 4.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes,$ss seconds" },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Hours", style = labelStyle, color = hColor)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 2.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Minutes", style = labelStyle, color = mColor)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
 
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 2.dp))
+        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Seconds", style = labelStyle, color = sColor)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
         }
     }
@@ -318,14 +293,14 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
     val rows = listOf("123", "456", "789")
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { c -> DigitKey(c, onDigit, Modifier.weight(1f)) }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onClearAll,
@@ -351,7 +326,7 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
                     Icons.AutoMirrored.Rounded.Backspace, 
                     contentDescription = null, 
                     tint = MaterialTheme.colorScheme.onSurfaceVariant, 
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
@@ -363,7 +338,7 @@ private fun DigitKey(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = 
     KeyBox(modifier = modifier, onClick = { onDigit(digit) }, label = digit.toString()) {
         Text(
             digit.toString(),
-            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = ClockFace.family(opticalSize = 26f, width = 100f, weight = 500)),
+            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = ClockFace.family(opticalSize = 28f, width = 100f, weight = 500)),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -392,7 +367,7 @@ private fun KeyBox(
         color = container, 
         shape = CircleShape, 
         modifier = modifier
-            .height(48.dp)
+            .height(58.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
