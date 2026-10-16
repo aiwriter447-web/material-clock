@@ -79,7 +79,7 @@ object WorldClockRenderer {
             .distinctBy { it.label + it.zone.id }
             .take(2)
 
-        val options = manager.getAppWidgetOptions(appWidgetId)
+        val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
         manager.updateAppWidget(appWidgetId, build(context, settings, config, sides[0], sides[1], options))
     }
 
