@@ -60,7 +60,7 @@ object AlarmWidgetRenderer {
         // The alarm chosen in this widget's settings; if none was chosen (or it was deleted), the
         // next one to ring.
         val alarm = alarms.firstOrNull { it.id == config.alarmId } ?: pick(alarms)
-        val options = manager.getAppWidgetOptions(appWidgetId)
+        val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
         manager.updateAppWidget(appWidgetId, build(context, settings, config, alarm, options))
     }
 
