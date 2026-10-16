@@ -133,4 +133,22 @@
             android:fontFamily="@font/google_sans_flex"
             android:fontVariationSettings="'wght' 700" />
     </FrameLayout>
+
+    <!-- The 2x1 capsule, when it has been stretched wide: the time on the right. -->
+    <FrameLayout
+        android:id="@+id/pill_time_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/pill_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|center_vertical"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 500" />
+    </FrameLayout>
 </FrameLayout>
