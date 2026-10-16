@@ -18,13 +18,13 @@ enum class Palette(
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFC6C9FF),
             onPrimaryContainer = Color(0xFF191A2E),
-            secondary = Color(0xFFFFB74D), // Sunny Amber
+            secondary = Color(0xFFFFB74D),
             onSecondary = Color(0xFF3E2723),
             secondaryContainer = Color(0xFFFFE0B2),
             onSecondaryContainer = Color(0xFFE65100),
             tertiary = Color(0xFF2D2E40),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF2D2E40), // Dark FAB
+            tertiaryContainer = Color(0xFF2D2E40),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF3F4FF),
             onBackground = Color(0xFF191A2E),
@@ -45,7 +45,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFFFE0B2),
             tertiary = Color(0xFFFFB74D),
             onTertiary = Color(0xFF201A00),
-            tertiaryContainer = Color(0xFFFFB74D), // Amber FAB in dark
+            tertiaryContainer = Color(0xFFFFB74D),
             onTertiaryContainer = Color(0xFF201A00),
             background = Color(0xFF121320),
             onBackground = Color(0xFFE2E3F5),
@@ -71,7 +71,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF182015),
             tertiary = Color(0xFF2D5A27),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF2D5A27), // Forest Green FAB
+            tertiaryContainer = Color(0xFF2D5A27),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF2F5F0),
             onBackground = Color(0xFF181C17),
@@ -92,7 +92,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFD4E8CE),
             tertiary = Color(0xFF98D48E),
             onTertiary = Color(0xFF003908),
-            tertiaryContainer = Color(0xFF2D5A27), // Forest Green FAB
+            tertiaryContainer = Color(0xFF2D5A27),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFF111410),
             onBackground = Color(0xFFE1E4DC),
@@ -114,11 +114,11 @@ enum class Palette(
             onPrimaryContainer = Color(0xFF3B0764),
             secondary = Color(0xFF65A30D),
             onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFD9F99D), // Lime Green Card
+            secondaryContainer = Color(0xFFD9F99D),
             onSecondaryContainer = Color(0xFF1A3000),
             tertiary = Color(0xFF7E22CE),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFD9F99D), // Lime Green FAB
+            tertiaryContainer = Color(0xFFD9F99D),
             onTertiaryContainer = Color(0xFF1A3000),
             background = Color(0xFFF8F5FF),
             onBackground = Color(0xFF1E1A24),
@@ -135,11 +135,11 @@ enum class Palette(
             onPrimaryContainer = Color(0xFFE9D5FF),
             secondary = Color(0xFFA3E635),
             onSecondary = Color(0xFF223A00),
-            secondaryContainer = Color(0xFF263D02), // Dark Lime Card
+            secondaryContainer = Color(0xFF263D02),
             onSecondaryContainer = Color(0xFFD9F99D),
             tertiary = Color(0xFFA3E635),
             onTertiary = Color(0xFF1A3000),
-            tertiaryContainer = Color(0xFFA3E635), // Neon Lime FAB
+            tertiaryContainer = Color(0xFFA3E635),
             onTertiaryContainer = Color(0xFF122200),
             background = Color(0xFF120B1A),
             onBackground = Color(0xFFEDE4F5),
@@ -165,7 +165,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF1B0B63),
             tertiary = Color(0xFF7C6EE6),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF7C6EE6), // Violet FAB
+            tertiaryContainer = Color(0xFF7C6EE6),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF6F5FC),
             onBackground = Color(0xFF1B1A24),
@@ -186,7 +186,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFEDE9FF),
             tertiary = Color(0xFF8B7CF6),
             onTertiary = Color(0xFF190061),
-            tertiaryContainer = Color(0xFF7C6EE6), // Violet FAB
+            tertiaryContainer = Color(0xFF7C6EE6),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFF0A0814),
             onBackground = Color(0xFFE5E2F2),
@@ -198,150 +198,9 @@ enum class Palette(
         )
     ),
 
-    // MOON: Slate & Silver
-    MOON(
-        displayName = "Moon",
-        light = lightColorScheme(
-            primary = Color(0xFF334155),
-            onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFFE2E8F0),
-            onPrimaryContainer = Color(0xFF0F172A),
-            secondary = Color(0xFF475569),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFDBE2E9),
-            onSecondaryContainer = Color(0xFF0F172A),
-            tertiary = Color(0xFF64748B),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF94A3B8), // Silver FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFF8FAFC),
-            onBackground = Color(0xFF181A1F),
-            surface = Color(0xFFF8FAFC),
-            onSurface = Color(0xFF181A1F),
-            surfaceVariant = Color(0xFFF1F5F9),
-            onSurfaceVariant = Color(0xFF43474E),
-            outline = Color(0xFF73777F)
-        ),
-        dark = darkColorScheme(
-            primary = Color(0xFFCBD5E1),
-            onPrimary = Color(0xFF0F172A),
-            primaryContainer = Color(0xFF1E293B),
-            onPrimaryContainer = Color(0xFFE2E8F0),
-            secondary = Color(0xFF94A3B8),
-            onSecondary = Color(0xFF0F172A),
-            secondaryContainer = Color(0xFF23324A),
-            onSecondaryContainer = Color(0xFFDBE2E9),
-            tertiary = Color(0xFFE2E8F0),
-            onTertiary = Color(0xFF0F172A),
-            tertiaryContainer = Color(0xFF94A3B8), // Silver FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFF060912),
-            onBackground = Color(0xFFE2E2E5),
-            surface = Color(0xFF060912),
-            onSurface = Color(0xFFE2E2E5),
-            surfaceVariant = Color(0xFF171B24),
-            onSurfaceVariant = Color(0xFFC3C7CF),
-            outline = Color(0xFF8D9199)
-        )
-    ),
-
-    // NOTHING: Dot Matrix inspired pure black background with stark bright red accents
-    NOTHING(
-        displayName = "Nothing",
-        light = lightColorScheme(
-            primary = Color(0xFF121212),
-            onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFFE0E0E0),
-            onPrimaryContainer = Color(0xFF000000),
-            secondary = Color(0xFF262626),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFF0F0F0),
-            onSecondaryContainer = Color(0xFF000000),
-            tertiary = Color(0xFFE53935),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFE53935), // Red FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFFFFFFF),
-            onBackground = Color(0xFF121212),
-            surface = Color(0xFFFFFFFF),
-            onSurface = Color(0xFF121212),
-            surfaceVariant = Color(0xFFF5F5F5),
-            onSurfaceVariant = Color(0xFF404040),
-            outline = Color(0xFF757575)
-        ),
-        dark = darkColorScheme(
-            primary = Color(0xFFFFFFFF),
-            onPrimary = Color(0xFF000000),
-            primaryContainer = Color(0xFFE53935), // Red Active Pill
-            onPrimaryContainer = Color(0xFFFFFFFF),
-            secondary = Color(0xFFE53935),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFF212121),
-            onSecondaryContainer = Color(0xFFFFFFFF),
-            tertiary = Color(0xFFE53935),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFE53935), // Pure Red FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFF000000), // Pure Black Background
-            onBackground = Color(0xFFFFFFFF),
-            surface = Color(0xFF000000),
-            onSurface = Color(0xFFFFFFFF),
-            surfaceVariant = Color(0xFF1E1E1E),
-            onSurfaceVariant = Color(0xFFCCCCCC),
-            outline = Color(0xFF666666)
-        )
-    ),
-
-    // OCEAN: Sky Blue active elements on crisp ice-blue background
-    OCEAN(
-        displayName = "Ocean",
-        light = lightColorScheme(
-            primary = Color(0xFF1D8DF1),
-            onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFFD1E8FF),
-            onPrimaryContainer = Color(0xFF001D36),
-            secondary = Color(0xFF006399),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFE0F2FE), // Soft ice-blue card
-            onSecondaryContainer = Color(0xFF001E30),
-            tertiary = Color(0xFF1D8DF1),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF1D8DF1), // Sky Blue FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFF4F8FA),
-            onBackground = Color(0xFF181C1F),
-            surface = Color(0xFFF4F8FA),
-            onSurface = Color(0xFF181C1F),
-            surfaceVariant = Color(0xFFDEE3EA),
-            onSurfaceVariant = Color(0xFF41474D),
-            outline = Color(0xFF72787E)
-        ),
-        dark = darkColorScheme(
-            primary = Color(0xFF9ECAFF),
-            onPrimary = Color(0xFF003258),
-            primaryContainer = Color(0xFF00497D),
-            onPrimaryContainer = Color(0xFFD1E8FF),
-            secondary = Color(0xFF38BDF8),
-            onSecondary = Color(0xFF00354B),
-            secondaryContainer = Color(0xFF132337),
-            onSecondaryContainer = Color(0xFFE0F2FE),
-            tertiary = Color(0xFF38BDF8),
-            onTertiary = Color(0xFF00354B),
-            tertiaryContainer = Color(0xFF1D8DF1), // Sky Blue FAB
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFF0A121D),
-            onBackground = Color(0xFFE0E2E6),
-            surface = Color(0xFF0A121D),
-            onSurface = Color(0xFFE0E2E6),
-            surfaceVariant = Color(0xFF222B35),
-            onSurfaceVariant = Color(0xFFC1C7CE),
-            outline = Color(0xFF8B9198)
-        )
-    ),
-
-    // PIXEL: Clean Royal Blue accents on minimal white background
-    PIXEL(
-        displayName = "Pixel",
+    // INDIGO: Minimal Royal Blue active elements with crisp contrast (Renamed from former Pixel concept)
+    INDIGO(
+        displayName = "Indigo",
         light = lightColorScheme(
             primary = Color(0xFF1A5CFF),
             onPrimary = Color(0xFFFFFFFF),
@@ -353,7 +212,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF001A40),
             tertiary = Color(0xFF1A5CFF),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF1A5CFF), // Royal Blue FAB
+            tertiaryContainer = Color(0xFF1A5CFF),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF8FAFC),
             onBackground = Color(0xFF0F172A),
@@ -374,7 +233,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFDBE4FF),
             tertiary = Color(0xFF60A5FA),
             onTertiary = Color(0xFF00326B),
-            tertiaryContainer = Color(0xFF1A5CFF), // Royal Blue FAB
+            tertiaryContainer = Color(0xFF1A5CFF),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFF0F172A),
             onBackground = Color(0xFFE2E8F0),
@@ -383,6 +242,194 @@ enum class Palette(
             surfaceVariant = Color(0xFF1E293B),
             onSurfaceVariant = Color(0xFF94A3B8),
             outline = Color(0xFF64748B)
+        )
+    ),
+
+    // MOON: Luminous frosted glass look with deep night blue & sapphire glowing accents
+    MOON(
+        displayName = "Moon",
+        light = lightColorScheme(
+            primary = Color(0xFF2563EB),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFDBEAFE),
+            onPrimaryContainer = Color(0xFF1E3A8A),
+            secondary = Color(0xFF3B82F6),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFEFF6FF),
+            onSecondaryContainer = Color(0xFF1E40AF),
+            tertiary = Color(0xFF2563EB),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF2563EB), // Sapphire Blue FAB
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF0F4F8),
+            onBackground = Color(0xFF0F172A),
+            surface = Color(0xFFF0F4F8),
+            onSurface = Color(0xFF0F172A),
+            surfaceVariant = Color(0xFFE2E8F0),
+            onSurfaceVariant = Color(0xFF334155),
+            outline = Color(0xFF64748B)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF60A5FA),
+            onPrimary = Color(0xFF002244),
+            primaryContainer = Color(0xFF1E293B),
+            onPrimaryContainer = Color(0xFFDBEAFE),
+            secondary = Color(0xFF3B82F6),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFF0F172A),
+            onSecondaryContainer = Color(0xFFBFDBFE),
+            tertiary = Color(0xFF38BDF8),
+            onTertiary = Color(0xFF00325B),
+            tertiaryContainer = Color(0xFF2563EB), // Glowing Blue FAB
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF0B0F19), // Midnight space background
+            onBackground = Color(0xFFF1F5F9),
+            surface = Color(0xFF0B0F19),
+            onSurface = Color(0xFFF1F5F9),
+            surfaceVariant = Color(0xFF151D2A),
+            onSurfaceVariant = Color(0xFF94A3B8),
+            outline = Color(0xFF475569)
+        )
+    ),
+
+    // NOTHING: Dot Matrix inspired pure black background with stark bright red accents
+    NOTHING(
+        displayName = "Nothing",
+        light = lightColorScheme(
+            primary = Color(0xFF121212),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFE0E0E0),
+            onPrimaryContainer = Color(0xFF000000),
+            secondary = Color(0xFF262626),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFF0F0F0),
+            onSecondaryContainer = Color(0xFF000000),
+            tertiary = Color(0xFFE53935),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFE53935),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFFFFFFF),
+            onBackground = Color(0xFF121212),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF121212),
+            surfaceVariant = Color(0xFFF5F5F5),
+            onSurfaceVariant = Color(0xFF404040),
+            outline = Color(0xFF757575)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFFFFFFF),
+            onPrimary = Color(0xFF000000),
+            primaryContainer = Color(0xFFE53935),
+            onPrimaryContainer = Color(0xFFFFFFFF),
+            secondary = Color(0xFFE53935),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFF212121),
+            onSecondaryContainer = Color(0xFFFFFFFF),
+            tertiary = Color(0xFFE53935),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFE53935),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF000000),
+            onBackground = Color(0xFFFFFFFF),
+            surface = Color(0xFF000000),
+            onSurface = Color(0xFFFFFFFF),
+            surfaceVariant = Color(0xFF1E1E1E),
+            onSurfaceVariant = Color(0xFFCCCCCC),
+            outline = Color(0xFF666666)
+        )
+    ),
+
+    // OCEAN: Sky Blue active elements on crisp ice-blue background
+    OCEAN(
+        displayName = "Ocean",
+        light = lightColorScheme(
+            primary = Color(0xFF1D8DF1),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFD1E8FF),
+            onPrimaryContainer = Color(0xFF001D36),
+            secondary = Color(0xFF006399),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFE0F2FE),
+            onSecondaryContainer = Color(0xFF001E30),
+            tertiary = Color(0xFF1D8DF1),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF1D8DF1),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF4F8FA),
+            onBackground = Color(0xFF181C1F),
+            surface = Color(0xFFF4F8FA),
+            onSurface = Color(0xFF181C1F),
+            surfaceVariant = Color(0xFFDEE3EA),
+            onSurfaceVariant = Color(0xFF41474D),
+            outline = Color(0xFF72787E)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFF9ECAFF),
+            onPrimary = Color(0xFF003258),
+            primaryContainer = Color(0xFF00497D),
+            onPrimaryContainer = Color(0xFFD1E8FF),
+            secondary = Color(0xFF38BDF8),
+            onSecondary = Color(0xFF00354B),
+            secondaryContainer = Color(0xFF132337),
+            onSecondaryContainer = Color(0xFFE0F2FE),
+            tertiary = Color(0xFF38BDF8),
+            onTertiary = Color(0xFF00354B),
+            tertiaryContainer = Color(0xFF1D8DF1),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF0A121D),
+            onBackground = Color(0xFFE0E2E6),
+            surface = Color(0xFF0A121D),
+            onSurface = Color(0xFFE0E2E6),
+            surfaceVariant = Color(0xFF222B35),
+            onSurfaceVariant = Color(0xFFC1C7CE),
+            outline = Color(0xFF8B9198)
+        )
+    ),
+
+    // PIXEL: Soft Rose / Blush Pink aesthetic with elegant light tone
+    PIXEL(
+        displayName = "Pixel",
+        light = lightColorScheme(
+            primary = Color(0xFFE91E63),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFFCE4EC),
+            onPrimaryContainer = Color(0xFF880E4F),
+            secondary = Color(0xFFF48FB1),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFFFF0F5),
+            onSecondaryContainer = Color(0xFF5C0029),
+            tertiary = Color(0xFFE91E63),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFF06292), // Rose Pink FAB
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFFFF7F9),
+            onBackground = Color(0xFF211A1D),
+            surface = Color(0xFFFFF7F9),
+            onSurface = Color(0xFF211A1D),
+            surfaceVariant = Color(0xFFF8E2E8),
+            onSurfaceVariant = Color(0xFF524347),
+            outline = Color(0xFF857377)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFF48FB1),
+            onPrimary = Color(0xFF5C002B),
+            primaryContainer = Color(0xFF3B1123),
+            onPrimaryContainer = Color(0xFFFCE4EC),
+            secondary = Color(0xFFFF80AB),
+            onSecondary = Color(0xFF4A001F),
+            secondaryContainer = Color(0xFF2A121B),
+            onSecondaryContainer = Color(0xFFFCE4EC),
+            tertiary = Color(0xFFFF80AB),
+            onTertiary = Color(0xFF4A001F),
+            tertiaryContainer = Color(0xFFEC407A), // Glowing Rose FAB
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFF170E12),
+            onBackground = Color(0xFFECE0E3),
+            surface = Color(0xFF170E12),
+            onSurface = Color(0xFFECE0E3),
+            surfaceVariant = Color(0xFF2B1C22),
+            onSurfaceVariant = Color(0xFFD5C2C7),
+            outline = Color(0xFF9E8C91)
         )
     ),
 
@@ -400,7 +447,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF3B1200),
             tertiary = Color(0xFFFF6B00),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFFF6B00), // Sunset Amber FAB
+            tertiaryContainer = Color(0xFFFF6B00),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF5F2EC),
             onBackground = Color(0xFF1F1B18),
@@ -421,7 +468,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFFFDCC8),
             tertiary = Color(0xFFFF8A50),
             onTertiary = Color(0xFF4A1800),
-            tertiaryContainer = Color(0xFFFF6B00), // Sunset Amber FAB
+            tertiaryContainer = Color(0xFFFF6B00),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFF1F1F1F),
             onBackground = Color(0xFFEAE1DB),
