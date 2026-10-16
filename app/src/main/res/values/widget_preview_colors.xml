@@ -8,4 +8,8 @@
     <color name="wp_surface">#1B1B1F</color>
     <color name="wp_on_surface">#E3E2E6</color>
     <color name="wp_accent">#A8C8FF</color>
+    <color name="wp_face">#22313F</color>
+    <color name="wp_hand_hour">#5B93C2</color>
+    <color name="wp_hand_minute">#90CAF9</color>
+    <color name="wp_dot">#B9A7CF</color>
 </resources>
