@@ -1,6 +1,5 @@
 package app.materialclock.screensaver
 
-import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -30,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,10 +45,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.materialclock.data.ClockStore
 import app.materialclock.data.ScreensaverBackgroundType
 import app.materialclock.data.ScreensaverSettings
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -63,15 +66,13 @@ fun ScreensaverContent(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // 1. Time State (Fix: Declared first before using it)
+    // ── Time & Date Live Updates ──────────────────────────────────────
     var currentTime by remember { mutableStateOf(Date()) }
 
-    // 2. System 12/24 Hour Format Dynamic Detection
     val is24HourSystem = remember(currentTime) {
         DateFormat.is24HourFormat(context)
     }
 
-    // 3. Start Time Updates
     LaunchedEffect(settings.showSeconds) {
         val interval = if (settings.showSeconds) 1000L else 10000L
         while (true) {
@@ -80,7 +81,7 @@ fun ScreensaverContent(
         }
     }
 
-    // ── Greeting Text Based on Time ───────────────────────────────────
+    // ── Greeting Text Based on Local Time ─────────────────────────────
     val hourOfDay = remember(currentTime) {
         val calendar = Calendar.getInstance()
         calendar.time = currentTime
@@ -116,18 +117,25 @@ fun ScreensaverContent(
         }
     }
 
-    // ── Next System Alarm Fetch ───────────────────────────────────────
-    var nextAlarmString by remember { mutableStateOf<String?>(null) }
+    // ── Direct App Database Next Active Alarm Fetch ────────────────────
+    val clockStore = remember { ClockStore(context) }
+    val alarmsList by clockStore.alarms.collectAsState(initial = emptyList())
 
-    LaunchedEffect(currentTime) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-        val nextAlarm = alarmManager?.nextAlarmClock
-        nextAlarmString = if (nextAlarm != null) {
-            val alarmPattern = if (is24HourSystem) "HH:mm" else "h:mm a"
-            SimpleDateFormat(alarmPattern, Locale.getDefault()).format(Date(nextAlarm.triggerTime)).lowercase()
-        } else {
-            null
-        }
+    val nextAlarmString = remember(alarmsList, is24HourSystem) {
+        val activeAlarms = alarmsList.filter { it.enabled }
+        if (activeAlarms.isNotEmpty()) {
+            val nowTime = LocalTime.now()
+            // Find earliest upcoming alarm
+            val sortedAlarms = activeAlarms.sortedBy { alarm ->
+                val secondsDifference = alarm.time.toSecondOfDay() - nowTime.toSecondOfDay()
+                if (secondsDifference >= 0) secondsDifference else secondsDifference + 86400
+            }
+            val firstAlarm = sortedAlarms.firstOrNull()
+            if (firstAlarm != null) {
+                val pattern = if (is24HourSystem) "HH:mm" else "h:mm a"
+                firstAlarm.time.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault())).lowercase()
+            } else null
+        } else null
     }
 
     // ── Smart Adaptive Pixel Shift Positions (Burn-In Protection) ──────
