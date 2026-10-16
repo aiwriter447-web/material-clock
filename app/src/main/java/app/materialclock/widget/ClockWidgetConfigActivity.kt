@@ -99,6 +99,8 @@ class ClockWidgetConfigActivity : ComponentActivity() {
                 AppWidgetManager.getInstance(applicationContext),
                 appWidgetId,
             )
+            // The launcher may not have settled the widget's size yet; draw once more shortly.
+            WidgetRefresh.again(applicationContext, appWidgetId)
             setResult(
                 RESULT_OK,
                 Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId),
