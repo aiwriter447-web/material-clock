@@ -84,6 +84,8 @@ class WidgetOptionsActivity : ComponentActivity() {
                 WidgetOptionsKind.WORLD -> WorldClockRenderer.update(app, manager, appWidgetId)
                 WidgetOptionsKind.ALARM -> AlarmWidgetRenderer.update(app, manager, appWidgetId)
             }
+            // The launcher may not have settled the widget's size yet; draw once more shortly.
+            WidgetRefresh.again(app, appWidgetId)
             setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
             finish()
         }
