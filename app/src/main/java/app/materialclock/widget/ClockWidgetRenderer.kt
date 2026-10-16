@@ -49,7 +49,7 @@ object ClockWidgetRenderer {
         val store = ClockStore(context)
         val config = store.widgetConfigNow(appWidgetId) ?: return
         val settings = store.settingsNow()
-        val options = manager.getAppWidgetOptions(appWidgetId)
+        val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
 
         val views = build(context, config, settings, options)
         manager.updateAppWidget(appWidgetId, views)
@@ -181,13 +181,20 @@ object ClockWidgetRenderer {
         )
 
         // The date, two lines ("Wed," over "14 Oct"). A TextClock, so it rolls over at midnight
-        // without this app doing anything.
-        // A wider capsule has room for the full date ("Wednesday," over "14 October").
-        val wide = w / context.resources.displayMetrics.density >= 200f
+        // without this app doing anything. A wider capsule has room for the full date.
+        val density = context.resources.displayMetrics.density
+        val wide = w / density >= 200f
         val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), if (wide) "EEEEdMMMM" else "EEEdMMM")
             .replaceFirst(Regex("\\s+"), "'\n'")
         val textLeft = left + side + h * 0.16f
-        val size = if (wide) min(h * 0.36f, (w - textLeft - h * 0.2f) / 5.4f) else h * 0.30f
+        val rightPad = h * 0.20f
+        val availW = w - textLeft - rightPad
+
+        // The longest line is "Wednesday," (about 10 characters) or "15 Oct" (about 6), and a
+        // character is roughly 0.55 of the type size wide. The size is the smaller of what the
+        // height and the room allow, so the text can never touch the capsule's end.
+        val chars = if (wide) 10.5f else 6.2f
+        val size = min(h * (if (wide) 0.32f else 0.27f), availW / (chars * 0.55f))
         views.setViewVisibility(R.id.date, View.VISIBLE)
         views.setCharSequence(R.id.date, "setFormat12Hour", pattern)
         views.setCharSequence(R.id.date, "setFormat24Hour", pattern)
@@ -200,6 +207,21 @@ object ClockWidgetRenderer {
             0,
             0,
         )
+
+        // Room left over on the right? Then the time goes there, instead of empty space.
+        val textW = size * chars * 0.55f
+        val leftover = availW - textW
+        val is24 = DateFormat.is24HourFormat(context)
+        val timeSize = min(h * 0.40f, leftover * 0.85f / (if (is24) 2.8f else 4.4f))
+        val showTime = leftover >= h * 1.3f && timeSize >= h * 0.22f
+        views.setViewVisibility(R.id.pill_time_slot, if (showTime) View.VISIBLE else View.GONE)
+        if (showTime) {
+            views.setViewPadding(R.id.pill_time_slot, 0, 0, rightPad.roundToInt(), 0)
+            views.setCharSequence(R.id.pill_time, "setFormat12Hour", "h:mm a")
+            views.setCharSequence(R.id.pill_time, "setFormat24Hour", "HH:mm")
+            views.setTextColor(R.id.pill_time, colours.onFace)
+            views.setTextViewTextSize(R.id.pill_time, TypedValue.COMPLEX_UNIT_PX, timeSize)
+        }
 
         views.setOnClickPendingIntent(
             android.R.id.background,
@@ -227,6 +249,7 @@ object ClockWidgetRenderer {
         views.setImageViewIcon(R.id.face, face.bitmap.toIcon())
         // Reset, for the reason given in one(): the capsule squeezes the hands into a corner.
         views.setViewPadding(R.id.hands_slot, 0, 0, 0, 0)
+        views.setViewVisibility(R.id.pill_time_slot, View.GONE)
 
         applyHands(views, config, colours, face)
         applyLook(context, views, config, colours, face, 0f, 0f, w, h)
