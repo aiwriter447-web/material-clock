@@ -42,6 +42,8 @@ open class ClockWidgetProvider : AppWidgetProvider() {
         newOptions: Bundle,
     ) {
         background(context) { ClockWidgetRenderer.update(context, manager, appWidgetId) }
+        // The launcher may finish reporting the new size a moment later; draw once more then.
+        WidgetRefresh.again(context, appWidgetId, listOf(500L, 1500L))
     }
 
     /** Also the cancelled-add path; the two are indistinguishable, and want the same cleanup. */
@@ -66,6 +68,11 @@ open class ClockWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
+        // The 15-minute nudge that keeps Orbit's battery figure fresh (see OrbitRefresh).
+        if (intent.action == OrbitRefresh.ACTION) {
+            background(context) { store -> OrbitRefresh.onTick(context, store) }
+            return
+        }
         when (intent.action) {
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
