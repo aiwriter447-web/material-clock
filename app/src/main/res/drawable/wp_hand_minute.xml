@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Minute hand, drawn pointing up from the centre. The clock turns it. -->
+<!-- Minute hand, drawn pointing up from the centre. The clock turns it. 
+  Drawn 300dp wide on purpose: AnalogClock never enlarges a picture, it only shrinks it to fit,
+  so a small one would sit tiny in the middle of the preview. Big, it is shrunk to fill it.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="100dp"
-    android:height="100dp"
+    android:width="300dp"
+    android:height="300dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
     <path
