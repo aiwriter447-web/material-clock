@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.ColorUtils
 import app.materialclock.MainActivity
+import app.materialclock.alarm.Notifications
+import app.materialclock.ui.Tab
 import app.materialclock.R
 import app.materialclock.core.Alarm
 import app.materialclock.data.ClockSettings
@@ -129,7 +131,8 @@ object AlarmWidgetRenderer {
         val openApp = PendingIntent.getActivity(
             context,
             2,
-            Intent(context, MainActivity::class.java),
+            // Opens the app on the Alarms tab, which is where an alarm gets added.
+            Intent(context, MainActivity::class.java).putExtra(Notifications.EXTRA_TAB, Tab.ALARMS.key),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         if (alarm != null) {
@@ -241,6 +244,18 @@ object AlarmWidgetRenderer {
                     (cx + r - inset).roundToInt(), (cy + r - inset).roundToInt(),
                 )
                 icon.draw(c)
+            }
+            if (alarm != null && !on) {
+                // A slash through the bell: this alarm is off. The dimmer colours alone were easy
+                // to miss.
+                val slash = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = alpha(fg, 0.75f)
+                    style = Paint.Style.STROKE
+                    strokeWidth = dia * 0.075f
+                    strokeCap = Paint.Cap.ROUND
+                }
+                val k = r * 0.52f
+                c.drawLine(cx - k, cy - k, cx + k, cy + k, slash)
             }
             return RectF(cx - r, cy - r, cx + r, cy + r)
         }
