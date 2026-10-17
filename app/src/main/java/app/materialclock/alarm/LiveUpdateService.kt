@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import app.materialclock.core.TimerState
@@ -97,7 +98,9 @@ class LiveUpdateService : Service() {
                     break
                 }
                 
-                delay(2000L)
+                // Wake again just as the displayed second changes, so the progress bar and the text
+                // move in step with the clock instead of in jumps every two seconds.
+                delay(untilNextSecond(store))
             }
 
             // GHOST NOTIFICATION FIX: 
@@ -127,6 +130,28 @@ class LiveUpdateService : Service() {
         }
 
         return START_STICKY
+    }
+
+    /**
+     * Milliseconds until the next second of the running timer or stopwatch is shown.
+     *
+     * The stopwatch's second changes when its elapsed time passes a whole second; the timer's when
+     * the time left does. Waking for the nearer of the two keeps both exact. A few milliseconds
+     * are added so the wake-up lands just after the change rather than just before it.
+     */
+    private suspend fun untilNextSecond(store: ClockStore): Long {
+        val now = SystemClock.elapsedRealtime()
+        var next = 1000L
+        val sw = store.stopwatch.first()
+        if (sw.running) {
+            next = minOf(next, 1000L - (sw.elapsed(now).toMillis() % 1000L))
+        }
+        val timer = store.timer.first()
+        if (timer != null && timer.state == TimerState.RUNNING) {
+            val left = timer.remaining(now).toMillis() % 1000L
+            next = minOf(next, if (left == 0L) 1000L else left)
+        }
+        return (next + 20L).coerceIn(60L, 1020L)
     }
 
     override fun onDestroy() {
