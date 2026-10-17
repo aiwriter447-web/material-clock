@@ -1,65 +1,89 @@
 package app.materialclock.widget
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.widget.RemoteViews
-import app.materialclock.MainActivity
-import app.materialclock.R
+import android.os.Bundle
+import app.materialclock.data.ClockStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
+/**
+ * The Alarm widget's presence in this app's process.
+ *
+ * It redraws when the widget is resized, when the clock, time zone or language changes, and
+ * whenever the app saves its alarms ([ClockStore.putAlarms] calls [refreshAll]): editing an
+ * alarm, switching one, or one ringing and rescheduling itself.
+ */
 open class AlarmWidgetProvider : AppWidgetProvider() {
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                ids.forEach { AlarmWidgetRenderer.update(app, manager, it) }
+            } finally {
+                pending.finish()
+            }
         }
+    }
+
+    /** Also the cancelled-add path: either way, this widget's settings are no longer wanted. */
+    override fun onDeleted(context: Context, ids: IntArray) {
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                ClockStore(app).deleteWidgetConfigs(ids)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        manager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle,
+    ) {
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                AlarmWidgetRenderer.update(app, manager, appWidgetId)
+            } finally {
+                pending.finish()
+            }
+        }
+        // The launcher may finish reporting the new size a moment later; draw once more then.
+        WidgetRefresh.again(app, appWidgetId, listOf(500L, 1500L))
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val componentName = android.content.ComponentName(context, javaClass)
-        val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-        if (appWidgetIds != null) {
-            onUpdate(context, appWidgetManager, appWidgetIds)
+        when (intent.action) {
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_LOCALE_CHANGED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            -> refreshAll(context)
         }
     }
 
     companion object {
-        fun updateAppWidget(
-            context: Context,
-            appWidgetManager: AppWidgetManager,
-            appWidgetId: Int
-        ) {
-            val views = RemoteViews(context.packageName, R.layout.widget_alarm)
-
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            
-            views.setOnClickPendingIntent(android.R.id.background, pendingIntent)
-
-            appWidgetManager.updateAppWidget(appWidgetId, views)
-        }
-
+        /** Redraw every placed widget of this kind, whatever size it was added at. */
         fun refreshAll(context: Context) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = android.content.ComponentName(context, AlarmWidgetProvider::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            if (appWidgetIds != null && appWidgetIds.isNotEmpty()) {
-                val intent = Intent(context, AlarmWidgetProvider::class.java)
-                intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
-                context.sendBroadcast(intent)
+            val app = context.applicationContext
+            val manager = AppWidgetManager.getInstance(app)
+            val ids = WidgetProviders.ids(app, WidgetKind.ALARM)
+            if (ids.isEmpty()) return
+            CoroutineScope(Dispatchers.Default).launch {
+                ids.forEach { AlarmWidgetRenderer.update(app, manager, it) }
             }
         }
     }
