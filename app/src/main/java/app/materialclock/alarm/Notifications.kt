@@ -167,7 +167,6 @@ object Notifications {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_TIMERS))
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(remaining.clockFormat())
             .addAction(
                 0,
                 if (running) "Pause" else "Resume",
@@ -193,6 +192,9 @@ object Notifications {
                     ),
             )
 
+        // Running: no short text on purpose. With none, the status chip falls back to the
+        // chronometer set below, which the system ticks by itself every second. A fixed string here
+        // would sit frozen until this app's next update.
         if (running) {
             val is24h = android.text.format.DateFormat.is24HourFormat(context)
             val setMinutes = timer.total.toMinutes()
@@ -221,8 +223,10 @@ object Notifications {
                 .setShowWhen(true)
                 .setContentText("$durationLabel / $endLabel")
         } else {
+            // Paused: nothing ticks, so the chip shows the time that is left, as plain text.
             b.setUsesChronometer(false)
                 .setShowWhen(false)
+                .setShortCriticalText(timer.pausedRemaining.clockFormat())
                 .setContentText("Paused · ${timer.pausedRemaining.clockFormat()}")
         }
 
@@ -261,7 +265,6 @@ object Notifications {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(context, TAB_STOPWATCH))
             .setRequestPromotedOngoing(true)
-            .setShortCriticalText(elapsed.clockFormat(withHours = true))
             .setStyle(
                 NotificationCompat.ProgressStyle()
                     .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(60)))
@@ -300,8 +303,10 @@ object Notifications {
                 .setShowWhen(true)
                 .setContentText(lapText ?: elapsedWithCentis)
         } else {
+            // Stopped: nothing ticks, so the chip shows the time as plain text.
             b.setUsesChronometer(false)
                 .setShowWhen(false)
+                .setShortCriticalText(sw.accumulated.clockFormat(withHours = true))
                 .setContentText(sw.accumulated.clockFormat(withHours = true))
         }
 
