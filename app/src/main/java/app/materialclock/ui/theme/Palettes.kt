@@ -57,7 +57,7 @@ enum class Palette(
         )
     ),
 
-    // EARTH: Untouched as requested
+    // EARTH: Forest green active elements with sage moss tones
     EARTH(
         displayName = "Earth",
         light = lightColorScheme(
@@ -104,54 +104,54 @@ enum class Palette(
         )
     ),
 
-    // EXPRESSIVE: Elegant warm cream/beige backgrounds with stark pure Black buttons
+    // EXPRESSIVE: Deep Plum and vibrant Coral/Salmon Pink aesthetic
     EXPRESSIVE(
         displayName = "Expressive",
         light = lightColorScheme(
-            primary = Color(0xFF1C1C1C),
+            primary = Color(0xFF612EA3),
             onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFFEADAD7),
-            onPrimaryContainer = Color(0xFF1C1C1C),
-            secondary = Color(0xFF4A4A4A),
+            primaryContainer = Color(0xFFEADDFF),
+            onPrimaryContainer = Color(0xFF24005A),
+            secondary = Color(0xFF7A4A9E),
             onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFF0E5E3),
-            onSecondaryContainer = Color(0xFF1C1C1C),
-            tertiary = Color(0xFF1C1C1C),
+            secondaryContainer = Color(0xFFF5E8FF),
+            onSecondaryContainer = Color(0xFF2A0054),
+            tertiary = Color(0xFFFF7A85),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFF1C1C1C),
+            tertiaryContainer = Color(0xFFFF7A85),
             onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFF8F3F1),
-            onBackground = Color(0xFF1C1C1C),
-            surface = Color(0xFFF8F3F1),
-            onSurface = Color(0xFF1C1C1C),
-            surfaceVariant = Color(0xFFE8DFDD),
-            onSurfaceVariant = Color(0xFF4A4544),
-            outline = Color(0xFF7A7574)
+            background = Color(0xFFF8F4FA),
+            onBackground = Color(0xFF1C1B1F),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF1C1B1F),
+            surfaceVariant = Color(0xFFE7E0EC),
+            onSurfaceVariant = Color(0xFF49454F),
+            outline = Color(0xFF79747E)
         ),
         dark = darkColorScheme(
-            primary = Color(0xFFF0EBE9),
-            onPrimary = Color(0xFF1C1C1C),
-            primaryContainer = Color(0xFF3D3331),
-            onPrimaryContainer = Color(0xFFF0EBE9),
-            secondary = Color(0xFFB0A8A6),
-            onSecondary = Color(0xFF1C1C1C),
-            secondaryContainer = Color(0xFF2E2726),
-            onSecondaryContainer = Color(0xFFD6CCC9),
-            tertiary = Color(0xFFF0EBE9),
-            onTertiary = Color(0xFF1C1C1C),
-            tertiaryContainer = Color(0xFFF0EBE9),
-            onTertiaryContainer = Color(0xFF1C1C1C),
-            background = Color(0xFF1A1514),
-            onBackground = Color(0xFFE8E1DF),
-            surface = Color(0xFF1A1514),
-            onSurface = Color(0xFFE8E1DF),
-            surfaceVariant = Color(0xFF2E2726),
-            onSurfaceVariant = Color(0xFFC4BDBB),
-            outline = Color(0xFF918A89)
+            primary = Color(0xFFD6BFFF),
+            onPrimary = Color(0xFF3A008A),
+            primaryContainer = Color(0xFFFF7A85),
+            onPrimaryContainer = Color(0xFF3A0012),
+            secondary = Color(0xFFC9A5EB),
+            onSecondary = Color(0xFF371759),
+            secondaryContainer = Color(0xFF4E2C73),
+            onSecondaryContainer = Color(0xFFF5E8FF),
+            tertiary = Color(0xFFFFB3B8),
+            onTertiary = Color(0xFF5C001C),
+            tertiaryContainer = Color(0xFFFF7A85),
+            onTertiaryContainer = Color(0xFF3A0012),
+            background = Color(0xFF160B21),
+            onBackground = Color(0xFFE6E1E5),
+            surface = Color(0xFF160B21),
+            onSurface = Color(0xFFE6E1E5),
+            surfaceVariant = Color(0xFF29183C),
+            onSurfaceVariant = Color(0xFFCAC4D0),
+            outline = Color(0xFF938F99)
         )
     ),
 
-    // GALAXY: Untouched as requested
+    // GALAXY: Cosmic deep space purple with vibrant violet accents
     GALAXY(
         displayName = "Galaxy",
         light = lightColorScheme(
@@ -433,7 +433,7 @@ enum class Palette(
         )
     ),
 
-    // SUNSET: Untouched as requested
+    // SUNSET: Warm Amber and Terracotta accents on dark charcoal
     SUNSET(
         displayName = "Sunset",
         light = lightColorScheme(
@@ -477,6 +477,53 @@ enum class Palette(
             surfaceVariant = Color(0xFF2C2422),
             onSurfaceVariant = Color(0xFFD6C3B9),
             outline = Color(0xFF9E8D85)
+        )
+    ),
+
+    // WOODLAND: Elegant warm cream/beige backgrounds with stark pure Black buttons (Former Expressive)
+    WOODLAND(
+        displayName = "Woodland",
+        light = lightColorScheme(
+            primary = Color(0xFF1C1C1C),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFEADAD7),
+            onPrimaryContainer = Color(0xFF1C1C1C),
+            secondary = Color(0xFF4A4A4A),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFF0E5E3),
+            onSecondaryContainer = Color(0xFF1C1C1C),
+            tertiary = Color(0xFF1C1C1C),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF1C1C1C),
+            onTertiaryContainer = Color(0xFFFFFFFF),
+            background = Color(0xFFF8F3F1),
+            onBackground = Color(0xFF1C1C1C),
+            surface = Color(0xFFF8F3F1),
+            onSurface = Color(0xFF1C1C1C),
+            surfaceVariant = Color(0xFFE8DFDD),
+            onSurfaceVariant = Color(0xFF4A4544),
+            outline = Color(0xFF7A7574)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFF0EBE9),
+            onPrimary = Color(0xFF1C1C1C),
+            primaryContainer = Color(0xFF3D3331),
+            onPrimaryContainer = Color(0xFFF0EBE9),
+            secondary = Color(0xFFB0A8A6),
+            onSecondary = Color(0xFF1C1C1C),
+            secondaryContainer = Color(0xFF2E2726),
+            onSecondaryContainer = Color(0xFFD6CCC9),
+            tertiary = Color(0xFFF0EBE9),
+            onTertiary = Color(0xFF1C1C1C),
+            tertiaryContainer = Color(0xFFF0EBE9),
+            onTertiaryContainer = Color(0xFF1C1C1C),
+            background = Color(0xFF1A1514),
+            onBackground = Color(0xFFE8E1DF),
+            surface = Color(0xFF1A1514),
+            onSurface = Color(0xFFE8E1DF),
+            surfaceVariant = Color(0xFF2E2726),
+            onSurfaceVariant = Color(0xFFC4BDBB),
+            outline = Color(0xFF918A89)
         )
     );
 }
