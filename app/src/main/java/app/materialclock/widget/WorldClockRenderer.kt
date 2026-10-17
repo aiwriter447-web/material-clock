@@ -48,7 +48,8 @@ object WorldClockRenderer {
 
     private class Side(val label: String, val zone: ZoneId)
 
-    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
+    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) =
+        WidgetRefresh.serialized(appWidgetId) {
         val store = ClockStore(context)
         val settings = store.settingsNow()
         val config = store.widgetConfigNow(appWidgetId) ?: WidgetConfig()
@@ -80,7 +81,7 @@ object WorldClockRenderer {
             .take(2)
 
         val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
-        manager.updateAppWidget(appWidgetId, build(context, settings, config, sides[0], sides[1], options))
+        WidgetRefresh.push(context, manager, appWidgetId) { build(context, settings, config, sides[0], sides[1], options) }
     }
 
     private fun build(
