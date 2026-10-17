@@ -3,7 +3,6 @@ package app.materialclock.widget
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -45,7 +44,10 @@ open class WorldClockWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle,
     ) {
-        background { WorldClockRenderer.update(context.applicationContext, manager, appWidgetId) }
+        // ERROR FIXED HERE: Added 'app' context definition
+        val app = context.applicationContext
+        
+        background { WorldClockRenderer.update(app, manager, appWidgetId) }
         // The launcher may finish reporting the new size a moment later; draw once more then.
         WidgetRefresh.again(app, appWidgetId, listOf(500L, 1500L))
     }
