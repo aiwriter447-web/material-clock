@@ -47,7 +47,7 @@ open class WorldClockWidgetProvider : AppWidgetProvider() {
     ) {
         background { WorldClockRenderer.update(context.applicationContext, manager, appWidgetId) }
         // The launcher may finish reporting the new size a moment later; draw once more then.
-        WidgetRefresh.again(app, appWidgetId, listOf(500L, 1500L))
+        WidgetRefresh.again(context, appWidgetId, listOf(500L, 1500L))
     }
 
     override fun onReceive(context: Context, intent: Intent) {
