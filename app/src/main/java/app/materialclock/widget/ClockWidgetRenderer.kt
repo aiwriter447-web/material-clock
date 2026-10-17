@@ -45,15 +45,20 @@ import kotlin.math.sin
  */
 object ClockWidgetRenderer {
 
-    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
-        val store = ClockStore(context)
-        val config = store.widgetConfigNow(appWidgetId) ?: return
-        val settings = store.settingsNow()
-        val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
+    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) =
+        WidgetRefresh.serialized(appWidgetId) {
+            val store = ClockStore(context)
+            val config = store.widgetConfigNow(appWidgetId) ?: return@serialized
+            val settings = store.settingsNow()
+            // Read the size only now, when this draw's turn has come (see WidgetRefresh.serialized).
+            val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
 
-        val views = build(context, config, settings, options)
-        manager.updateAppWidget(appWidgetId, views)
-    }
+            WidgetRefresh.push(context, manager, appWidgetId) { build(context, config, settings, options) }
+
+            // Orbit shows the battery level, which only stays right if the picture is redrawn now and then.
+            if (config.look == AnalogLook.ORBIT) OrbitRefresh.schedule(context)
+            Unit
+        }
 
     /**
      * One `RemoteViews` per candidate size.
@@ -384,10 +389,10 @@ object ClockWidgetRenderer {
 
         // The time, in the circle on the right: "12 : 40" over "am", or just "13 : 05".
         place(R.id.orbit_time_slot, s.right.cx, s.right.cy, s.right.r)
-        views.setCharSequence(R.id.orbit_time, "setFormat12Hour", "h : mm'\n'a")
-        views.setCharSequence(R.id.orbit_time, "setFormat24Hour", "HH : mm")
+        views.setCharSequence(R.id.orbit_time, "setFormat12Hour", "h:mm'\n'a")
+        views.setCharSequence(R.id.orbit_time, "setFormat24Hour", "HH:mm")
         views.setTextColor(R.id.orbit_time, colours.orbitOnRight)
-        views.setTextViewTextSize(R.id.orbit_time, TypedValue.COMPLEX_UNIT_PX, s.right.r * 0.40f)
+        views.setTextViewTextSize(R.id.orbit_time, TypedValue.COMPLEX_UNIT_PX, s.right.r * 0.62f)
 
         // The date, in the disc below: "Wed" over "14".
         place(R.id.orbit_date_slot, s.bottom.cx, s.bottom.cy, s.bottom.r)
