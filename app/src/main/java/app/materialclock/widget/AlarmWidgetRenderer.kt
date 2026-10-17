@@ -52,7 +52,8 @@ object AlarmWidgetRenderer {
 
     private class Scene(val bitmap: Bitmap, val button: RectF)
 
-    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
+    suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) =
+        WidgetRefresh.serialized(appWidgetId) {
         val store = ClockStore(context)
         val settings = store.settingsNow()
         val config = store.widgetConfigNow(appWidgetId) ?: WidgetConfig()
@@ -61,7 +62,7 @@ object AlarmWidgetRenderer {
         // next one to ring.
         val alarm = alarms.firstOrNull { it.id == config.alarmId } ?: pick(alarms)
         val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
-        manager.updateAppWidget(appWidgetId, build(context, settings, config, alarm, options))
+        WidgetRefresh.push(context, manager, appWidgetId) { build(context, settings, config, alarm, options) }
     }
 
     /** The alarm that rings next; if none is switched on, the earliest one of the day (shown as off). */
