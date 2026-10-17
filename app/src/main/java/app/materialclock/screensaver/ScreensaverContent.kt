@@ -328,13 +328,13 @@ private fun TimeDisplay(timeText: String, amPmText: String) {
             color = Color.White
         )
         if (amPmText.isNotEmpty()) {
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = amPmText,
-                fontSize = 24.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.padding(bottom = 14.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             )
         }
     }
