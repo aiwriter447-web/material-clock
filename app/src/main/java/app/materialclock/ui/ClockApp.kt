@@ -127,10 +127,7 @@ enum class Tab(val label: String, val icon: ImageVector, val key: String) {
 @Composable
 fun ClockApp(
     startTab: String? = null,
-
-    // Open Screensaver settings directly when launched from Android system settings
     startWithScreensaver: Boolean = false,
-
     onOpenWorldSettings: (() -> Unit)? = null,
     onOpenScreensaverSettings: (() -> Unit)? = null,
     vm: ClockViewModel = viewModel()
@@ -138,14 +135,12 @@ fun ClockApp(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
 
-    // Screensaver Repository & State Initialization
     val ctx = LocalContext.current
     val screensaverRepository = remember { ScreensaverRepository(ctx) }
     val screensaverSettings by screensaverRepository.settingsFlow.collectAsState(
         initial = ScreensaverSettings()
     )
 
-    // Timer state hoisted to control FAB visibility globally
     val timer by vm.timer.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
@@ -179,9 +174,7 @@ fun ClockApp(
                     }
                 }
             }
-
             lifecycleOwner.lifecycle.addObserver(observer)
-
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
@@ -205,32 +198,24 @@ fun ClockApp(
                         modifier = Modifier.size(72.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
-
                     Spacer(Modifier.height(24.dp))
-
                     Text(
                         "Full Screen Alerts Needed",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-
                     Spacer(Modifier.height(16.dp))
-
                     Text(
                         "To reliably wake up your screen when an alarm rings, please allow Full Screen Intents in settings.",
                         textAlign = TextAlign.Center
                     )
-
                     Spacer(Modifier.height(32.dp))
-
                     Button(
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                                 ctx.startActivity(
                                     Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                                        .setData(
-                                            Uri.parse("package:${ctx.packageName}")
-                                        )
+                                        .setData(Uri.parse("package:${ctx.packageName}"))
                                 )
                             }
                         }
@@ -239,11 +224,9 @@ fun ClockApp(
                     }
                 }
             }
-
             return@ClockTheme
         }
 
-        // State restoration for Tab Page selection across background app switches
         val initialPageIndex = rememberSaveable {
             startTab?.let { k ->
                 Tab.entries.indexOfFirst {
@@ -260,62 +243,34 @@ fun ClockApp(
         val currentTab = Tab.entries[pagerState.currentPage]
         val targetTab = Tab.entries[pagerState.targetPage]
 
-        var editing by remember {
-            mutableStateOf<Alarm?>(null)
-        }
+        var editing by remember { mutableStateOf<Alarm?>(null) }
+        var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
+        var showSettings by remember { mutableStateOf(false) }
+        
+        var showScreensaverSettingsSheet by remember(startWithScreensaver) { mutableStateOf(startWithScreensaver) }
+        // Memory flag for ideal navigation back-stack (Screensaver -> WorldClock)
+        var returnToWorldClock by remember { mutableStateOf(false) }
 
-        var editingPreset by remember {
-            mutableStateOf<TimerPreset?>(null)
-        }
+        var showGroupsManager by remember { mutableStateOf(false) }
+        var addingCity by remember { mutableStateOf(false) }
+        var selectionActive by remember { mutableStateOf(false) }
 
-        var showSettings by remember {
-            mutableStateOf(false)
-        }
-
-        // Automatically open Screensaver settings when requested
-        // from Android's system Screensaver settings gear icon
-        var showScreensaverSettingsSheet by remember(startWithScreensaver) {
-            mutableStateOf(startWithScreensaver)
-        }
-
-        var showGroupsManager by remember {
-            mutableStateOf(false)
-        }
-
-        var addingCity by remember {
-            mutableStateOf(false)
-        }
-
-        var selectionActive by remember {
-            mutableStateOf(false)
-        }
-
-        val snackbar = remember {
-            SnackbarHostState()
-        }
-
+        val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
 
         LaunchedEffect(currentTab) {
-            if (
-                currentTab == Tab.ALARMS &&
-                !AlarmScheduler.canScheduleExact(ctx)
-            ) {
+            if (currentTab == Tab.ALARMS && !AlarmScheduler.canScheduleExact(ctx)) {
                 delay(OPEN_SETTLE_DELAY_MS)
-
                 val result = snackbar.showSnackbar(
                     message = "Alarms need the \"Alarms & reminders\" permission to fire exactly on time",
                     actionLabel = "Enable",
                     duration = SnackbarDuration.Long,
                 )
-
                 if (result == SnackbarResult.ActionPerformed) {
                     runCatching {
                         ctx.startActivity(
                             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                                .setData(
-                                    Uri.parse("package:${ctx.packageName}")
-                                ),
+                                .setData(Uri.parse("package:${ctx.packageName}")),
                         )
                     }
                 }
@@ -323,16 +278,12 @@ fun ClockApp(
         }
 
         val density = LocalDensity.current
-
-        var dockHeight by remember {
-            mutableStateOf(DOCK_HEIGHT)
-        }
+        var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val ask = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
             ) {}
-
             LaunchedEffect(Unit) {
                 delay(OPEN_SETTLE_DELAY_MS)
                 ask.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -342,9 +293,7 @@ fun ClockApp(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surface,
-            snackbarHost = {
-                SnackbarHost(snackbar)
-            },
+            snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 TopAppBar(
                     title = {
@@ -356,29 +305,11 @@ fun ClockApp(
                                 targetState = targetTab,
                                 transitionSpec = {
                                     if (targetState.ordinal > initialState.ordinal) {
-                                        (
-                                            slideInHorizontally(
-                                                animationSpec = fastSnappySpringSpec()
-                                            ) { width -> width / 3 } +
-                                                fadeIn(tween(100))
-                                            ).togetherWith(
-                                            slideOutHorizontally(
-                                                animationSpec = fastSnappySpringSpec()
-                                            ) { width -> -width / 3 } +
-                                                fadeOut(tween(80))
-                                        )
+                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> width / 3 } + fadeIn(tween(100))) togetherWith
+                                            (slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
                                     } else {
-                                        (
-                                            slideInHorizontally(
-                                                animationSpec = fastSnappySpringSpec()
-                                            ) { width -> -width / 3 } +
-                                                fadeIn(tween(100))
-                                            ).togetherWith(
-                                            slideOutHorizontally(
-                                                animationSpec = fastSnappySpringSpec()
-                                            ) { width -> -width / 3 } +
-                                                fadeOut(tween(80))
-                                        )
+                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeIn(tween(100))) togetherWith
+                                            (slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
                                     }
                                 },
                                 label = "TopBarTitleAnim"
@@ -387,21 +318,14 @@ fun ClockApp(
                                     text = tab.label,
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(
-                                        horizontal = 20.dp,
-                                        vertical = 10.dp
-                                    ),
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
                     },
                     actions = {
-                        IconButton(
-                            onClick = {
-                                showSettings = true
-                            }
-                        ) {
+                        IconButton(onClick = { showSettings = true }) {
                             Icon(
                                 Icons.Rounded.Settings,
                                 contentDescription = "${currentTab.label} settings",
@@ -418,15 +342,8 @@ fun ClockApp(
         ) { padding ->
 
             val ld = LocalLayoutDirection.current
-
-            val underDock =
-                padding.calculateBottomPadding() +
-                    dockHeight +
-                    DOCK_CLEARANCE +
-                    12.dp
-
-            val underDockAndFab =
-                underDock + DOCK_HEIGHT + 12.dp
+            val underDock = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
+            val underDockAndFab = underDock + DOCK_HEIGHT + 12.dp
 
             val body = PaddingValues(
                 start = padding.calculateStartPadding(ld) + 16.dp,
@@ -434,19 +351,16 @@ fun ClockApp(
                 top = padding.calculateTopPadding(),
                 bottom = underDockAndFab,
             )
-
             val edgeToEdge = PaddingValues(
                 top = padding.calculateTopPadding(),
                 bottom = underDock,
             )
-
             val edgeToEdgeWithFab = PaddingValues(
                 top = padding.calculateTopPadding(),
                 bottom = underDockAndFab,
             )
 
             Box(Modifier.fillMaxSize()) {
-
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier
@@ -455,97 +369,66 @@ fun ClockApp(
                     beyondViewportPageCount = 1
                 ) { page ->
 
-                    val isFocused =
-                        pagerState.currentPage == page ||
-                            pagerState.targetPage == page
+                    val isFocused = pagerState.currentPage == page || pagerState.targetPage == page
 
                     Box(
                         Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                val pageOffset =
-                                    (pagerState.currentPage - page) +
-                                        pagerState.currentPageOffsetFraction
-
-                                alpha = 1f - (
-                                    kotlin.math.abs(pageOffset) * 0.15f
-                                    ).coerceIn(0f, 1f)
+                                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                                alpha = 1f - (kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0f, 1f)
                             }
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
-
                         when (Tab.entries[page]) {
-
                             Tab.ALARMS -> {
                                 val alarms by vm.alarms.collectAsStateWithLifecycle()
                                 val groups by vm.groups.collectAsStateWithLifecycle()
-
                                 AlarmsScreen(
                                     alarms = alarms,
                                     groups = groups,
                                     weekStart = settings.alarms.weekStart,
-                                    onSelectionChange = {
-                                        selectionActive = it
-                                    },
+                                    onSelectionChange = { selectionActive = it },
                                     onToggle = vm::toggleAlarm,
                                     onToggleGroup = vm::toggleGroup,
                                     onTogglePin = vm::togglePinAlarm,
-                                    onEdit = {
-                                        editing = it
-                                    },
-                                    onDelete = { alarm ->
-                                        vm.deleteAlarm(alarm.id)
-                                    },
+                                    onEdit = { editing = it },
+                                    onDelete = { alarm -> vm.deleteAlarm(alarm.id) },
                                     onDeleteSelected = vm::deleteSelectedAlarms,
                                     onSetEnabledSelected = vm::setAlarmsEnabledState,
                                     onUngroupSelected = vm::ungroupSelectedAlarms,
                                     contentPadding = body,
                                 )
                             }
-
                             Tab.WORLD -> {
                                 val cities by vm.cities.collectAsStateWithLifecycle()
                                 val homeZone by vm.homeZone.collectAsStateWithLifecycle()
                                 val now by rememberWallTicker()
-
                                 WorldClockScreen(
                                     cities = cities,
                                     home = homeZone,
                                     nowUtcMillis = now,
                                     settings = settings.world,
-                                    onSelectionChange = {
-                                        selectionActive = it
-                                    },
+                                    onSelectionChange = { selectionActive = it },
                                     onRemove = { city ->
                                         vm.removeCity(city.zone)
-
                                         scope.launch {
                                             val r = snackbar.showSnackbar(
                                                 message = "Removed ${city.city}",
                                                 actionLabel = "Undo",
                                                 duration = SnackbarDuration.Short,
                                             )
-
-                                            if (r == SnackbarResult.ActionPerformed) {
-                                                vm.addCity(city)
-                                            }
+                                            if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
                                         }
                                     },
-                                    onTogglePin = { city ->
-                                        vm.togglePinCity(city.zone)
-                                    },
+                                    onTogglePin = { city -> vm.togglePinCity(city.zone) },
                                     onDeleteSelected = vm::deleteSelectedCities,
                                     contentPadding = edgeToEdgeWithFab,
                                 )
                             }
-
                             Tab.TIMERS -> {
                                 val presets by vm.presets.collectAsStateWithLifecycle()
-
-                                val now by rememberElapsedTicker(
-                                    active = isFocused && timer != null
-                                )
-
+                                val now by rememberElapsedTicker(active = isFocused && timer != null)
                                 TimersScreen(
                                     timer = timer,
                                     draft = vm.draftDuration,
@@ -554,50 +437,25 @@ fun ClockApp(
                                     onDigit = vm::pressDigit,
                                     onBackspace = vm::backspace,
                                     onWind = vm::windToMinutes,
-                                    onStart = {
-                                        vm.startTimer()
-                                    },
-                                    onPauseResume = {
-                                        vm.pauseOrResumeTimer()
-                                    },
-                                    onAddTen = {
-                                        vm.addTenSeconds()
-                                    },
-                                    onCancel = {
-                                        vm.cancelTimer()
-                                    },
-                                    onStartPreset = {
-                                        vm.startPreset(it)
-                                    },
-                                    onEditPreset = {
-                                        editingPreset = it
-                                    },
-                                    onAddPreset = {
-                                        // Not needed here directly, handled by FAB
-                                    },
+                                    onStart = { vm.startTimer() },
+                                    onPauseResume = { vm.pauseOrResumeTimer() },
+                                    onAddTen = { vm.addTenSeconds() },
+                                    onCancel = { vm.cancelTimer() },
+                                    onStartPreset = { vm.startPreset(it) },
+                                    onEditPreset = { editingPreset = it },
+                                    onAddPreset = {},
                                     contentPadding = edgeToEdge,
                                 )
                             }
-
                             Tab.STOPWATCH -> {
                                 val sw by vm.stopwatch.collectAsStateWithLifecycle()
-
-                                val now by rememberElapsedTicker(
-                                    active = isFocused && sw.running
-                                )
-
+                                val now by rememberElapsedTicker(active = isFocused && sw.running)
                                 StopwatchScreen(
                                     stopwatch = sw,
                                     nowElapsedMillis = now,
-                                    onToggle = {
-                                        vm.toggleStopwatch()
-                                    },
-                                    onLap = {
-                                        vm.lap()
-                                    },
-                                    onReset = {
-                                        vm.resetStopwatch()
-                                    },
+                                    onToggle = { vm.toggleStopwatch() },
+                                    onLap = { vm.lap() },
+                                    onReset = { vm.resetStopwatch() },
                                     contentPadding = edgeToEdge,
                                 )
                             }
@@ -609,16 +467,12 @@ fun ClockApp(
                     visible = !selectionActive,
                     enter = fadeIn(animationSpec = tween(100)) +
                         slideInVertically(
-                            initialOffsetY = {
-                                it / 4
-                            },
+                            initialOffsetY = { it / 4 },
                             animationSpec = fastSnappySpringSpec()
                         ),
                     exit = fadeOut(animationSpec = tween(80)) +
                         slideOutVertically(
-                            targetOffsetY = {
-                                it / 4
-                            },
+                            targetOffsetY = { it / 4 },
                             animationSpec = fastSnappySpringSpec()
                         ),
                     modifier = Modifier
@@ -638,23 +492,14 @@ fun ClockApp(
                             }
                         },
                         modifier = Modifier.onGloballyPositioned { coords ->
-                            with(density) {
-                                dockHeight = coords.size.height.toDp()
-                            }
+                            with(density) { dockHeight = coords.size.height.toDp() }
                         },
                     )
                 }
 
                 FloatingAddButton(
                     visible = !selectionActive &&
-                        (
-                            targetTab == Tab.ALARMS ||
-                                targetTab == Tab.WORLD ||
-                                (
-                                    targetTab == Tab.TIMERS &&
-                                        timer == null
-                                    )
-                            ),
+                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
                     label = when (targetTab) {
                         Tab.WORLD -> "Add city"
                         Tab.TIMERS -> "Add preset"
@@ -662,31 +507,16 @@ fun ClockApp(
                     },
                     onClick = {
                         when (targetTab) {
-                            Tab.WORLD -> {
-                                addingCity = true
-                            }
-
-                            Tab.TIMERS -> {
-                                editingPreset = TimerPreset(
-                                    id = 0L,
-                                    name = "",
-                                    totalSeconds = 25 * 60
-                                )
-                            }
-
-                            else -> {
-                                editing = vm.blankAlarm()
-                            }
+                            Tab.WORLD -> addingCity = true
+                            Tab.TIMERS -> editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60)
+                            else -> editing = vm.blankAlarm()
                         }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(
                             end = 16.dp,
-                            bottom = padding.calculateBottomPadding() +
-                                dockHeight +
-                                DOCK_CLEARANCE +
-                                12.dp,
+                            bottom = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp,
                         ),
                 )
             }
@@ -694,136 +524,85 @@ fun ClockApp(
 
         editing?.let { draft ->
             val groups by vm.groups.collectAsStateWithLifecycle()
-
             AlarmEditSheet(
                 initial = draft,
                 weekStart = settings.alarms.weekStart,
                 groups = groups,
-                onCreateGroup = { name ->
-                    vm.addGroup(name)
-                },
-                onDismiss = {
-                    editing = null
-                },
-                onSave = {
-                    vm.saveAlarm(it)
-                },
-                onDelete = if (draft.id == 0L) {
-                    null
-                } else {
-                    { id -> vm.deleteAlarm(id) }
-                },
+                onCreateGroup = { name -> vm.addGroup(name) },
+                onDismiss = { editing = null },
+                onSave = { vm.saveAlarm(it) },
+                onDelete = if (draft.id == 0L) null else { { id -> vm.deleteAlarm(id) } },
             )
         }
 
         if (showGroupsManager) {
             val groups by vm.groups.collectAsStateWithLifecycle()
             val alarms by vm.alarms.collectAsStateWithLifecycle()
-
             AlarmGroupsSheet(
                 groups = groups,
                 alarms = alarms,
-                onAdd = { name ->
-                    vm.addGroup(name)
-                },
-                onRename = { id, name ->
-                    vm.renameGroup(id, name)
-                },
-                onDelete = { id ->
-                    vm.deleteGroup(id)
-                },
-                onDismiss = {
-                    showGroupsManager = false
-                },
+                onAdd = { name -> vm.addGroup(name) },
+                onRename = { id, name -> vm.renameGroup(id, name) },
+                onDelete = { id -> vm.deleteGroup(id) },
+                onDismiss = { showGroupsManager = false },
             )
         }
 
         editingPreset?.let { draft ->
             PresetEditSheet(
                 initial = draft,
-                onDismiss = {
-                    editingPreset = null
-                },
-                onSave = {
-                    vm.savePreset(it)
-                },
-                onDelete = if (draft.id == 0L) {
-                    null
-                } else {
-                    { id -> vm.deletePreset(id) }
-                },
+                onDismiss = { editingPreset = null },
+                onSave = { vm.savePreset(it) },
+                onDelete = if (draft.id == 0L) null else { { id -> vm.deletePreset(id) } },
             )
         }
 
         if (addingCity) {
             val cities by vm.cities.collectAsStateWithLifecycle()
             val now by rememberWallTicker(60_000L)
-
             AddCitySheet(
                 existing = cities,
                 nowUtcMillis = now,
                 onAdd = vm::addCity,
-                onDismiss = {
-                    addingCity = false
-                },
+                onDismiss = { addingCity = false },
             )
         }
 
         if (showSettings) {
             when (currentTab) {
-
                 Tab.ALARMS -> AlarmSettingsSheet(
                     settings = settings,
                     onChange = vm::updateSettings,
-                    onManageGroups = {
-                        showGroupsManager = true
-                    },
-                    onDismiss = {
-                        showSettings = false
-                    },
+                    onManageGroups = { showGroupsManager = true },
+                    onDismiss = { showSettings = false },
                 )
-
                 Tab.WORLD -> WorldSettingsSheet(
                     settings = settings,
                     onChange = vm::updateSettings,
                     onOpenScreensaverSettings = {
                         showSettings = false
+                        returnToWorldClock = true // Sets the flag to remember where we came from
                         showScreensaverSettingsSheet = true
                     },
-                    onDismiss = {
-                        showSettings = false
-                    },
+                    onDismiss = { showSettings = false },
                 )
-
-                Tab.TIMERS -> TimerSettingsSheet(
-                    settings,
-                    vm::updateSettings
-                ) {
-                    showSettings = false
-                }
-
-                Tab.STOPWATCH -> StopwatchSettingsSheet(
-                    settings,
-                    vm::updateSettings
-                ) {
-                    showSettings = false
-                }
+                Tab.TIMERS -> TimerSettingsSheet(settings, vm::updateSettings) { showSettings = false }
+                Tab.STOPWATCH -> StopwatchSettingsSheet(settings, vm::updateSettings) { showSettings = false }
             }
         }
 
-        // Screensaver Settings Bottom Sheet
-        // Opens automatically when startWithScreensaver is true
-        // and remains accessible from World Clock settings
         if (showScreensaverSettingsSheet) {
             ScreensaverSettingsSheet(
                 settings = screensaverSettings,
                 onChange = { transform ->
-                    scope.launch {
-                        screensaverRepository.updateSettings(transform)
-                    }
+                    scope.launch { screensaverRepository.updateSettings(transform) }
                 },
                 onDismiss = {
                     showScreensaverSettingsSheet = false
+                    if (returnToWorldClock) {
+                        showSettings = true // Returns directly to WorldSettingsSheet
+                        returnToWorldClock = false // Resets the flag
+                    }
                 }
             )
         }
