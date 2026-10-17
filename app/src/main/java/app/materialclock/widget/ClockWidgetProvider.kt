@@ -101,6 +101,21 @@ open class ClockWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        /**
+         * Like [refreshAll], but does not return until every widget has been redrawn.
+         *
+         * [refreshAll] starts the work and returns at once. That is fine while the app is open,
+         * but a broadcast receiver (a widget tap, an alarm ringing) is allowed to finish, and
+         * the process to be put to sleep, as soon as its own work returns, so a redraw that was
+         * only *started* could be cut off and the widget would keep showing the old state. Code
+         * that changes something a widget shows should wait for this one.
+         */
+        suspend fun refreshAllNow(context: Context) {
+            val app = context.applicationContext
+            val manager = AppWidgetManager.getInstance(app)
+            WidgetProviders.ids(app, WidgetKind.ANALOG, WidgetKind.DIGITAL).forEach { ClockWidgetRenderer.update(app, manager, it) }
+        }
+
         /** Redraw every placed analog and digital widget. */
         fun refreshAll(context: Context) {
             val app = context.applicationContext
