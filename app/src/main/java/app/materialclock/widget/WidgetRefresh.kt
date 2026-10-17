@@ -4,6 +4,12 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.widget.RemoteViews
+import app.materialclock.MainActivity
+import app.materialclock.R
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import android.util.SizeF
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +32,48 @@ object WidgetRefresh {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val waiting: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+    private val locks = ConcurrentHashMap<Int, Mutex>()
+
+    /**
+     * Runs [block] for one widget with every other draw of the same widget waiting its turn.
+     *
+     * While a widget is being resized the launcher reports a new size many times a second, and
+     * each report starts a draw. Run side by side, the draws finish in any order, and one that
+     * started early (and so used an old size) can finish last and stay on screen: the widget then
+     * shows a picture made for another size, stretched. One at a time, each draw reads the size
+     * only when its turn comes, so the last draw to run always uses the newest size.
+     */
+    suspend fun <T> serialized(appWidgetId: Int, block: suspend () -> T): T =
+        locks.getOrPut(appWidgetId) { Mutex() }.withLock { block() }
+
+    /**
+     * Sends a widget's picture to the launcher. If drawing it fails for any reason, a plain
+     * visible card is sent instead, because a widget whose first draw failed would otherwise stay
+     * empty and look as if it had vanished.
+     */
+    fun push(context: Context, manager: AppWidgetManager, appWidgetId: Int, build: () -> RemoteViews) {
+        val views = try {
+            build()
+        } catch (t: Throwable) {
+            Log.e("ClockWidget", "Drawing widget $appWidgetId failed", t)
+            fallback(context)
+        }
+        manager.updateAppWidget(appWidgetId, views)
+    }
+
+    private fun fallback(context: Context): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.widget_loading)
+        views.setOnClickPendingIntent(
+            android.R.id.background,
+            android.app.PendingIntent.getActivity(
+                context,
+                3,
+                android.content.Intent(context, MainActivity::class.java),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+        return views
+    }
 
     /** Whether the launcher has told us this widget's size yet. */
     fun sizesKnown(options: Bundle): Boolean {
