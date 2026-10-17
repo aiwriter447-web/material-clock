@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Builds the Digital clock widget.
@@ -48,6 +49,7 @@ object DigitalRenderer {
     private class Layout(
         val timePx: Float,
         val ampmPx: Float,
+        val gapPx: Float,
         val datePx: Float,
         val showDate: Boolean,
         val longDate: Boolean,
@@ -66,7 +68,7 @@ object DigitalRenderer {
         val is24 = DateFormat.is24HourFormat(context)
 
         // Rough width of the time string, in multiples of the text size: "12:45" is about 2.8.
-        val timeWidthEm = (if (config.digitalSeconds) 4.4f else 2.8f) + (if (is24) 0f else 1.0f)
+        val timeWidthEm = (if (config.digitalSeconds) 4.4f else 2.8f) + (if (is24) 0f else 1.25f)
         val longRowDate = wDp >= 280f
         val byWidth = if (rowLayout) w * 0.52f / timeWidthEm else w * 0.84f / timeWidthEm
         val byHeight = if (rowLayout) h * 0.56f else h * (if (showDate) 0.40f else 0.52f)
@@ -79,7 +81,9 @@ object DigitalRenderer {
 
         return Layout(
             timePx = time,
-            ampmPx = time * 0.36f,
+            // AM/PM: a little bigger than before, with a clear gap after the time.
+            ampmPx = time * 0.42f,
+            gapPx = time * 0.10f,
             datePx = if (rowLayout) dateRowPx else time * 0.30f,
             showDate = showDate,
             longDate = if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP,
@@ -153,6 +157,8 @@ object DigitalRenderer {
             views.setCharSequence(R.id.digital_ampm, "setFormat24Hour", "a")
             views.setTextColor(R.id.digital_ampm, colours.onFace)
             views.setTextViewTextSize(R.id.digital_ampm, TypedValue.COMPLEX_UNIT_PX, l.ampmPx)
+            // The gap between the time and AM/PM.
+            views.setViewPadding(R.id.digital_ampm, l.gapPx.roundToInt(), 0, 0, 0)
         }
 
         // Date.
@@ -212,12 +218,13 @@ object DigitalRenderer {
         val ampmText = if (l.is24) "" else SimpleDateFormat("a", Locale.getDefault()).format(now)
 
         val timePaint = paint(colours.onFace, l.timePx, 600)
-        val ampmPaint = paint(colours.onFace, l.ampmPx, 500)
+        val ampmPaint = paint(colours.onFace, l.ampmPx, 700)
         val datePaint = paint(colours.accent, l.datePx, 500)
 
         val timeW = timePaint.measureText(timeText)
         val ampmW = if (ampmText.isEmpty()) 0f else ampmPaint.measureText(ampmText)
-        val rowW = timeW + ampmW
+        val gap = if (ampmText.isEmpty()) 0f else l.gapPx
+        val rowW = timeW + gap + ampmW
         val digitH = l.timePx * 0.72f   // cap height of digits, roughly
 
         val dateGap = if (l.showDate) l.datePx * 1.3f else 0f
@@ -227,7 +234,7 @@ object DigitalRenderer {
         val baseline = top + dateGap + digitH
         val x = (w - rowW) / 2f
         canvas.drawText(timeText, x, baseline, timePaint)
-        if (ampmText.isNotEmpty()) canvas.drawText(ampmText, x + timeW, baseline, ampmPaint)
+        if (ampmText.isNotEmpty()) canvas.drawText(ampmText, x + timeW + gap, baseline, ampmPaint)
 
         if (l.showDate) {
             val dateText = SimpleDateFormat(datePattern(context, l.longDate), Locale.getDefault()).format(now)
