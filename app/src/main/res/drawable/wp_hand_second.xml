@@ -1,4 +1,4 @@
-l<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!-- The seconds dot: a dot near the rim that the clock turns once a minute. 
   Drawn 300dp wide on purpose: AnalogClock never enlarges a picture, it only shrinks it to fit,
   so a small one would sit tiny in the middle of the preview. Big, it is shrunk to fill it.
