@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: Alarm Clock, 2x2.
+  Shown in the widget picker. It is a plain layout: no app code runs for it, and it may only
+  use the views a widget may use (no plain View, for one).
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/wp_card_container"
+        android:gravity="center"
+        android:padding="10dp">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="bottom">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="6:00"
+                android:textColor="@color/wp_on_container"
+                android:textSize="34sp"
+                android:fontFamily="@font/google_sans_flex"
+                android:fontVariationSettings="'wght' 700"
+                android:includeFontPadding="false" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AM"
+                android:textColor="@color/wp_on_container"
+                android:textSize="14sp"
+                android:fontFamily="@font/google_sans_flex"
+                android:fontVariationSettings="'wght' 600"
+                android:includeFontPadding="false"
+                android:layout_marginStart="3dp" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="S M T W T F S"
+            android:textColor="@color/wp_on_container"
+            android:textSize="14sp"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 600"
+            android:includeFontPadding="false"
+            android:layout_marginTop="4dp" />
+        <ImageView
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/wp_circle_primary"
+            android:padding="12dp"
+            android:src="@drawable/ic_widget_alarm"
+            android:tint="@color/wp_on_primary"
+            android:layout_marginTop="10dp" />
+    </LinearLayout>
+</FrameLayout>

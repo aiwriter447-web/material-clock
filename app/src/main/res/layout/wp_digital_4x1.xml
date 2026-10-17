@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: Digital Clock, 4x1.
+  Shown in the widget picker. It is a plain layout: no app code runs for it, and it may only
+  use the views a widget may use (no plain View, for one).
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:background="@drawable/wp_pill_surface"
+        android:gravity="center"
+        android:padding="8dp">
+        <TextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="h:mm"
+            android:format24Hour="h:mm"
+            android:textColor="@color/wp_on_surface"
+            android:textSize="34sp"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 600"
+            android:includeFontPadding="false" />
+        <TextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="a"
+            android:format24Hour="a"
+            android:textColor="@color/wp_on_surface"
+            android:textSize="14sp"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 500"
+            android:includeFontPadding="false"
+            android:layout_marginStart="3dp" />
+        <TextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="EEE,'&#10;'d MMM"
+            android:format24Hour="EEE,'&#10;'d MMM"
+            android:textColor="@color/wp_accent"
+            android:textSize="15sp"
+            android:fontFamily="@font/google_sans_flex"
+            android:fontVariationSettings="'wght' 500"
+            android:includeFontPadding="false"
+            android:layout_marginStart="18dp" />
+    </LinearLayout>
+</FrameLayout>
