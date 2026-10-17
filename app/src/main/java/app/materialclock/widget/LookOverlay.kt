@@ -78,14 +78,14 @@ object LookOverlay {
         // The time, in the circle on the right.
         val timePaint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
             color = colours.orbitOnRight
-            textSize = s.right.r * 0.40f
+            textSize = s.right.r * 0.62f
         }
         val is24 = DateFormat.is24HourFormat(context)
         if (is24) {
-            centred("10 : 09", s.right.cx, s.right.cy, timePaint)
+            centred("10:09", s.right.cx, s.right.cy, timePaint)
         } else {
-            centred("10 : 09", s.right.cx, s.right.cy - s.right.r * 0.22f, timePaint)
-            centred("am", s.right.cx, s.right.cy + s.right.r * 0.30f, timePaint)
+            centred("10:09", s.right.cx, s.right.cy - s.right.r * 0.26f, timePaint)
+            centred("am", s.right.cx, s.right.cy + s.right.r * 0.36f, timePaint)
         }
 
         // The date, in the disc below.
