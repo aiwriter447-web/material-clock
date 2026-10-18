@@ -151,9 +151,9 @@ enum class Palette(
         )
     ),
 
-    // GALAXY: Cosmic deep space purple with vibrant violet accents
-    GALAXY(
-        displayName = "Galaxy",
+    // GALAXIA: Cosmic deep space purple with vibrant violet accents
+    GALAXIA(
+        displayName = "Galaxia",
         light = lightColorScheme(
             primary = Color(0xFF673AB7),
             onPrimary = Color(0xFFFFFFFF),
@@ -245,56 +245,56 @@ enum class Palette(
         )
     ),
 
-    // MOON: Lunar Grayscale (Black & White) with a specific Coral/Pink subtle accent
+    // MOON: Stark High-Contrast Lunar Grayscale (Pitch Black, Pure White, Silver)
     MOON(
         displayName = "Moon",
         light = lightColorScheme(
-            primary = Color(0xFF424242),
+            primary = Color(0xFF212121),
             onPrimary = Color(0xFFFFFFFF),
             primaryContainer = Color(0xFFE0E0E0),
-            onPrimaryContainer = Color(0xFF121212),
-            secondary = Color(0xFF757575),
+            onPrimaryContainer = Color(0xFF000000),
+            secondary = Color(0xFF616161),
             onSecondary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFFF5F5F5),
             onSecondaryContainer = Color(0xFF212121),
-            tertiary = Color(0xFFFF6B6B),
+            tertiary = Color(0xFF000000),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFFF5252),
+            tertiaryContainer = Color(0xFF000000),
             onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFF5F5F5),
+            background = Color(0xFFFAFAFA),
             onBackground = Color(0xFF121212),
             surface = Color(0xFFFFFFFF),
             onSurface = Color(0xFF121212),
             surfaceVariant = Color(0xFFEEEEEE),
-            onSurfaceVariant = Color(0xFF616161),
+            onSurfaceVariant = Color(0xFF424242),
             outline = Color(0xFF9E9E9E)
         ),
         dark = darkColorScheme(
             primary = Color(0xFFE0E0E0),
-            onPrimary = Color(0xFF121212),
-            primaryContainer = Color(0xFF2C2C2C),
+            onPrimary = Color(0xFF000000),
+            primaryContainer = Color(0xFF212121),
             onPrimaryContainer = Color(0xFFFFFFFF),
             secondary = Color(0xFF9E9E9E),
-            onSecondary = Color(0xFF121212),
-            secondaryContainer = Color(0xFF1E1E1E),
+            onSecondary = Color(0xFF000000),
+            secondaryContainer = Color(0xFF121212),
             onSecondaryContainer = Color(0xFFE0E0E0),
-            tertiary = Color(0xFFFF8A80),
-            onTertiary = Color(0xFF3B0000),
-            tertiaryContainer = Color(0xFFFF5252),
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFF121212),
+            tertiary = Color(0xFFFFFFFF),
+            onTertiary = Color(0xFF000000),
+            tertiaryContainer = Color(0xFFFFFFFF),
+            onTertiaryContainer = Color(0xFF000000),
+            background = Color(0xFF000000),
             onBackground = Color(0xFFFFFFFF),
-            surface = Color(0xFF1A1A1A),
+            surface = Color(0xFF000000),
             onSurface = Color(0xFFFFFFFF),
-            surfaceVariant = Color(0xFF2C2C2C),
+            surfaceVariant = Color(0xFF1A1A1A),
             onSurfaceVariant = Color(0xFFBDBDBD),
             outline = Color(0xFF757575)
         )
     ),
 
-    // NOTHING: Pure Black, Pure White, Bright Graphic Red
-    NOTHING(
-        displayName = "Nothing",
+    // NUCLEUS: Pure Black, Pure White, Bright Graphic Red
+    NUCLEUS(
+        displayName = "Nucleus",
         light = lightColorScheme(
             primary = Color(0xFFD32F2F),
             onPrimary = Color(0xFFFFFFFF),
@@ -386,9 +386,9 @@ enum class Palette(
         )
     ),
 
-    // PIXEL: Soft pastel Rose/Pink aesthetic
-    PIXEL(
-        displayName = "Pixel",
+    // PRIME: Soft pastel Rose & Pink aesthetic
+    PRIME(
+        displayName = "Prime",
         light = lightColorScheme(
             primary = Color(0xFFF06292),
             onPrimary = Color(0xFFFFFFFF),
@@ -480,7 +480,7 @@ enum class Palette(
         )
     ),
 
-    // WOODLAND: Elegant warm cream/beige backgrounds with stark pure Black buttons (Former Expressive)
+    // WOODLAND: Elegant warm cream/beige backgrounds with stark pure Black buttons
     WOODLAND(
         displayName = "Woodland",
         light = lightColorScheme(
