@@ -8,7 +8,6 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
@@ -44,7 +44,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -59,7 +58,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePickerSelectionMode
 import androidx.compose.material3.TimePickerState
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -167,9 +165,15 @@ fun AlarmEditSheet(
     ) {
         Column(Modifier.padding(bottom = 20.dp)) {
 
-            WideTimeField(state = timeState)
+            Spacer(Modifier.height(16.dp))
 
-            Spacer(Modifier.height(4.dp))
+            // Time Selector (Hides big time if manual entry is active)
+            if (!manualEntry) {
+                WideTimeField(state = timeState)
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Keyboard/Dial Toggle Button perfectly aligned
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.End,
@@ -181,6 +185,7 @@ fun AlarmEditSheet(
                     )
                 }
             }
+
             if (manualEntry) {
                 ManualTimeEntry(state = timeState)
             } else {
@@ -191,24 +196,26 @@ fun AlarmEditSheet(
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(24.dp))
+            
+            // Consistent Weekday Selector
             DayToggles(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
                 onToggle = { d -> days = if (d in days) days - d else days + d },
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Name") },
+                label = { Text("Alarm Name") },
                 singleLine = true,
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
             )
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             GroupPicker(
                 groups = groups,
                 selectedId = groupId,
@@ -216,7 +223,7 @@ fun AlarmEditSheet(
                 onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
             )
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -278,7 +285,7 @@ fun AlarmEditSheet(
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(24.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = EDGE),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -364,6 +371,7 @@ fun AlarmEditSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WideTimeField(state: TimePickerState) {
     val hour = if (state.is24hour) state.hour else ((state.hour % 12).takeIf { it != 0 } ?: 12)
@@ -400,6 +408,7 @@ private fun WideTimeField(state: TimePickerState) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ManualTimeEntry(state: TimePickerState) {
     var hourText by remember(state.is24hour) {
@@ -592,22 +601,28 @@ private fun GroupPicker(
                 textAlign = TextAlign.Start,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("No group") },
-                onClick = { onSelect(null); expanded = false },
-            )
-            groups.forEach { group ->
+        
+        // Wrapped DropdownMenu with Custom Rounded Shape to fix sharp corners
+        MaterialTheme(
+            shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
+        ) {
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
-                    text = { Text(group.name) },
-                    onClick = { onSelect(group.id); expanded = false },
+                    text = { Text("No group") },
+                    onClick = { onSelect(null); expanded = false },
+                )
+                groups.forEach { group ->
+                    DropdownMenuItem(
+                        text = { Text(group.name) },
+                        onClick = { onSelect(group.id); expanded = false },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("New group") },
+                    leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    onClick = { expanded = false; showCreate = true },
                 )
             }
-            DropdownMenuItem(
-                text = { Text("New group") },
-                leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                onClick = { expanded = false; showCreate = true },
-            )
         }
     }
 
@@ -664,7 +679,7 @@ private fun ringtoneName(uri: String?): String {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+// Re-designed DayToggles for consistent Circular Shape
 @Composable
 private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) {
     Row(
@@ -674,6 +689,7 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
         order.forEach { day ->
             val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()
+            val isChecked = day in selected
 
             val scale by animateFloatAsState(
                 targetValue = if (isPressed) 0.90f else 1f,
@@ -681,25 +697,34 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
                 label = "dayToggleScale"
             )
 
-            ToggleButton(
-                checked = day in selected,
-                onCheckedChange = { onToggle(day) },
+            val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
+            val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
+            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
+
+            Surface(
+                onClick = { onToggle(day) },
                 interactionSource = interactionSource,
-                contentPadding = PaddingValues(0.dp),
+                shape = CircleShape, // Forced perfectly circular shape always
+                color = containerColor,
+                contentColor = contentColor,
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp)
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
-                    },
+                    }
             ) {
-                Text(
-                    day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
