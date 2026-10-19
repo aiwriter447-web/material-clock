@@ -259,7 +259,9 @@ object ClockWidgetRenderer {
         applyHands(views, config, colours, face)
         applyLook(context, views, config, colours, face, 0f, 0f, w, h)
 
-        applyDate(context, views, config, colours, face, w, h)
+        // Only the 2x1 capsule (its own code above) and Orbit (a date disc of its own) show a date.
+        // A plain dial has none under it, whatever the old date setting says.
+        views.setViewVisibility(R.id.date, View.GONE)
 
         views.setOnClickPendingIntent(
             android.R.id.background,
