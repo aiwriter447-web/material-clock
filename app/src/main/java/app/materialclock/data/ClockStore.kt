@@ -188,7 +188,7 @@ private fun Preferences.toSettings() = ClockSettings(
         palette = enumOr(this[stringPreferencesKey("palette")], Palette.EXPRESSIVE),
         darkMode = enumOr(this[stringPreferencesKey("darkMode")], DarkMode.SYSTEM),
         amoledBlack = this[booleanPreferencesKey("amoled")] ?: false,
-        oneHandMode = this[booleanPreferencesKey("oneHand")] ?: false,
+        oneHandMode = this[booleanPreferencesKey("oneHand")] ?: true,
     ),
 )
 
