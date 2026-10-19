@@ -68,13 +68,13 @@ object DigitalRenderer {
         val is24 = DateFormat.is24HourFormat(context)
 
         // Rough width of the time string, in multiples of the text size: "12:45" is about 2.8.
-        val timeWidthEm = (if (config.digitalSeconds) 4.4f else 2.8f) + (if (is24) 0f else 1.25f)
+        val timeWidthEm = (if (config.digitalSeconds) 4.6f else 2.95f) + (if (is24) 0f else 1.4f)
         val longRowDate = wDp >= 280f
-        val byWidth = if (rowLayout) w * 0.52f / timeWidthEm else w * 0.84f / timeWidthEm
-        val byHeight = if (rowLayout) h * 0.56f else h * (if (showDate) 0.40f else 0.52f)
+        val byWidth = if (rowLayout) w * 0.54f / timeWidthEm else w * 0.88f / timeWidthEm
+        val byHeight = if (rowLayout) h * 0.58f else h * (if (showDate) 0.44f else 0.56f)
         val time = min(byWidth, byHeight)
         // In the one-row layout the date has its own two lines beside the time.
-        val dateRowPx = min(h * 0.30f, w * 0.34f / (if (longRowDate) 5.4f else 3.4f))
+        val dateRowPx = min(h * 0.32f, w * 0.34f / (if (longRowDate) 5.4f else 3.4f))
 
         // One-row widgets are pills; taller ones get a Material-style rounded card.
         val radius = if (hDp < DATE_MIN_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
@@ -82,9 +82,9 @@ object DigitalRenderer {
         return Layout(
             timePx = time,
             // AM/PM: a little bigger than before, with a clear gap after the time.
-            ampmPx = time * 0.42f,
+            ampmPx = time * 0.46f,
             gapPx = time * 0.10f,
-            datePx = if (rowLayout) dateRowPx else time * 0.30f,
+            datePx = if (rowLayout) dateRowPx else time * 0.34f,
             showDate = showDate,
             longDate = if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP,
             rowLayout = rowLayout,
@@ -217,9 +217,9 @@ object DigitalRenderer {
         val timeText = SimpleDateFormat(timePattern(config, l.is24), Locale.getDefault()).format(now)
         val ampmText = if (l.is24) "" else SimpleDateFormat("a", Locale.getDefault()).format(now)
 
-        val timePaint = paint(colours.onFace, l.timePx, 600)
-        val ampmPaint = paint(colours.onFace, l.ampmPx, 700)
-        val datePaint = paint(colours.accent, l.datePx, 500)
+        val timePaint = paint(colours.onFace, l.timePx, 800)
+        val ampmPaint = paint(colours.onFace, l.ampmPx, 800)
+        val datePaint = paint(colours.accent, l.datePx, 700)
 
         val timeW = timePaint.measureText(timeText)
         val ampmW = if (ampmText.isEmpty()) 0f else ampmPaint.measureText(ampmText)
