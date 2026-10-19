@@ -106,6 +106,25 @@ import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 20.dp
@@ -280,6 +299,98 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
+        // ---- One-hand mode: swipe down to bring the top of the screen into thumb reach ----
+        //
+        // `reachFraction` is how far the top has been pulled down, from 0 (normal) to 1 (all the
+        // way). It is a plain state that only layout and drawing read, never composition, so
+        // dragging it moves things without rebuilding the whole screen on every frame.
+        val oneHandOn = settings.theme.oneHandMode
+        val reachMaxPx = with(density) { (LocalConfiguration.current.screenHeightDp * 0.29f).dp.toPx() }
+        val reachActive = oneHandOn && !selectionActive && targetTab != Tab.WORLD
+        var reachFraction by remember { mutableFloatStateOf(0f) }
+        var reachResting by remember { mutableFloatStateOf(0f) }
+        var reachJob by remember { mutableStateOf<Job?>(null) }
+
+        fun reachMoveBy(dy: Float) {
+            reachJob?.cancel()
+            reachFraction = (reachFraction + dy / reachMaxPx).coerceIn(0f, 1f)
+        }
+
+        fun reachSettle() {
+            // Let go past a quarter of the way down and it opens fully; past a quarter of the way
+            // back up and it closes. The gesture starts easily and finishes by itself.
+            val target = if (reachResting < 0.5f) {
+                if (reachFraction > 0.22f) 1f else 0f
+            } else {
+                if (reachFraction < 0.78f) 0f else 1f
+            }
+            reachResting = target
+            reachJob?.cancel()
+            reachJob = scope.launch {
+                animate(
+                    initialValue = reachFraction,
+                    targetValue = target,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f),
+                ) { v, _ -> reachFraction = v }
+            }
+        }
+
+        // Closes itself when it stops applying: the setting is turned off, a selection starts, or
+        // the World Clock tab (which has its own large clock) is on its way in.
+        LaunchedEffect(reachActive) {
+            if (!reachActive && reachFraction > 0f) {
+                reachResting = 0f
+                reachJob?.cancel()
+                animate(reachFraction, 0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)) { v, _ ->
+                    reachFraction = v
+                }
+            }
+        }
+
+        // For the screens that scroll: a drag down that the list cannot use (it is already at the
+        // top) opens the gap, and a drag up closes the gap before the list is allowed to scroll.
+        val reachConnection = remember(reachActive, reachMaxPx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
+                    if (available.y < 0f && reachFraction > 0f) {
+                        val before = reachFraction
+                        reachMoveBy(available.y)
+                        return Offset(0f, (reachFraction - before) * reachMaxPx)
+                    }
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
+                    if (available.y > 0f && reachFraction < 1f) {
+                        val before = reachFraction
+                        reachMoveBy(available.y)
+                        return Offset(0f, (reachFraction - before) * reachMaxPx)
+                    }
+                    return Offset.Zero
+                }
+
+                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                    reachSettle()
+                    return Velocity.Zero
+                }
+            }
+        }
+
+        val alarmsNow by vm.alarms.collectAsStateWithLifecycle()
+        val stopwatchNow by vm.stopwatch.collectAsStateWithLifecycle()
+        val minuteTick by produceState(0) {
+            while (true) {
+                delay(30_000L)
+                value += 1
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val ask = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
@@ -295,6 +406,7 @@ fun ClockApp(
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
+                Box(Modifier.offset { IntOffset(0, (reachFraction * reachMaxPx).roundToInt()) }) {
                 TopAppBar(
                     title = {
                         Surface(
@@ -338,6 +450,7 @@ fun ClockApp(
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 )
+                }
             },
         ) { padding ->
 
@@ -360,7 +473,20 @@ fun ClockApp(
                 bottom = underDockAndFab,
             )
 
-            Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .nestedScroll(reachConnection)
+                    // For screens with nothing to scroll (a short list, the timer keypad): a plain
+                    // vertical drag that nothing else used.
+                    .pointerInput(reachActive) {
+                        if (!reachActive) return@pointerInput
+                        detectVerticalDragGestures(
+                            onDragEnd = { reachSettle() },
+                            onDragCancel = { reachSettle() },
+                        ) { _, dy -> reachMoveBy(dy) }
+                    },
+            ) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier
@@ -374,6 +500,24 @@ fun ClockApp(
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .then(
+                                if (Tab.entries[page] == Tab.WORLD) {
+                                    Modifier
+                                } else {
+                                    Modifier.layout { measurable, constraints ->
+                                        val shift = (reachFraction * reachMaxPx).roundToInt()
+                                        val placeable = measurable.measure(
+                                            constraints.copy(
+                                                minHeight = 0,
+                                                maxHeight = (constraints.maxHeight - shift).coerceAtLeast(0),
+                                            ),
+                                        )
+                                        layout(constraints.maxWidth, constraints.maxHeight) {
+                                            placeable.placeRelative(0, shift)
+                                        }
+                                    }
+                                },
+                            )
                             .graphicsLayer {
                                 val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                                 alpha = 1f - (kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0f, 1f)
@@ -461,6 +605,16 @@ fun ClockApp(
                             }
                         }
                     }
+                }
+
+                if (oneHandOn && targetTab != Tab.WORLD) {
+                    ReachSummary(
+                        text = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, minuteTick),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 40.dp)
+                            .graphicsLayer { alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f) },
+                    )
                 }
 
                 AnimatedVisibility(
