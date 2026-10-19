@@ -294,52 +294,79 @@ enum class Palette(
 
     // NUCLEUS: Pure Black, Pure White, Bright Graphic Red
     NUCLEUS(
-        displayName = "Nucleus",
-        light = lightColorScheme(
-            primary = Color(0xFFD32F2F),
-            onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFFFFEBEE),
-            onPrimaryContainer = Color(0xFF410002),
-            secondary = Color(0xFF121212),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFFE0E0E0),
-            onSecondaryContainer = Color(0xFF000000),
-            tertiary = Color(0xFFD32F2F),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFD32F2F),
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFFFFFFFF),
-            onBackground = Color(0xFF121212),
-            surface = Color(0xFFFFFFFF),
-            onSurface = Color(0xFF121212),
-            surfaceVariant = Color(0xFFF5F5F5),
-            onSurfaceVariant = Color(0xFF404040),
-            outline = Color(0xFF757575)
-        ),
-        dark = darkColorScheme(
-            primary = Color(0xFFE53935),
-            onPrimary = Color(0xFFFFFFFF),
-            primaryContainer = Color(0xFF410002),
-            onPrimaryContainer = Color(0xFFFFDAD6),
-            secondary = Color(0xFFE53935),
-            onSecondary = Color(0xFFFFFFFF),
-            secondaryContainer = Color(0xFF1A1A1A),
-            onSecondaryContainer = Color(0xFFFFFFFF),
-            tertiary = Color(0xFFE53935),
-            onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFE53935),
-            onTertiaryContainer = Color(0xFFFFFFFF),
-            background = Color(0xFF000000),
-            onBackground = Color(0xFFFFFFFF),
-            surface = Color(0xFF000000),
-            onSurface = Color(0xFFFFFFFF),
-            surfaceVariant = Color(0xFF1C1C1C),
-            onSurfaceVariant = Color(0xFFC9C9C9),
-            outline = Color(0xFF616161)
-        )
+    displayName = "Nucleus",
+
+    light = lightColorScheme(
+        primary = Color(0xFFD32F2F),
+        onPrimary = Color(0xFFFFFFFF),
+
+        primaryContainer = Color(0xFFFFEBEE),
+        onPrimaryContainer = Color(0xFF410002),
+
+        secondary = Color(0xFF121212),
+        onSecondary = Color(0xFFFFFFFF),
+
+        secondaryContainer = Color(0xFFE0E0E0),
+        onSecondaryContainer = Color(0xFF000000),
+
+        tertiary = Color(0xFFD32F2F),
+        onTertiary = Color(0xFFFFFFFF),
+
+        tertiaryContainer = Color(0xFFFFCDD2),
+        onTertiaryContainer = Color(0xFF410002),
+
+        background = Color(0xFFFFFFFF),
+        onBackground = Color(0xFF121212),
+
+        surface = Color(0xFFFFFFFF),
+        onSurface = Color(0xFF121212),
+
+        surfaceVariant = Color(0xFFF5F5F5),
+        onSurfaceVariant = Color(0xFF404040),
+
+        outline = Color(0xFF757575)
     ),
 
-    // OCEAN: Scuba diving aesthetic: Deepest dark teal/black with glowing Cyan/Aqua accents
+    dark = darkColorScheme(
+        // Soft Premium Red
+        primary = Color(0xFFFF7777),
+        onPrimary = Color(0xFF3D0000),
+
+        // Muted Red Container
+        primaryContainer = Color(0xFF5C2025),
+        onPrimaryContainer = Color(0xFFFFDADA),
+
+        // Soft Neutral Secondary
+        secondary = Color(0xFFE0B4B4),
+        onSecondary = Color(0xFF352020),
+
+        secondaryContainer = Color(0xFF302426),
+        onSecondaryContainer = Color(0xFFFFDADA),
+
+        // Elegant Coral Red
+        tertiary = Color(0xFFFF8A80),
+        onTertiary = Color(0xFF4A1010),
+
+        tertiaryContainer = Color(0xFF632B27),
+        onTertiaryContainer = Color(0xFFFFDAD6),
+
+        // Pure AMOLED Black
+        background = Color(0xFF000000),
+        onBackground = Color(0xFFFFFFFF),
+
+        surface = Color(0xFF000000),
+        onSurface = Color(0xFFFFFFFF),
+
+        // Subtle Dark Surfaces
+        surfaceVariant = Color(0xFF1C1C1E),
+        onSurfaceVariant = Color(0xFFD0C4C4),
+
+        // Balanced Borders
+        outline = Color(0xFF756868)
+      )
+   ),
+
+  // OCEAN: Scuba diving aesthetic: Deepest dark teal/black with glowing Cyan/Aqua accents
     OCEAN(
         displayName = "Ocean",
         light = lightColorScheme(
