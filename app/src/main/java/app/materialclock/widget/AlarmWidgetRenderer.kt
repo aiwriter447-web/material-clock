@@ -224,7 +224,7 @@ object AlarmWidgetRenderer {
                     isOn -> alpha(fg, 0.55f)
                     else -> alpha(fg, if (on) 0.45f else 0.3f)
                 }
-                val p = paint(col, size, 600)
+                val p = paint(col, size, 700)
                 c.drawText(letters[i], cx - p.measureText(letters[i]) / 2f, baseline, p)
                 if (isOn) {
                     c.drawCircle(cx, baseline - size * 1.25f, size * 0.12f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = col })
@@ -262,16 +262,16 @@ object AlarmWidgetRenderer {
 
         /** Time, with AM/PM small beside it, starting at [x] on [baseline]. */
         fun drawTimeInline(x: Float, baseline: Float, size: Float) {
-            val tp = paint(textColour, size, 600)
+            val tp = paint(textColour, size, 800)
             c.drawText(timeStr, x, baseline, tp)
             if (ampm.isNotEmpty()) {
-                c.drawText(ampm, x + tp.measureText(timeStr) + size * 0.10f, baseline, paint(textColour, size * 0.46f, 500))
+                c.drawText(ampm, x + tp.measureText(timeStr) + size * 0.10f, baseline, paint(textColour, size * 0.50f, 700))
             }
         }
 
         fun inlineWidth(size: Float): Float {
-            val tw = paint(textColour, size, 600).measureText(timeStr)
-            val aw = if (ampm.isEmpty()) 0f else size * 0.10f + paint(textColour, size * 0.46f, 500).measureText(ampm)
+            val tw = paint(textColour, size, 800).measureText(timeStr)
+            val aw = if (ampm.isEmpty()) 0f else size * 0.10f + paint(textColour, size * 0.50f, 700).measureText(ampm)
             return tw + aw
         }
 
@@ -291,8 +291,8 @@ object AlarmWidgetRenderer {
                 val gap = ts * 0.14f
                 val total = cap + if (ampm.isEmpty()) 0f else gap + acap
                 val top = (hf - total) / 2f
-                c.drawText(timeStr, x0, top + cap, paint(textColour, ts, 600))
-                if (ampm.isNotEmpty()) c.drawText(ampm, x0, top + total, paint(textColour, ts * 0.46f, 500))
+                c.drawText(timeStr, x0, top + cap, paint(textColour, ts, 800))
+                if (ampm.isNotEmpty()) c.drawText(ampm, x0, top + total, paint(textColour, ts * 0.50f, 700))
             }
 
             // 4x1 and wider: button, time, and the weekdays on the right. The weekdays only get
@@ -350,7 +350,7 @@ object AlarmWidgetRenderer {
                 val x0 = pad * 1.5f
                 val label = alarm?.label?.takeIf { it.isNotBlank() } ?: "Alarm"
                 val lblSize = hf * 0.17f
-                c.drawText(label, x0, pad * 1.1f + lblSize * 0.8f, paint(alpha(fg, 0.8f), lblSize, 500))
+                c.drawText(label, x0, pad * 1.1f + lblSize * 0.8f, paint(alpha(fg, 0.85f), lblSize, 700))
 
                 val ts = min(hf * 0.30f, wf * 0.52f / (if (is24) 2.9f else 3.5f))
                 val ls = ts * 0.46f
