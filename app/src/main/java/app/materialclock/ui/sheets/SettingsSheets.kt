@@ -609,7 +609,7 @@ fun StopwatchSettingsSheet(
                     ItemDivider()
                     SwitchRow(
                         title = "One-hand mode",
-                        subtitle = "Long-press dock to pull screen into thumb reach",
+                        subtitle = "Swipe down on Alarms, Timers and Stopwatch to bring the top into thumb reach",
                         checked = settings.theme.oneHandMode,
                         onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
                     )
