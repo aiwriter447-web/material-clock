@@ -36,8 +36,8 @@ object OrbitDesign {
     fun slots(cx: Float, cy: Float, r: Float) = Slots(
         top = Slot(cx, cy - 0.45f * r, 0.42f * r),
         bottom = Slot(cx, cy + 0.45f * r, 0.40f * r),
-        left = Slot(cx - 0.60f * r, cy, 0.30f * r),
-        right = Slot(cx + 0.62f * r, cy, 0.30f * r),
+        left = Slot(cx - 0.63f * r, cy, 0.32f * r),
+        right = Slot(cx + 0.63f * r, cy, 0.32f * r),
     )
 
     /** A disc with twelve very shallow scallops, filling [slot]. */
@@ -91,12 +91,12 @@ object OrbitDesign {
             RectF(l.cx - l.r, l.cy - l.r, l.cx + l.r, l.cy + l.r),
             -90f, 360f * pct / 100f, true, fill(colours.orbitRight),
         )
-        canvas.drawCircle(l.cx, l.cy, l.r * 0.56f, fill(colours.face))
+        canvas.drawCircle(l.cx, l.cy, l.r * 0.64f, fill(colours.face))
 
         val label = "$pct%"
-        val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 600).apply {
+        val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
             color = colours.onFace
-            textSize = l.r * 0.36f
+            textSize = l.r * 0.47f
         }
         val ink = TextInk.ink(paint, label)
         canvas.drawText(
