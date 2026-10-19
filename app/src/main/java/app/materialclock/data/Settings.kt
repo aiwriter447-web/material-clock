@@ -84,11 +84,12 @@ data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val amoledBlack: Boolean = false,
     /**
-     * Long-pressing the dock pulls the whole screen down into thumb reach, scaled toward
-     * whichever corner the dock was pressed nearer to. Off by default: it is a deliberate,
-     * discoverable gesture rather than something that should surprise a two-handed user.
+     * Swiping down on the Alarms, Timers and Stopwatch tabs pulls the top of the screen (the title
+     * bar and the first things under it) down into thumb reach, and shows a large summary of the
+     * tab in the space it leaves ("All alarms are off"). Swiping up pushes it back. On by default:
+     * the gesture only exists when you make it, so it cannot get in a two-handed user's way.
      */
-    val oneHandMode: Boolean = false,
+    val oneHandMode: Boolean = true,
 )
 
 enum class DarkMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
