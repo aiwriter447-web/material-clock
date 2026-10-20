@@ -229,8 +229,8 @@ enum class Palette(
             onPrimaryContainer = Color(0xFFDBEAFE),
             secondary = Color(0xFF93C5FD),
             onSecondary = Color(0xFF00326B),
-            secondaryContainer = Color(0xFF1E293B),
-            onSecondaryContainer = Color(0xFFDBEAFE),
+            secondaryContainer = Color(0xFF233554),
+            onSecondaryContainer = Color(0xFFE2E8F0),
             tertiary = Color(0xFF60A5FA),
             onTertiary = Color(0xFF002855),
             tertiaryContainer = Color(0xFF3B82F6),
@@ -239,9 +239,9 @@ enum class Palette(
             onBackground = Color(0xFFE2E8F0),
             surface = Color(0xFF0F172A),
             onSurface = Color(0xFFE2E8F0),
-            surfaceVariant = Color(0xFF1E293B),
-            onSurfaceVariant = Color(0xFF94A3B8),
-            outline = Color(0xFF64748B)
+            surfaceVariant = Color(0xFF1E2C46),
+            onSurfaceVariant = Color(0xFFCBD5E1),
+            outline = Color(0xFF5A7291)
         )
     ),
 
@@ -294,79 +294,52 @@ enum class Palette(
 
     // NUCLEUS: Pure Black, Pure White, Bright Graphic Red
     NUCLEUS(
-    displayName = "Nucleus",
-
-    light = lightColorScheme(
-        primary = Color(0xFFD32F2F),
-        onPrimary = Color(0xFFFFFFFF),
-
-        primaryContainer = Color(0xFFFFEBEE),
-        onPrimaryContainer = Color(0xFF410002),
-
-        secondary = Color(0xFF121212),
-        onSecondary = Color(0xFFFFFFFF),
-
-        secondaryContainer = Color(0xFFE0E0E0),
-        onSecondaryContainer = Color(0xFF000000),
-
-        tertiary = Color(0xFFD32F2F),
-        onTertiary = Color(0xFFFFFFFF),
-
-        tertiaryContainer = Color(0xFFFFCDD2),
-        onTertiaryContainer = Color(0xFF410002),
-
-        background = Color(0xFFFFFFFF),
-        onBackground = Color(0xFF121212),
-
-        surface = Color(0xFFFFFFFF),
-        onSurface = Color(0xFF121212),
-
-        surfaceVariant = Color(0xFFF5F5F5),
-        onSurfaceVariant = Color(0xFF404040),
-
-        outline = Color(0xFF757575)
+        displayName = "Nucleus",
+        light = lightColorScheme(
+            primary = Color(0xFFE5252A),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFFFEBEE),
+            onPrimaryContainer = Color(0xFF410002),
+            secondary = Color(0xFF1A1A1A),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFFEBEBEB),
+            onSecondaryContainer = Color(0xFF121212),
+            tertiary = Color(0xFFE5252A),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFFFFCDD2),
+            onTertiaryContainer = Color(0xFF410002),
+            background = Color(0xFFF5F5F5),
+            onBackground = Color(0xFF121212),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF121212),
+            surfaceVariant = Color(0xFFEEEEEE),
+            onSurfaceVariant = Color(0xFF5E5E5E),
+            outline = Color(0xFF9E9E9E)
+        ),
+        dark = darkColorScheme(
+            primary = Color(0xFFE5252A),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFF400E0E),
+            onPrimaryContainer = Color(0xFFFFDADA),
+            secondary = Color(0xFF262626),
+            onSecondary = Color(0xFFFFFFFF),
+            secondaryContainer = Color(0xFF1E1E1E),
+            onSecondaryContainer = Color(0xFFEBEBEB),
+            tertiary = Color(0xFFE5252A),
+            onTertiary = Color(0xFFFFFFFF),
+            tertiaryContainer = Color(0xFF400E0E),
+            onTertiaryContainer = Color(0xFFFFDAD6),
+            background = Color(0xFF000000),
+            onBackground = Color(0xFFFFFFFF),
+            surface = Color(0xFF1A1A1A),
+            onSurface = Color(0xFFFFFFFF),
+            surfaceVariant = Color(0xFF2C2C2E),
+            onSurfaceVariant = Color(0xFFC7C7C7),
+            outline = Color(0xFF5C5C5C)
+        )
     ),
 
-    dark = darkColorScheme(
-        // Soft Premium Red
-        primary = Color(0xFFFF7777),
-        onPrimary = Color(0xFF3D0000),
-
-        // Muted Red Container
-        primaryContainer = Color(0xFF5C2025),
-        onPrimaryContainer = Color(0xFFFFDADA),
-
-        // Soft Neutral Secondary
-        secondary = Color(0xFFE0B4B4),
-        onSecondary = Color(0xFF352020),
-
-        secondaryContainer = Color(0xFF302426),
-        onSecondaryContainer = Color(0xFFFFDADA),
-
-        // Elegant Coral Red
-        tertiary = Color(0xFFFF8A80),
-        onTertiary = Color(0xFF4A1010),
-
-        tertiaryContainer = Color(0xFF632B27),
-        onTertiaryContainer = Color(0xFFFFDAD6),
-
-        // Pure AMOLED Black
-        background = Color(0xFF000000),
-        onBackground = Color(0xFFFFFFFF),
-
-        surface = Color(0xFF000000),
-        onSurface = Color(0xFFFFFFFF),
-
-        // Subtle Dark Surfaces
-        surfaceVariant = Color(0xFF1C1C1E),
-        onSurfaceVariant = Color(0xFFD0C4C4),
-
-        // Balanced Borders
-        outline = Color(0xFF756868)
-      )
-   ),
-
-  // OCEAN: Scuba diving aesthetic: Deepest dark teal/black with glowing Cyan/Aqua accents
+    // OCEAN: Scuba diving aesthetic: Deepest dark teal/black with glowing Cyan/Aqua accents
     OCEAN(
         displayName = "Ocean",
         light = lightColorScheme(
@@ -397,8 +370,8 @@ enum class Palette(
             onPrimaryContainer = Color(0xFFE0F7FA),
             secondary = Color(0xFF26C6DA),
             onSecondary = Color(0xFF00363A),
-            secondaryContainer = Color(0xFF092529),
-            onSecondaryContainer = Color(0xFFB2EBF2),
+            secondaryContainer = Color(0xFF143B42),
+            onSecondaryContainer = Color(0xFFE0F7FA),
             tertiary = Color(0xFF00E5FF),
             onTertiary = Color(0xFF00363A),
             tertiaryContainer = Color(0xFF00E5FF),
@@ -407,9 +380,9 @@ enum class Palette(
             onBackground = Color(0xFFE0F7FA),
             surface = Color(0xFF0A1C20),
             onSurface = Color(0xFFE0F7FA),
-            surfaceVariant = Color(0xFF122A30),
-            onSurfaceVariant = Color(0xFFBFC8CA),
-            outline = Color(0xFF899294)
+            surfaceVariant = Color(0xFF16373F),
+            onSurfaceVariant = Color(0xFFD0E6EA),
+            outline = Color(0xFF5A7A7F)
         )
     ),
 
