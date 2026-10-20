@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    
-<style name="Theme.MaterialClock" parent="android:Theme.Material.NoActionBar">
+    <!--
+      The app's window theme. The window is on screen before the app's own screen is drawn, so its
+      background colour is the first thing seen. Light by default; values-night/themes.xml has the
+      dark one. With a single dark parent the app flashed dark before turning light.
+    -->
+    <style name="Theme.MaterialClock" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
