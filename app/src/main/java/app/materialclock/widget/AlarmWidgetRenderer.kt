@@ -14,6 +14,8 @@ import android.os.Build
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.util.SizeF
+import android.util.TypedValue
+import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
@@ -52,7 +54,22 @@ object AlarmWidgetRenderer {
     private const val ONE_ROW_MAX_HEIGHT_DP = 100f
     private const val WIDE_MIN_WIDTH_DP = 270f
 
-    private class Scene(val bitmap: Bitmap, val button: RectF)
+    /**
+     * A piece of text to be shown as a real `TextView` rather than painted into the picture.
+     * [slot] is 0 for the time, 1 for AM/PM and 2 for the alarm's name. They are real views for
+     * one reason: that makes them exactly the type the Digital widget's time is, same font, same
+     * rendering, so the two widgets read as one family. Painted text came out heavier and wider.
+     */
+    private class TextSpec(
+        val slot: Int,
+        val text: String,
+        val x: Float,
+        val baseline: Float,
+        val size: Float,
+        val color: Int,
+    )
+
+    private class Scene(val bitmap: Bitmap, val button: RectF, val texts: List<TextSpec>)
 
     suspend fun update(context: Context, manager: AppWidgetManager, appWidgetId: Int) =
         WidgetRefresh.serialized(appWidgetId) {
@@ -117,6 +134,33 @@ object AlarmWidgetRenderer {
         val scene = draw(context, settings, config, alarm, w, h)
         val views = RemoteViews(context.packageName, R.layout.widget_alarm)
         views.setImageViewIcon(R.id.alarm_art, scene.bitmap.toIcon())
+
+        // The time, AM/PM and name: real text views, put where the picture's layout says. A view's
+        // text starts at the top of its font's ascent, so each is moved up from its baseline by
+        // that much. Every view is switched on or off explicitly, on every draw.
+        val fontPaint = Paint().apply { typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex) }
+        fun place(slot: Int, slotId: Int, textId: Int) {
+            val spec = scene.texts.firstOrNull { it.slot == slot }
+            if (spec == null) {
+                views.setViewVisibility(slotId, View.GONE)
+                return
+            }
+            fontPaint.textSize = spec.size
+            views.setViewVisibility(slotId, View.VISIBLE)
+            views.setTextViewText(textId, spec.text)
+            views.setTextViewTextSize(textId, TypedValue.COMPLEX_UNIT_PX, spec.size)
+            views.setTextColor(textId, spec.color)
+            views.setViewPadding(
+                slotId,
+                spec.x.roundToInt().coerceAtLeast(0),
+                (spec.baseline + fontPaint.ascent()).roundToInt().coerceAtLeast(0),
+                0,
+                0,
+            )
+        }
+        place(0, R.id.alarm_time_slot, R.id.alarm_time)
+        place(1, R.id.alarm_ampm_slot, R.id.alarm_ampm)
+        place(2, R.id.alarm_label_slot, R.id.alarm_label)
 
         // An invisible tap area exactly over the round button.
         val b = scene.button
@@ -184,6 +228,7 @@ object AlarmWidgetRenderer {
 
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
+        val texts = mutableListOf<TextSpec>()
         val radius = if (oneRow) hf / 2f else min(36f * d, min(wf, hf) / 2f)
         if (filled) {
             c.drawRoundRect(RectF(0f, 0f, wf, hf), radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg })
@@ -224,7 +269,7 @@ object AlarmWidgetRenderer {
                     isOn -> alpha(fg, 0.55f)
                     else -> alpha(fg, if (on) 0.45f else 0.3f)
                 }
-                val p = paint(col, size, 700)
+                val p = paint(col, size, 600)
                 c.drawText(letters[i], cx - p.measureText(letters[i]) / 2f, baseline, p)
                 if (isOn) {
                     c.drawCircle(cx, baseline - size * 1.25f, size * 0.12f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = col })
@@ -262,15 +307,15 @@ object AlarmWidgetRenderer {
 
         /** Time, with AM/PM small beside it, starting at [x] on [baseline]. */
         fun drawTimeInline(x: Float, baseline: Float, size: Float) {
-            val tp = paint(textColour, size, 800)
-            c.drawText(timeStr, x, baseline, tp)
+            val tp = paint(textColour, size, 700)
+            texts += TextSpec(0, timeStr, x, baseline, size, textColour)
             if (ampm.isNotEmpty()) {
-                c.drawText(ampm, x + tp.measureText(timeStr) + size * 0.10f, baseline, paint(textColour, size * 0.50f, 700))
+                texts += TextSpec(1, ampm, x + tp.measureText(timeStr) + size * 0.10f, baseline, size * 0.50f, textColour)
             }
         }
 
         fun inlineWidth(size: Float): Float {
-            val tw = paint(textColour, size, 800).measureText(timeStr)
+            val tw = paint(textColour, size, 700).measureText(timeStr)
             val aw = if (ampm.isEmpty()) 0f else size * 0.10f + paint(textColour, size * 0.50f, 700).measureText(ampm)
             return tw + aw
         }
@@ -291,8 +336,8 @@ object AlarmWidgetRenderer {
                 val gap = ts * 0.14f
                 val total = cap + if (ampm.isEmpty()) 0f else gap + acap
                 val top = (hf - total) / 2f
-                c.drawText(timeStr, x0, top + cap, paint(textColour, ts, 800))
-                if (ampm.isNotEmpty()) c.drawText(ampm, x0, top + total, paint(textColour, ts * 0.50f, 700))
+                texts += TextSpec(0, timeStr, x0, top + cap, ts, textColour)
+                if (ampm.isNotEmpty()) texts += TextSpec(1, ampm, x0, top + total, ts * 0.50f, textColour)
             }
 
             // 4x1 and wider: button, time, and the weekdays on the right. The weekdays only get
@@ -350,7 +395,7 @@ object AlarmWidgetRenderer {
                 val x0 = pad * 1.5f
                 val label = alarm?.label?.takeIf { it.isNotBlank() } ?: "Alarm"
                 val lblSize = hf * 0.17f
-                c.drawText(label, x0, pad * 1.1f + lblSize * 0.8f, paint(alpha(fg, 0.85f), lblSize, 700))
+                texts += TextSpec(2, label, x0, pad * 1.1f + lblSize * 0.8f, lblSize, alpha(fg, 0.85f))
 
                 val ts = min(hf * 0.30f, wf * 0.52f / (if (is24) 2.9f else 3.5f))
                 val ls = ts * 0.46f
@@ -365,7 +410,7 @@ object AlarmWidgetRenderer {
                 button = drawButton(wf - pad * 1.3f - dia / 2f, hf - pad * 1.1f - dia / 2f, dia)
             }
         }
-        return Scene(bmp, button)
+        return Scene(bmp, button, texts)
     }
 
     /** Lossless WEBP wrapped as data, same trick (and reason) as in ClockWidgetRenderer. */
