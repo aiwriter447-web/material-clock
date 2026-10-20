@@ -35,7 +35,7 @@
                 android:textColor="@color/wp_on_container"
                 android:textSize="24sp"
                 android:fontFamily="@font/google_sans_flex"
-                android:fontVariationSettings="'wght' 800"
+                android:fontVariationSettings="'wght' 700"
                 android:includeFontPadding="false" />
             <TextView
                 android:layout_width="wrap_content"
@@ -44,7 +44,7 @@
                 android:textColor="@color/wp_on_container"
                 android:textSize="12sp"
                 android:fontFamily="@font/google_sans_flex"
-                android:fontVariationSettings="'wght' 800"
+                android:fontVariationSettings="'wght' 700"
                 android:includeFontPadding="false" />
         </LinearLayout>
     </LinearLayout>
