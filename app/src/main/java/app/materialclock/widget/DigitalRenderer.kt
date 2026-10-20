@@ -54,6 +54,7 @@ object DigitalRenderer {
         val showDate: Boolean,
         val longDate: Boolean,
         val rowLayout: Boolean,
+        val stackLayout: Boolean,
         val is24: Boolean,
         val radiusPx: Float,
     )
@@ -64,14 +65,25 @@ object DigitalRenderer {
         val wDp = w / d
         val oneRow = hDp < DATE_MIN_HEIGHT_DP
         val rowLayout = config.digitalDate && oneRow && wDp >= ROW_MIN_WIDTH_DP
+        // The square card (2x2): date, big time, and AM/PM on a line of its own below, the way
+        // Samsung's does it. AM/PM no longer takes room from the time, which can grow.
+        val stackLayout = !oneRow && !rowLayout && wDp / hDp < 1.35f
         val showDate = config.digitalDate && (!oneRow || rowLayout)
         val is24 = DateFormat.is24HourFormat(context)
 
         // Rough width of the time string, in multiples of the text size: "12:45" is about 2.8.
-        val timeWidthEm = (if (config.digitalSeconds) 4.6f else 2.95f) + (if (is24) 0f else 1.4f)
+        val timeWidthEm = (if (config.digitalSeconds) 4.6f else 2.95f) + (if (is24 || stackLayout) 0f else 1.4f)
         val longRowDate = wDp >= 280f
-        val byWidth = if (rowLayout) w * 0.54f / timeWidthEm else w * 0.88f / timeWidthEm
-        val byHeight = if (rowLayout) h * 0.58f else h * (if (showDate) 0.44f else 0.56f)
+        val byWidth = when {
+            rowLayout -> w * 0.54f
+            stackLayout -> w * 0.92f
+            else -> w * 0.88f
+        } / timeWidthEm
+        val byHeight = when {
+            rowLayout -> h * 0.58f
+            stackLayout -> h * 0.34f
+            else -> h * (if (showDate) 0.44f else 0.56f)
+        }
         val time = min(byWidth, byHeight)
         // In the one-row layout the date has its own two lines beside the time.
         val dateRowPx = min(h * 0.32f, w * 0.34f / (if (longRowDate) 5.4f else 3.4f))
@@ -83,11 +95,17 @@ object DigitalRenderer {
             timePx = time,
             // AM/PM: a little bigger than before, with a clear gap after the time.
             ampmPx = time * 0.46f,
-            gapPx = time * 0.10f,
-            datePx = if (rowLayout) dateRowPx else time * 0.34f,
+            gapPx = if (stackLayout) 0f else time * 0.10f,
+            // The date is bigger on the square card, where there is room for it.
+            datePx = when {
+                rowLayout -> dateRowPx
+                stackLayout -> time * 0.44f
+                else -> time * 0.34f
+            },
             showDate = showDate,
             longDate = if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP,
             rowLayout = rowLayout,
+            stackLayout = stackLayout,
             is24 = is24,
             radiusPx = radius,
         )
@@ -131,7 +149,11 @@ object DigitalRenderer {
         val l = layoutFor(context, config, w, h)
         val views = RemoteViews(
             context.packageName,
-            if (l.rowLayout) R.layout.widget_digital_row else R.layout.widget_digital,
+            when {
+                l.rowLayout -> R.layout.widget_digital_row
+                l.stackLayout -> R.layout.widget_digital_stack
+                else -> R.layout.widget_digital
+            },
         )
 
         if (config.background == WidgetBackground.NONE) {
@@ -158,7 +180,7 @@ object DigitalRenderer {
             views.setTextColor(R.id.digital_ampm, colours.onFace)
             views.setTextViewTextSize(R.id.digital_ampm, TypedValue.COMPLEX_UNIT_PX, l.ampmPx)
             // The gap between the time and AM/PM.
-            views.setViewPadding(R.id.digital_ampm, l.gapPx.roundToInt(), 0, 0, 0)
+            views.setViewPadding(R.id.digital_ampm, l.gapPx.roundToInt(), if (l.stackLayout) (l.timePx * 0.04f).roundToInt() else 0, 0, 0)
         }
 
         // Date.
@@ -217,9 +239,9 @@ object DigitalRenderer {
         val timeText = SimpleDateFormat(timePattern(config, l.is24), Locale.getDefault()).format(now)
         val ampmText = if (l.is24) "" else SimpleDateFormat("a", Locale.getDefault()).format(now)
 
-        val timePaint = paint(colours.onFace, l.timePx, 800)
-        val ampmPaint = paint(colours.onFace, l.ampmPx, 800)
-        val datePaint = paint(colours.accent, l.datePx, 700)
+        val timePaint = paint(colours.onFace, l.timePx, 700)
+        val ampmPaint = paint(colours.onFace, l.ampmPx, 700)
+        val datePaint = paint(colours.accent, l.datePx, 600)
 
         val timeW = timePaint.measureText(timeText)
         val ampmW = if (ampmText.isEmpty()) 0f else ampmPaint.measureText(ampmText)
