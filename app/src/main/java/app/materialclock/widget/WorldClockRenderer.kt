@@ -161,12 +161,12 @@ object WorldClockRenderer {
         // A narrow panel (the 2x1 widget) gets proportionally bigger city names and a smaller
         // AM/PM, so the words stay readable at that size.
         val compact = pwDp < 110f
-        val timeWidthEm = 2.8f + (if (showAmpm) (if (compact) 0.50f else 0.62f) else 0f)
+        val timeWidthEm = (if (compact) 2.65f else 2.8f) + (if (showAmpm) (if (compact) 0.50f else 0.62f) else 0f)
         val heightEm = 0.85f + 0.50f + (if (showDate) 0.44f else 0f)
-        val timePx = min(panelW * 0.96f / timeWidthEm, panelH * 0.84f / heightEm)
-        val cityPx = timePx * (if (compact) 0.46f else 0.40f)
+        val timePx = min(panelW * (if (compact) 1.0f else 0.96f) / timeWidthEm, panelH * 0.84f / heightEm)
+        val cityPx = timePx * (if (compact) 0.52f else 0.40f)
         val datePx = timePx * 0.34f
-        val ampmPx = timePx * (if (compact) 0.38f else 0.46f)
+        val ampmPx = timePx * (if (compact) 0.42f else 0.46f)
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
