@@ -305,8 +305,8 @@ fun ClockApp(
         // way). It is a plain state that only layout and drawing read, never composition, so
         // dragging it moves things without rebuilding the whole screen on every frame.
         val oneHandOn = settings.theme.oneHandMode
-        val reachMaxPx = with(density) { (LocalConfiguration.current.screenHeightDp * 0.29f).dp.toPx() }
-        val reachActive = oneHandOn && !selectionActive && targetTab != Tab.WORLD
+        val reachMaxPx = with(density) { (LocalConfiguration.current.screenHeightDp * 0.19f).dp.toPx() }
+        val reachActive = oneHandOn && !selectionActive
         var reachFraction by remember { mutableFloatStateOf(0f) }
         var reachResting by remember { mutableFloatStateOf(0f) }
         var reachJob by remember { mutableStateOf<Job?>(null) }
@@ -320,9 +320,9 @@ fun ClockApp(
             // Let go past a quarter of the way down and it opens fully; past a quarter of the way
             // back up and it closes. The gesture starts easily and finishes by itself.
             val target = if (reachResting < 0.5f) {
-                if (reachFraction > 0.22f) 1f else 0f
+                if (reachFraction > 0.32f) 1f else 0f
             } else {
-                if (reachFraction < 0.78f) 0f else 1f
+                if (reachFraction < 0.68f) 0f else 1f
             }
             reachResting = target
             reachJob?.cancel()
@@ -384,6 +384,7 @@ fun ClockApp(
 
         val alarmsNow by vm.alarms.collectAsStateWithLifecycle()
         val stopwatchNow by vm.stopwatch.collectAsStateWithLifecycle()
+        val is24Hour = android.text.format.DateFormat.is24HourFormat(ctx)
         val minuteTick by produceState(0) {
             while (true) {
                 delay(30_000L)
@@ -406,7 +407,7 @@ fun ClockApp(
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                Box(Modifier.offset { IntOffset(0, (reachFraction * reachMaxPx).roundToInt()) }) {
+                Box(Modifier.graphicsLayer { translationY = reachFraction * reachMaxPx }) {
                 TopAppBar(
                     title = {
                         Surface(
@@ -500,24 +501,9 @@ fun ClockApp(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .then(
-                                if (Tab.entries[page] == Tab.WORLD) {
-                                    Modifier
-                                } else {
-                                    Modifier.layout { measurable, constraints ->
-                                        val shift = (reachFraction * reachMaxPx).roundToInt()
-                                        val placeable = measurable.measure(
-                                            constraints.copy(
-                                                minHeight = 0,
-                                                maxHeight = (constraints.maxHeight - shift).coerceAtLeast(0),
-                                            ),
-                                        )
-                                        layout(constraints.maxWidth, constraints.maxHeight) {
-                                            placeable.placeRelative(0, shift)
-                                        }
-                                    }
-                                },
-                            )
+                            // Only drawing moves, never layout: the page is slid down as a picture, so the
+                            // pull-down costs nothing per frame however long the list is.
+                            .graphicsLayer { translationY = reachFraction * reachMaxPx }
                             .graphicsLayer {
                                 val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                                 alpha = 1f - (kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0f, 1f)
@@ -607,9 +593,9 @@ fun ClockApp(
                     }
                 }
 
-                if (oneHandOn && targetTab != Tab.WORLD) {
+                if (oneHandOn) {
                     ReachSummary(
-                        text = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, minuteTick),
+                        summary = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, is24Hour, minuteTick),
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 40.dp)
