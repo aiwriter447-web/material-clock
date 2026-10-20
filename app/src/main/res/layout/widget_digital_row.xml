@@ -35,7 +35,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:fontFamily="@font/google_sans_flex"
-                android:fontVariationSettings="'wght' 800" />
+                android:fontVariationSettings="'wght' 700" />
 
             <TextClock
                 android:id="@+id/digital_ampm"
@@ -44,7 +44,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:fontFamily="@font/google_sans_flex"
-                android:fontVariationSettings="'wght' 800" />
+                android:fontVariationSettings="'wght' 700" />
         </LinearLayout>
 
         <TextClock
@@ -55,6 +55,6 @@
             android:includeFontPadding="false"
             android:maxLines="2"
             android:fontFamily="@font/google_sans_flex"
-            android:fontVariationSettings="'wght' 700" />
+            android:fontVariationSettings="'wght' 600" />
     </LinearLayout>
 </FrameLayout>
