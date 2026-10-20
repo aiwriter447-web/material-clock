@@ -22,7 +22,7 @@
             android:textColor="@color/wp_on_container"
             android:textSize="16sp"
             android:fontFamily="@font/google_sans_flex"
-            android:fontVariationSettings="'wght' 700" />
+            android:fontVariationSettings="'wght' 600" />
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -40,16 +40,16 @@
                     android:textColor="@color/wp_on_container"
                     android:textSize="46sp"
                     android:fontFamily="@font/google_sans_flex"
-                    android:fontVariationSettings="'wght' 800"
+                    android:fontVariationSettings="'wght' 700"
                     android:includeFontPadding="false" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="AM"
                     android:textColor="@color/wp_on_container"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:fontFamily="@font/google_sans_flex"
-                    android:fontVariationSettings="'wght' 800"
+                    android:fontVariationSettings="'wght' 700"
                     android:includeFontPadding="false"
                     android:layout_marginStart="3dp" />
             </LinearLayout>
@@ -60,7 +60,7 @@
                 android:textColor="@color/wp_on_container"
                 android:textSize="15sp"
                 android:fontFamily="@font/google_sans_flex"
-                android:fontVariationSettings="'wght' 800"
+                android:fontVariationSettings="'wght' 600"
                 android:includeFontPadding="false" />
         </LinearLayout>
         <ImageView
