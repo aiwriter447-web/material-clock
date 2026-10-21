@@ -114,7 +114,7 @@ fun AlarmsScreen(
     val order = remember(weekStart) { weekStart.order(systemFirstDay()) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    
+
     var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
 
     DisposableEffect(lifecycleOwner) {
@@ -346,7 +346,8 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime)
 
     if (minDuration == null || nextAlarmTime == null) return null
 
-    val hours = minDuration.toHours()
+    val days = minDuration.toDays()
+    val hours = minDuration.toHours() % 24
     val minutes = minDuration.toMinutes() % 60
 
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM, h:mm a")
@@ -354,7 +355,14 @@ private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime)
 
     val durationString = buildString {
         append("Alarm in ")
-        if (hours > 0) append("$hours hours ")
+        if (days > 0) {
+            append("$days ")
+            append(if (days == 1L) "day " else "days ")
+        }
+        if (hours > 0 || days > 0) {
+            append("$hours ")
+            append(if (hours == 1L) "hour " else "hours ")
+        }
         append("$minutes minutes")
     }
     return Pair(durationString, formattedDate)
@@ -441,7 +449,7 @@ private fun GroupCard(
 
     val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessMediumLow), label = "iconBg")
     val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessMediumLow), label = "iconTint")
-    
+
     val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
     Surface(
@@ -480,9 +488,9 @@ private fun GroupCard(
                     )
                 }
             }
-            
+
             Spacer(Modifier.width(10.dp))
-            
+
             Column(
                 verticalArrangement = Arrangement.Center
             ) {
@@ -652,8 +660,10 @@ private fun AlarmRow(
                         uncheckedBorderColor = ink,
                         disabledCheckedThumbColor = container,
                         disabledCheckedTrackColor = ink,
+                        disabledCheckedBorderColor = Color.Transparent,
                         disabledUncheckedThumbColor = ink,
                         disabledUncheckedTrackColor = Color.Transparent,
+                        disabledUncheckedBorderColor = ink,
                     ),
                 )
             }
