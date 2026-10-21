@@ -71,6 +71,6 @@ fun ColorScheme.toAmoledBlack(): ColorScheme = copy(
     surfaceDim = Color.Black,
     surfaceContainerLowest = Color.Black,
     surfaceContainerLow = Color(0xFF0A0A0A),
-    surfaceContainer = Color(0xFF141018),
+    surfaceContainer = this.surfaceContainer,
     scrim = Color.Black,
 )
