@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview colours, dark mode (before Android 12).
+-->
+<resources>
+    <color name="wp_container">#00497D</color>
+    <color name="wp_on_container">#D1E4FF</color>
+    <color name="wp_primary">#A0CAFD</color>
+    <color name="wp_on_primary">#00325A</color>
+    <color name="wp_surface">#2B2D31</color>
+    <color name="wp_on_surface">#E3E2E6</color>
+    <color name="wp_accent">#A0CAFD</color>
+    <color name="wp_face">#2F3033</color>
+    <color name="wp_hand_hour">#6FA8DC</color>
+    <color name="wp_hand_minute">#D1E4FF</color>
+    <color name="wp_dot">#B9A7CF</color>
+</resources>
