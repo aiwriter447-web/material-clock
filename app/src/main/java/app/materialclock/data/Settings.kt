@@ -29,6 +29,12 @@ data class AlarmSettings(
      * or null for the system's own default alarm sound.
      */
     val defaultSoundUri: String? = null,
+    /**
+     * Whether the user has been through the first-run "choose your alarm sound" step. Needed on top
+     * of [defaultSoundUri] because that is null both for "not chosen yet" and for "chose the
+     * system's own sound".
+     */
+    val soundChosen: Boolean = false,
     /** 0f (silent) to 1f (full alarm-stream volume). Applied to every ringing alarm and timer. */
     val volume: Float = 1f,
     /**
