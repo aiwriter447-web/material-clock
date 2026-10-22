@@ -25,11 +25,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -168,22 +166,17 @@ fun AlarmEditSheet(
     ModalBottomSheet(
         onDismissRequest = { commitAndClose() },
         sheetState = sheetState,
-        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
-        // CRITICAL FIX: Disable default ModalBottomSheet inset handling to prevent earthquake bounces
-        windowInsets = WindowInsets(0, 0, 0, 0)
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
-        // imePadding() handles the keyboard push smoothly without rapidly resizing the sheet internals
         Column(
             Modifier
                 .fillMaxWidth()
-                .imePadding()
                 .padding(bottom = 20.dp)
         ) {
             
-            // Top spacing for one-handed ergonomics
+            // टॉप स्पेसिंग
             Spacer(Modifier.height(28.dp))
 
-            // Keyboard/Dial toggle icon aligned perfectly to the right
             Box(Modifier.fillMaxWidth().padding(horizontal = EDGE), contentAlignment = Alignment.CenterEnd) {
                 val iconInteraction = remember { MutableInteractionSource() }
                 val isIconPressed by iconInteraction.collectIsPressedAsState()
@@ -209,17 +202,16 @@ fun AlarmEditSheet(
                 }
             }
 
-            // Fixed height box to prevent bounce/earthquake glitches between layout modes
+            // फिक्स्ड हाइट बॉक्स
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(340.dp),
+                    .height(340.dp), 
                 contentAlignment = Alignment.Center
             ) {
                 AnimatedContent(
                     targetState = manualEntry,
                     transitionSpec = {
-                        // Only smooth fade, no size transform since box height is fixed
                         fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
                     },
                     label = "TimeInputModeAnim"
@@ -240,7 +232,6 @@ fun AlarmEditSheet(
                 }
             }
 
-            // Day toggles (always perfectly circular shape)
             DayToggles(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
@@ -314,7 +305,6 @@ fun AlarmEditSheet(
                     )
                 }
 
-                // Vibration button with fixed shape
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
@@ -488,8 +478,8 @@ private fun ManualTimeEntry(state: TimePickerState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), // Large and clear text
-            modifier = Modifier.width(116.dp).height(100.dp), // Large box for text entry
+            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), 
+            modifier = Modifier.width(116.dp).height(100.dp), 
         )
         Text(
             ":",
@@ -509,8 +499,8 @@ private fun ManualTimeEntry(state: TimePickerState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), // Large and clear text
-            modifier = Modifier.width(116.dp).height(100.dp), // Large box for text entry
+            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center),
+            modifier = Modifier.width(116.dp).height(100.dp), 
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(12.dp))
@@ -561,7 +551,6 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-// Proportionally smaller AM/PM chips
 @Composable
 private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
