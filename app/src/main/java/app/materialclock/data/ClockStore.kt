@@ -167,6 +167,7 @@ private fun Preferences.toSettings() = ClockSettings(
         snoozeMinutes = this[intPreferencesKey("snooze")] ?: 10,
         weekStart = enumOr(this[stringPreferencesKey("weekStart")], WeekStart.SYSTEM),
         defaultSoundUri = this[stringPreferencesKey("alarmSound")],
+        soundChosen = this[booleanPreferencesKey("alarmSoundChosen")] ?: false,
         volume = this[floatPreferencesKey("alarmVolume")] ?: 1f,
         volumeButtonsControlVolume = this[booleanPreferencesKey("volumeButtonsControlVolume")] ?: true,
         dismissMethod = enumOr(this[stringPreferencesKey("dismissMethod")], DismissMethod.TAP),
@@ -199,6 +200,7 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     s.alarms.defaultSoundUri
         ?.let { this[stringPreferencesKey("alarmSound")] = it }
         ?: remove(stringPreferencesKey("alarmSound"))
+    this[booleanPreferencesKey("alarmSoundChosen")] = s.alarms.soundChosen
     this[floatPreferencesKey("alarmVolume")] = s.alarms.volume
     this[booleanPreferencesKey("volumeButtonsControlVolume")] = s.alarms.volumeButtonsControlVolume
     this[stringPreferencesKey("dismissMethod")] = s.alarms.dismissMethod.name
