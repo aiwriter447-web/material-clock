@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Colours for the pictures in the widget picker. Android 12 and later use res/values-v31 instead. -->
+<!--
+  Picker preview colours, light. Android 12 and later use values-v31 instead; in dark mode, values-night.
+-->
 <resources>
     <color name="wp_container">#D1E4FF</color>
     <color name="wp_on_container">#001D36</color>
     <color name="wp_primary">#1F4E79</color>
     <color name="wp_on_primary">#FFFFFF</color>
-    <color name="wp_surface">#1B1B1F</color>
-    <color name="wp_on_surface">#E3E2E6</color>
-    <color name="wp_accent">#A8C8FF</color>
-    <color name="wp_face">#22313F</color>
-    <color name="wp_hand_hour">#5B93C2</color>
-    <color name="wp_hand_minute">#90CAF9</color>
-    <color name="wp_dot">#B9A7CF</color>
+    <color name="wp_surface">#E9E7EC</color>
+    <color name="wp_on_surface">#1B1B1F</color>
+    <color name="wp_accent">#3F5F90</color>
+    <color name="wp_face">#DEE0EA</color>
+    <color name="wp_hand_hour">#5B7FB0</color>
+    <color name="wp_hand_minute">#3F5F90</color>
+    <color name="wp_dot">#8E7CA8</color>
 </resources>
