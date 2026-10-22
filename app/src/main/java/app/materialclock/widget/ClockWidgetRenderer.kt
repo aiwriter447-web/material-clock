@@ -141,6 +141,43 @@ object ClockWidgetRenderer {
         return views
     }
 
+    /** Orbit's small clock face on its own: a scalloped disc in the top complication's colour. */
+    private fun orbitDial(side: Int, colours: FaceRenderer.Colours): FaceRenderer.Face {
+        val bmp = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val r = side / 2f
+        Canvas(bmp).drawPath(
+            OrbitDesign.scalloped(OrbitDesign.Slot(r, r, r)),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colours.orbitTop },
+        )
+        return FaceRenderer.Face(bmp, r, r, r)
+    }
+
+    /** The three hands of Orbit's small clock, placed over the capsule's dial. */
+    private fun applyOrbitDialHands(
+        views: RemoteViews,
+        config: WidgetConfig,
+        colours: FaceRenderer.Colours,
+        side: Int,
+        left: Int,
+        top: Int,
+        w: Int,
+        h: Int,
+    ) {
+        // Everything else a full Orbit would show is switched off, explicitly (see applyLook).
+        views.setViewVisibility(R.id.hands_slot, View.GONE)
+        views.setViewVisibility(R.id.readout_slot, View.GONE)
+        views.setViewVisibility(R.id.orbit_time_slot, View.GONE)
+        views.setViewVisibility(R.id.orbit_date_slot, View.GONE)
+        views.setViewVisibility(R.id.orbit_hands_slot, View.VISIBLE)
+        views.setViewPadding(
+            R.id.orbit_hands_slot,
+            left, top,
+            (w - left - side).coerceAtLeast(0),
+            (h - top - side).coerceAtLeast(0),
+        )
+        applyMiniHands(views, config, colours, side / 2f * 0.92f)
+    }
+
     /** The 2x1 capsule: a small clock on the left, the date (two lines) on the right. */
     private fun pill(
         context: Context,
@@ -149,20 +186,18 @@ object ClockWidgetRenderer {
         w: Int,
         h: Int,
     ): RemoteViews {
-        // Orbit needs room for four complications, which a capsule's small dial cannot give, so
-        // there it shows the Ripple dial instead.
-        val config = if (requested.look == AnalogLook.ORBIT) {
-            WidgetPreset.RIPPLE.config.copy(colour = requested.colour, palette = requested.palette)
-        } else {
-            requested
-        }
+        // Orbit's four complications do not fit a capsule, but its small clock does: the capsule
+        // shows exactly that clock (the scalloped disc with its three hands), so the two sizes of
+        // one widget are plainly the same widget.
+        val config = requested
+        val orbit = requested.look == AnalogLook.ORBIT
         val colours = WidgetColours.resolve(context, config, settings)
         val scheme = WidgetColours.scheme(context, config, settings)
 
         val side = (h * 0.84f).roundToInt()
         val top = ((h - side) / 2f).roundToInt()
         val left = top + (h * 0.06f).roundToInt()
-        val face = FaceRenderer.render(context, config, colours, side, side)
+        val face = if (orbit) orbitDial(side, colours) else FaceRenderer.render(context, config, colours, side, side)
 
         // Capsule and dial in one picture.
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -175,8 +210,12 @@ object ClockWidgetRenderer {
 
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
         views.setImageViewIcon(R.id.face, bmp.toIcon())
-        applyHands(views, config, colours, face)
-        applyLook(context, views, config, colours, face, left.toFloat(), top.toFloat(), w, h)
+        if (orbit) {
+            applyOrbitDialHands(views, config, colours, side, left, top, w, h)
+        } else {
+            applyHands(views, config, colours, face)
+            applyLook(context, views, config, colours, face, left.toFloat(), top.toFloat(), w, h)
+        }
         // The platform's hands must sit over the small dial only.
         views.setViewPadding(
             R.id.hands_slot,
