@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Picker preview colours, dark mode, from the wallpaper's colours (Android 12 and later). The launcher switches between this file and the light one the moment the phone's dark mode changes.
+  Picker preview colours, light, from the wallpaper's colours (Android 12 and later).
 -->
 <resources>
-    <color name="wp_container">@android:color/system_accent1_800</color>
-    <color name="wp_on_container">@android:color/system_accent1_100</color>
-    <color name="wp_primary">@android:color/system_accent1_200</color>
-    <color name="wp_on_primary">@android:color/system_accent1_800</color>
-    <color name="wp_surface">@android:color/system_neutral1_800</color>
-    <color name="wp_on_surface">@android:color/system_neutral1_100</color>
-    <color name="wp_accent">@android:color/system_accent1_200</color>
-    <color name="wp_face">@android:color/system_neutral1_800</color>
-    <color name="wp_hand_hour">@android:color/system_accent1_300</color>
-    <color name="wp_hand_minute">@android:color/system_accent1_100</color>
-    <color name="wp_dot">@android:color/system_accent3_200</color>
+    <color name="wp_container">@android:color/system_accent1_100</color>
+    <color name="wp_on_container">@android:color/system_accent1_900</color>
+    <color name="wp_primary">@android:color/system_accent1_600</color>
+    <color name="wp_on_primary">@android:color/system_accent1_0</color>
+    <color name="wp_surface">@android:color/system_neutral1_100</color>
+    <color name="wp_on_surface">@android:color/system_neutral1_900</color>
+    <color name="wp_accent">@android:color/system_accent1_700</color>
+    <color name="wp_face">@android:color/system_neutral1_200</color>
+    <color name="wp_hand_hour">@android:color/system_accent1_500</color>
+    <color name="wp_hand_minute">@android:color/system_accent1_700</color>
+    <color name="wp_dot">@android:color/system_accent3_500</color>
 </resources>
