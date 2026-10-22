@@ -183,11 +183,14 @@ fun ClockApp(
             )
         }
 
+        var notificationsOn by remember { mutableStateOf(nm.areNotificationsEnabled()) }
+
         val lifecycleOwner = LocalLifecycleOwner.current
 
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
+                    notificationsOn = nm.areNotificationsEnabled()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                         hasFullScreenPermission = nm.canUseFullScreenIntent()
                     }
@@ -199,50 +202,23 @@ fun ClockApp(
             }
         }
 
-        if (!hasFullScreenPermission) {
-            Surface(
-                Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Outlined.Alarm,
-                        contentDescription = null,
-                        modifier = Modifier.size(72.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Text(
-                        "Full Screen Alerts Needed",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "To reliably wake up your screen when an alarm rings, please allow Full Screen Intents in settings.",
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                ctx.startActivity(
-                                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                                        .setData(Uri.parse("package:${ctx.packageName}"))
-                                )
-                            }
-                        }
-                    ) {
-                        Text("Grant Permission")
-                    }
-                }
-            }
+        // First-run setup: three things the app cannot do its job without, asked one at a time
+        // before it opens (see SetupScreens.kt). An existing install that already has an alarm sound
+        // picked is not asked again.
+        val soundChosen = settings.alarms.soundChosen || settings.alarms.defaultSoundUri != null
+        val setupStep = when {
+            !hasFullScreenPermission -> SetupStep.FULL_SCREEN
+            !notificationsOn -> SetupStep.NOTIFICATIONS
+            !soundChosen -> SetupStep.SOUND
+            else -> null
+        }
+        if (setupStep != null) {
+            SetupScreen(
+                step = setupStep,
+                onSoundChosen = { uri ->
+                    vm.updateSettings { it.copy(alarms = it.alarms.copy(defaultSoundUri = uri, soundChosen = true)) }
+                },
+            )
             return@ClockTheme
         }
 
@@ -305,7 +281,17 @@ fun ClockApp(
         // way). It is a plain state that only layout and drawing read, never composition, so
         // dragging it moves things without rebuilding the whole screen on every frame.
         val oneHandOn = settings.theme.oneHandMode
-        val reachMaxPx = with(density) { (LocalConfiguration.current.screenHeightDp * 0.19f).dp.toPx() }
+        // How far the top comes down depends on the tab, taken from the reference screenshots: the
+        // Alarms tab has a short list and a summary above it, so it moves about 15% of the screen;
+        // the others move about 6 to 7%, because their content (the keypad, the large clock) must
+        // still fit above the dock when it is pushed down.
+        val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+        val reachMaxPx = screenHeightPx * when (targetTab) {
+            Tab.ALARMS -> 0.15f
+            Tab.TIMERS -> 0.068f
+            Tab.WORLD -> 0.068f
+            Tab.STOPWATCH -> 0.061f
+        }
         val reachActive = oneHandOn && !selectionActive
         var reachFraction by remember { mutableFloatStateOf(0f) }
         var reachResting by remember { mutableFloatStateOf(0f) }
@@ -320,9 +306,9 @@ fun ClockApp(
             // Let go past a quarter of the way down and it opens fully; past a quarter of the way
             // back up and it closes. The gesture starts easily and finishes by itself.
             val target = if (reachResting < 0.5f) {
-                if (reachFraction > 0.32f) 1f else 0f
+                if (reachFraction > 0.30f) 1f else 0f
             } else {
-                if (reachFraction < 0.68f) 0f else 1f
+                if (reachFraction < 0.70f) 0f else 1f
             }
             reachResting = target
             reachJob?.cancel()
@@ -339,6 +325,18 @@ fun ClockApp(
         // the World Clock tab (which has its own large clock) is on its way in.
         LaunchedEffect(reachActive) {
             if (!reachActive && reachFraction > 0f) {
+                reachResting = 0f
+                reachJob?.cancel()
+                animate(reachFraction, 0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)) { v, _ ->
+                    reachFraction = v
+                }
+            }
+        }
+
+        // Every tab starts closed. The amount differs from tab to tab, so carrying a half-open top
+        // from one to another would leave it at the wrong height.
+        LaunchedEffect(targetTab) {
+            if (reachFraction > 0f) {
                 reachResting = 0f
                 reachJob?.cancel()
                 animate(reachFraction, 0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)) { v, _ ->
@@ -389,16 +387,6 @@ fun ClockApp(
             while (true) {
                 delay(30_000L)
                 value += 1
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val ask = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) {}
-            LaunchedEffect(Unit) {
-                delay(OPEN_SETTLE_DELAY_MS)
-                ask.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
@@ -593,7 +581,8 @@ fun ClockApp(
                     }
                 }
 
-                if (oneHandOn) {
+                // Only the Alarms tab has room for the summary: the others move too little.
+                if (oneHandOn && targetTab == Tab.ALARMS) {
                     ReachSummary(
                         summary = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, is24Hour, minuteTick),
                         modifier = Modifier
