@@ -154,7 +154,10 @@ object WorldClockRenderer {
 
         val is24 = DateFormat.is24HourFormat(context)
         val showDate = phDp >= DATE_MIN_PANEL_HEIGHT_DP
-        val showAmpm = !is24 && pwDp >= AMPM_MIN_PANEL_WIDTH_DP
+        // The 2x1 widget: narrow panels side by side. There AM/PM goes on a line of its own under
+        // the time, so it no longer takes room from the time, which can then be bigger and bolder.
+        val stacked = horizontal && pwDp < 110f
+        val showAmpm = !is24 && (stacked || pwDp >= AMPM_MIN_PANEL_WIDTH_DP)
 
         // Text sizes: the time is as big as the panel's width and height allow; city and date
         // hang off it in fixed proportions.
@@ -163,10 +166,17 @@ object WorldClockRenderer {
         val compact = pwDp < 110f
         val timeWidthEm = (if (compact) 2.65f else 2.8f) + (if (showAmpm) (if (compact) 0.50f else 0.62f) else 0f)
         val heightEm = 0.85f + 0.50f + (if (showDate) 0.44f else 0f)
-        val timePx = min(panelW * (if (compact) 1.0f else 0.96f) / timeWidthEm, panelH * 0.84f / heightEm)
-        val cityPx = timePx * (if (compact) 0.52f else 0.40f)
+        // Stacked: the widest time ("10:45") sets the width, and the three lines (name, time, AM/PM)
+        // set the height; whichever allows less decides.
+        val stackedLines = 0.40f * 1.2f + 1.0f + (if (showAmpm) 0.42f * 1.2f else 0f)
+        val timePx = if (stacked) {
+            min(panelW * 0.94f / 2.62f, panelH * 0.92f / stackedLines)
+        } else {
+            min(panelW * (if (compact) 1.0f else 0.96f) / timeWidthEm, panelH * 0.84f / heightEm)
+        }
+        val cityPx = timePx * (if (stacked) 0.40f else if (compact) 0.52f else 0.40f)
         val datePx = timePx * 0.34f
-        val ampmPx = timePx * (if (compact) 0.42f else 0.46f)
+        val ampmPx = timePx * (if (stacked) 0.42f else if (compact) 0.42f else 0.46f)
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
@@ -178,7 +188,11 @@ object WorldClockRenderer {
 
         val views = RemoteViews(
             context.packageName,
-            if (horizontal) R.layout.widget_world_row else R.layout.widget_world_col,
+            when {
+                stacked -> R.layout.widget_world_compact
+                horizontal -> R.layout.widget_world_row
+                else -> R.layout.widget_world_col
+            },
         )
 
         val radius = if (h / d < ONE_ROW_MAX_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
@@ -195,6 +209,9 @@ object WorldClockRenderer {
             views.setTextViewText(city, side.label)
             views.setTextColor(city, color)
             views.setTextViewTextSize(city, TypedValue.COMPLEX_UNIT_PX, cityPx)
+            // A name too long for its half scrolls along, like a headline, instead of being cut.
+            // A marquee only moves while its view is "selected".
+            views.setBoolean(city, "setSelected", true)
 
             views.setString(time, "setTimeZone", side.zone.id)
             views.setCharSequence(time, "setFormat12Hour", if (is24) "HH:mm" else "h:mm")
