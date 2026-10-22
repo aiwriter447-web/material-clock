@@ -9,12 +9,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -26,9 +25,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -168,17 +169,21 @@ fun AlarmEditSheet(
         onDismissRequest = { commitAndClose() },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
+        // CRITICAL FIX: Disable default ModalBottomSheet inset handling to prevent earthquake bounces
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
+        // imePadding() handles the keyboard push smoothly without rapidly resizing the sheet internals
         Column(
             Modifier
+                .fillMaxWidth()
+                .imePadding()
                 .padding(bottom = 20.dp)
-                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
         ) {
+            
+            // Top spacing for one-handed ergonomics
+            Spacer(Modifier.height(28.dp))
 
-            // Top Spacer for One-Handed Ergonomics
-            Spacer(Modifier.height(32.dp))
-
-            // Keyboard/Dial Toggle Icon - Perfectly aligned at Top Right
+            // Keyboard/Dial toggle icon aligned perfectly to the right
             Box(Modifier.fillMaxWidth().padding(horizontal = EDGE), contentAlignment = Alignment.CenterEnd) {
                 val iconInteraction = remember { MutableInteractionSource() }
                 val isIconPressed by iconInteraction.collectIsPressedAsState()
@@ -204,37 +209,38 @@ fun AlarmEditSheet(
                 }
             }
 
-            // Smooth Animated Content for Time Input (No Earthquake Bounce)
-            AnimatedContent(
-                targetState = manualEntry,
-                transitionSpec = {
-                    fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                    fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) using
-                    SizeTransform(clip = false)
-                },
-                label = "TimeInputModeAnim"
-            ) { isManual ->
-                if (isManual) {
-                    Column {
-                        Spacer(Modifier.height(16.dp))
+            // Fixed height box to prevent bounce/earthquake glitches between layout modes
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(340.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(
+                    targetState = manualEntry,
+                    transitionSpec = {
+                        // Only smooth fade, no size transform since box height is fixed
+                        fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
+                    },
+                    label = "TimeInputModeAnim"
+                ) { isManual ->
+                    if (isManual) {
                         ManualTimeEntry(state = timeState)
-                        Spacer(Modifier.height(24.dp))
-                    }
-                } else {
-                    Column {
-                        WideTimeField(state = timeState)
-                        Spacer(Modifier.height(16.dp))
-                        PillDial(
-                            state = timeState,
-                            modifier = Modifier.padding(horizontal = EDGE),
-                            onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
-                        )
-                        Spacer(Modifier.height(24.dp))
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            WideTimeField(state = timeState)
+                            Spacer(Modifier.height(16.dp))
+                            PillDial(
+                                state = timeState,
+                                modifier = Modifier.padding(horizontal = EDGE),
+                                onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+                            )
+                        }
                     }
                 }
             }
-            
-            // Consistent Weekday Selector
+
+            // Day toggles (always perfectly circular shape)
             DayToggles(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
@@ -308,11 +314,11 @@ fun AlarmEditSheet(
                     )
                 }
 
-                // Vibration Button with locked Shape to avoid inconsistency
+                // Vibration button with fixed shape
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
-                    shape = RoundedCornerShape(16.dp), // Fixed Shape constraint applied here
+                    shape = RoundedCornerShape(16.dp),
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -482,8 +488,8 @@ private fun ManualTimeEntry(state: TimePickerState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displaySmall.copy(textAlign = TextAlign.Center), // Fixed tiny text
-            modifier = Modifier.width(106.dp).height(86.dp),
+            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), // Large and clear text
+            modifier = Modifier.width(116.dp).height(100.dp), // Large box for text entry
         )
         Text(
             ":",
@@ -503,8 +509,8 @@ private fun ManualTimeEntry(state: TimePickerState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displaySmall.copy(textAlign = TextAlign.Center), // Fixed tiny text
-            modifier = Modifier.width(106.dp).height(86.dp),
+            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), // Large and clear text
+            modifier = Modifier.width(116.dp).height(100.dp), // Large box for text entry
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(12.dp))
@@ -555,6 +561,7 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+// Proportionally smaller AM/PM chips
 @Composable
 private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -574,8 +581,8 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
 
     Surface(
         modifier = Modifier
-            .height(34.dp) // Reduced height for better proportion
-            .width(46.dp)  // Reduced width for better proportion
+            .height(36.dp) 
+            .width(48.dp)  
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -592,7 +599,7 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
         ) {
             Text(
                 text = text, 
-                style = MaterialTheme.typography.labelMedium, // Smaller font for smaller chip
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold
             )
         }
