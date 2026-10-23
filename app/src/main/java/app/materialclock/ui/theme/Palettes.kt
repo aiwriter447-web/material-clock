@@ -32,7 +32,7 @@ onSurface = Color(0xFF1A1A24),
 surfaceVariant = Color(0xFFECEFF8),
 onSurfaceVariant = Color(0xFF464653),
 outline = Color(0xFF767684),
-surfaceContainer = Color(0XFFDDE0F0),  surfaceContainerHighest = Color(0xFFE1E4F1)
+surfaceContainer = Color(0xFFDDEOF0),  surfaceContainerHighest = Color(0xFFDDEOF0)
 ),
 dark = darkColorScheme(
 primary = Color(0xFFA5ACFF),
@@ -47,14 +47,14 @@ tertiary = Color(0xFFE0E1F5),
 onTertiary = Color(0xFF2C2D43),
 tertiaryContainer = Color(0xFF424465),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF252A3A),
 onBackground = Color(0xFFE4E1E6),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE4E1E6),
 surfaceVariant = Color(0xFF1D212A),
 onSurfaceVariant = Color(0xFFC7C5D0),
 outline = Color(0xFF90909A),
-surfaceContainer = Color(0xFF252A3A), surfaceContainerHighest = Color(0xFF303544)
+surfaceContainer = Color(0xFF303544), surfaceContainerHighest = Color(0xFF303544)
 )
 ),
 
@@ -80,7 +80,7 @@ onSurface = Color(0xFF181D17),
 surfaceVariant = Color(0xFFEBF5E7),
 onSurfaceVariant = Color(0xFF43483F),
 outline = Color(0xFF73796E),
-surfaceContainer = Color(0xFFDCE5DB),   surfaceContainerHighest = Color(0xFFD5E0D5)
+surfaceContainer = Color(0xFFD5E0D5),   surfaceContainerHighest = Color(0xFFD5E0D5)
 ),
 dark = darkColorScheme(
 primary = Color(0xFF9CD695),
@@ -95,14 +95,14 @@ tertiary = Color(0xFF9CD695),
 onTertiary = Color(0xFF06390A),
 tertiaryContainer = Color(0xFF386A34),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF101F12),
 onBackground = Color(0xFFE0E4DB),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE0E4DB),
 surfaceVariant = Color(0xFF1A2419),
 onSurfaceVariant = Color(0xFFC3C8BC),
 outline = Color(0xFF8D9387),
-surfaceContainer = Color(0xFF101F12),   surfaceContainerHighest = Color(0xFF182319)
+surfaceContainer = Color(0xFF182319),   surfaceContainerHighest = Color(0xFF182319)
 )
 ),
 
@@ -111,7 +111,7 @@ displayName = "Expressive",
 light = lightColorScheme(
 primary = Color(0xFFA43B4B),
 onPrimary = Color(0xFFFFFFFF),
-primaryContainer = Color(0xFFA43B4B),
+primaryContainer = Color(0xFFFD7A8A),
 onPrimaryContainer = Color(0xFF3B0011),
 secondary = Color(0xFFA43B4B),
 onSecondary = Color(0xFFFFFFFF),
@@ -120,14 +120,14 @@ onSecondaryContainer = Color(0xFF3B0011),
 tertiary = Color(0xFFA43B4B),
 onTertiary = Color(0xFFFFFFFF),
 tertiaryContainer = Color(0xFFFD7A8A),
-onTertiaryContainer = Color(0xFF3B0011),
+onTertiaryContainer = Color(0xFF000000),
 background = Color(0xFFFBF0F8),
 onBackground = Color(0xFF221720),
 surface = Color(0xFFFBF0F8),
 onSurface = Color(0xFF221720),
 surfaceVariant = Color(0xFFFFEEFE),
 onSurfaceVariant = Color(0xFF221720),
-surfaceContainer = Color(0xFFE8DCE0),
+surfaceContainer = Color(0xFFE4D5DA),
 surfaceContainerHighest = Color(0xFFE4D5DA),
 outline = Color(0xFF8A7280)
 ),
@@ -135,7 +135,7 @@ dark = darkColorScheme(
 primary = Color(0xFFA43B4B),
 onPrimary = Color(0xFFFFFFFF),
 primaryContainer = Color(0xFFFD7A8A),
-onPrimaryContainer = Color(0xFFA43B4B),
+onPrimaryContainer = Color(0xFF3B0011),
 secondary = Color(0xFFA43B4B),
 onSecondary = Color(0xFFFFFFFF),
 secondaryContainer = Color(0xFFFD7A8A),
@@ -143,14 +143,14 @@ onSecondaryContainer = Color(0xFF3B0011),
 tertiary = Color(0xFFA43B4B),
 onTertiary = Color(0xFFFFFFFF),
 tertiaryContainer = Color(0xFFFD7A8A),
-onTertiaryContainer = Color(0xFF3B0011),
+onTertiaryContainer = Color(0xFFFFFFFF),
 background = Color(0xFF1D0022),
 onBackground = Color(0xFFF6DEEE),
 surface = Color(0xFF1D0022),
 onSurface = Color(0xFFF6DEEE),
 surfaceVariant = Color(0xFF2C0B36),
 onSurfaceVariant = Color(0xFFF6DEEE),
-surfaceContainer = Color(0xFF2C0B36),
+surfaceContainer = Color(0xFF421051),
 surfaceContainerHighest = Color(0xFF421051),
 outline = Color(0xFFA38999)
 )
@@ -178,7 +178,7 @@ onSurface = Color(0xFF1C1B1F),
 surfaceVariant = Color(0xFFE3E3FD),
 onSurfaceVariant = Color(0xFF49454F),
 outline = Color(0xFF79747E),
-surfaceContainer = Color(0xFFE5DFEF),   surfaceContainerHighest = Color(0xFFE8E2F1)
+surfaceContainer = Color(0xFFE8E2F1),   surfaceContainerHighest = Color(0xFFE8E2F1)
 ),
 dark = darkColorScheme(
 primary = Color(0xFFD0BCFF),
@@ -193,14 +193,14 @@ tertiary = Color(0xFFEFB8C8),
 onTertiary = Color(0xFF492532),
 tertiaryContainer = Color(0xFF8A59FF),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF292536),
 onBackground = Color(0xFFE6E1E5),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE6E1E5),
 surfaceVariant = Color(0xFF1A1B2D),
 onSurfaceVariant = Color(0xFFCAC4D0),
 outline = Color(0xFF938F99),
-surfaceContainer = Color(0xFF292536),   surfaceContainerHighest = Color(0xFF34303F)
+surfaceContainer = Color(0xFF34303F),   surfaceContainerHighest = Color(0xFF34303F)
 )
 ),
 
@@ -226,7 +226,7 @@ onSurface = Color(0xFF0F172A),
 surfaceVariant = Color(0xFFE6ECF9),
 onSurfaceVariant = Color(0xFF475569),
 outline = Color(0xFF94A3B8),
-surfaceContainer = Color(0xFFDCE3F0),   surfaceContainerHighest = Color(0xFFD6DEEF)
+surfaceContainer = Color(0xFFD6DEEF),   surfaceContainerHighest = Color(0xFFD6DEEF)
 ),
 dark = darkColorScheme(
 primary = Color(0xFF60A5FA),
@@ -241,14 +241,14 @@ tertiary = Color(0xFF60A5FA),
 onTertiary = Color(0xFF002855),
 tertiaryContainer = Color(0xFF3B82F6),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF162238),
 onBackground = Color(0xFFE2E8F0),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE2E8F0),
 surfaceVariant = Color(0xFF1B2232),
 onSurfaceVariant = Color(0xFFCBD5E1),
 outline = Color(0xFF5A7291),
-surfaceContainer = Color(0xFF162238),
+surfaceContainer = Color(0xFF1D2B4B),
 surfaceContainerHighest = Color(0xFF1D2B4B)
 )
 ),
@@ -259,10 +259,10 @@ light = lightColorScheme(
 primary = Color(0xFF212121),
 onPrimary = Color(0xFFFFFFFF),
 primaryContainer = Color(0xFFD9DDE1),
-onPrimaryContainer = Color(0xFF000000),
+onPrimaryContainer = Color(0xFFD71918),
 secondary = Color(0xFF616161),
 onSecondary = Color(0xFFFFFFFF),
-secondaryContainer = Color(0xFFD71918),
+secondaryContainer = Color(0xFF888692),
 onSecondaryContainer = Color(0xFF212121),
 tertiary = Color(0xFF000000),
 onTertiary = Color(0xFFFFFFFF),
@@ -281,17 +281,17 @@ surfaceContainerHighest = Color(0xFFE4E3E6)
 dark = darkColorScheme(
 primary = Color(0xFFE0E0E0),
 onPrimary = Color(0xFF000000),
-primaryContainer = Color(0xFF151A1F),
-onPrimaryContainer = Color(0xFFD9DDE1),
+primaryContainer = Color(0xFFD9DDE1),
+onPrimaryContainer = Color(0xFFD71918),
 secondary = Color(0xFF9E9E9E),
 onSecondary = Color(0xFF000000),
-secondaryContainer = Color(0xFFD71918),
+secondaryContainer = Color(0xFF888692),
 onSecondaryContainer = Color(0xFFE0E0E0),
 tertiary = Color(0xFFFFFFFF),
 onTertiary = Color(0xFF000000),
 tertiaryContainer = Color(0xFFFFFFFF),
 onTertiaryContainer = Color(0xFF000000),
-background = Color(0xFF0C0E11),
+background = Color(OxFF303438),
 onBackground = Color(0xFFFFFFFF),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFFFFFFF),
@@ -305,13 +305,14 @@ surfaceContainer = Color(0xFF1C1C1D),   surfaceContainerHighest = Color(0xFF1C1C
 NUCLEUS(
 displayName = "Nucleus",
 light = lightColorScheme(
-primary = Color(0xFFD71918),
+primary = Color(0xFF212121),
 onPrimary = Color(0xFFFFFFFF),
-primaryContainer = Color(0xFFD71917),
-onPrimaryContainer = Color(0xFF1B1C1E),
+primaryContainer = Color(0xFFD81918),
+onPrimaryContainer = Color(0xFFFFFFFF),
 secondary = Color(0xFFD71918),
 onSecondary = Color(0xFFFFFFFF),
-secondaryContainer = Color(0xFFC4332E),
+secondaryContainer = Color(0xFFBFC0C1
+),
 onSecondaryContainer = Color(0xFF1B1C1E),
 tertiary = Color(0xFFD71918),
 onTertiary = Color(0xFFFFFFFF),
@@ -328,13 +329,13 @@ surfaceContainer = Color(0xFFE4E3E6),
 surfaceContainerHighest = Color(0xFFE4E3E6)
 ),
 dark = darkColorScheme(
-primary = Color(0xFFD71918),
+primary = Color(0xFF212121),
 onPrimary = Color(0xFFFFFFFF),
-primaryContainer = Color(0xFFD71917),
-onPrimaryContainer = Color(0xFFFDF6EE),
+primaryContainer = Color(0xFFD81918),
+onPrimaryContainer = Color(0xFFFFFFFF),
 secondary = Color(0xFFD71918),
 onSecondary = Color(0xFFFFFFFF),
-secondaryContainer = Color(0xFFC4332E),
+secondaryContainer = Color(0xFF929395),
 onSecondaryContainer = Color(0xFFFDF6EE),
 tertiary = Color(0xFFD71918),
 onTertiary = Color(0xFFFFFFFF),
@@ -373,7 +374,7 @@ onSurface = Color(0xFF041014),
 surfaceVariant = Color(0xFFE0F4F8),
 onSurfaceVariant = Color(0xFF3F484A),
 outline = Color(0xFF6F797A),
-surfaceContainer = Color(0xFFD9E6E7),   surfaceContainerHighest = Color(0xFFD3E2E3)
+surfaceContainer = Color(0xFFD3E2E3),   surfaceContainerHighest = Color(0xFFD3E2E3)
 ),
 dark = darkColorScheme(
 primary = Color(0xFF00E5FF),
@@ -388,14 +389,14 @@ tertiary = Color(0xFF00E5FF),
 onTertiary = Color(0xFF00363A),
 tertiaryContainer = Color(0xFF00E5FF),
 onTertiaryContainer = Color(0xFF002B30),
-background = Color(0xFF0C0E11),
+background = Color(0xFF10282B),
 onBackground = Color(0xFFE0F7FA),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE0F7FA),
 surfaceVariant = Color(0xFF0E252B),
 onSurfaceVariant = Color(0xFFD0E6EA),
 outline = Color(0xFF5A7A7F),
-surfaceContainer = Color(0xFF10282B),   surfaceContainerHighest = Color(0xFF172C2F)
+surfaceContainer = Color(0xFF172C2F),   surfaceContainerHighest = Color(0xFF172C2F)
 )
 ),
 
@@ -421,7 +422,7 @@ onSurface = Color(0xFF201A1C),
 surfaceVariant = Color(0xFFDDD8F3),
 onSurfaceVariant = Color(0xFF514347),
 outline = Color(0xFF837377),
-surfaceContainer = Color(0xFFE9DDE4),   surfaceContainerHighest = Color(0xFFE6D6DE)
+surfaceContainer = Color(0xFFE6D6DE),   surfaceContainerHighest = Color(0xFFE6D6DE)
 ),
 dark = darkColorScheme(
 primary = Color(0xFFF48FB1),
@@ -436,14 +437,14 @@ tertiary = Color(0xFFFF80AB),
 onTertiary = Color(0xFF4A001F),
 tertiaryContainer = Color(0xFFF06292),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF301725),
 onBackground = Color(0xFFEBE0E2),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFEBE0E2),
 surfaceVariant = Color(0xFF1E1B2E),
 onSurfaceVariant = Color(0xFFD6C2C6),
 outline = Color(0xFF9E8C90),
-surfaceContainer = Color(0xFF301725),   surfaceContainerHighest = Color(0xFF351C2A)
+surfaceContainer = Color(0xFF351C2A),   surfaceContainerHighest = Color(0xFF351C2A)
 )
 ),
 
@@ -469,7 +470,7 @@ onSurface = Color(0xFF201A18),
 surfaceVariant = Color(0xFFEBEAE6),
 onSurfaceVariant = Color(0xFF51443E),
 outline = Color(0xFF84746C),
-surfaceContainer = Color(0xFFE9DFD9),   surfaceContainerHighest = Color(0xFFE7DAD3)
+surfaceContainer = Color(0xFFE7DAD3),   surfaceContainerHighest = Color(0xFFE7DAD3)
 ),
 dark = darkColorScheme(
 primary = Color(0xFFFFAB91),
@@ -484,14 +485,14 @@ tertiary = Color(0xFFFF9800),
 onTertiary = Color(0xFF4B2000),
 tertiaryContainer = Color(0xFFE64A19),
 onTertiaryContainer = Color(0xFFFFFFFF),
-background = Color(0xFF0C0E11),
+background = Color(0xFF301C13),
 onBackground = Color(0xFFECE0DA),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFECE0DA),
 surfaceVariant = Color(0xFF23211E),
 onSurfaceVariant = Color(0xFFD6C3B9),
 outline = Color(0xFF9E8D85),
-surfaceContainer = Color(0xFF301C13),   surfaceContainerHighest = Color(0xFF352219)
+surfaceContainer = Color(0xFF352219),   surfaceContainerHighest = Color(0xFF352219)
 )
 ),
 
@@ -517,7 +518,7 @@ onSurface = Color(0xFF1C1C1C),
 surfaceVariant = Color(0xFFE8DFDD),
 onSurfaceVariant = Color(0xFF4A4544),
 outline = Color(0xFF7A7574),
-surfaceContainer = Color(0xFFDDE1E4),   surfaceContainerHighest = Color(0xFFD9DDE0)
+surfaceContainer = Color(0xFFD9DDE0),   surfaceContainerHighest = Color(0xFFD9DDE0)
 ),
 dark = darkColorScheme(
 primary = Color(0xFFF0EBE9),
@@ -532,14 +533,14 @@ tertiary = Color(0xFFF0EBE9),
 onTertiary = Color(0xFF1C1C1C),
 tertiaryContainer = Color(0xFFF0EBE9),
 onTertiaryContainer = Color(0xFF1C1C1C),
-background = Color(0xFF0C0E11),
+background = Color(0xFF161A1D),
 onBackground = Color(0xFFE8E1DF),
 surface = Color(0xFF000000),
 onSurface = Color(0xFFE8E1DF),
 surfaceVariant = Color(0xFF2E2726),
 onSurfaceVariant = Color(0xFFC4BDBB),
 outline = Color(0xFF918A89),
-surfaceContainer = Color(0xFF161A1D),   surfaceContainerHighest = Color(0xFF222629)
+surfaceContainer = Color(0xFF222629),   surfaceContainerHighest = Color(0xFF222629)
 )
 );
 }
