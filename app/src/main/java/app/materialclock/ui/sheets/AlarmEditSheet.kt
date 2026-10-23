@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -174,60 +175,40 @@ fun AlarmEditSheet(
                 .padding(bottom = 20.dp)
         ) {
             
-            // टॉप स्पेसिंग
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Box(Modifier.fillMaxWidth().padding(horizontal = EDGE), contentAlignment = Alignment.CenterEnd) {
-                val iconInteraction = remember { MutableInteractionSource() }
-                val isIconPressed by iconInteraction.collectIsPressedAsState()
-                val iconScale by animateFloatAsState(
-                    targetValue = if (isIconPressed) 0.85f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                    label = "iconScale"
-                )
-
-                IconButton(
-                    onClick = { manualEntry = !manualEntry },
-                    interactionSource = iconInteraction,
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    }
-                ) {
-                    Icon(
-                        imageVector = if (manualEntry) Icons.Outlined.AccessTime else Icons.Outlined.Keyboard,
-                        contentDescription = if (manualEntry) "Use dial" else "Type time",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // फिक्स्ड हाइट बॉक्स
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(340.dp), 
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = manualEntry,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
-                    },
-                    label = "TimeInputModeAnim"
-                ) { isManual ->
-                    if (isManual) {
-                        ManualTimeEntry(state = timeState)
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            WideTimeField(state = timeState)
-                            Spacer(Modifier.height(16.dp))
-                            PillDial(
-                                state = timeState,
-                                modifier = Modifier.padding(horizontal = EDGE),
-                                onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+            // Only animate the transition between Dial and Keyboard
+            // This prevents keyboard typing from bouncing the sheet
+            AnimatedContent(
+                targetState = manualEntry,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
+                        .using(SizeTransform(clip = false) { _, _ ->
+                            spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioNoBouncy // No bounce!
                             )
-                        }
+                        })
+                },
+                label = "TimeInputModeAnim"
+            ) { isManual ->
+                if (isManual) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        ToggleIcon(isManual) { manualEntry = !manualEntry }
+                        ManualTimeEntry(state = timeState)
+                        Spacer(Modifier.height(16.dp))
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        WideTimeField(state = timeState)
+                        Spacer(Modifier.height(4.dp))
+                        ToggleIcon(isManual) { manualEntry = !manualEntry }
+                        PillDial(
+                            state = timeState,
+                            modifier = Modifier.padding(horizontal = EDGE),
+                            onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+                        )
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
             }
@@ -308,7 +289,7 @@ fun AlarmEditSheet(
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(16.dp), // Shape Locked
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -409,6 +390,37 @@ fun AlarmEditSheet(
     }
 }
 
+@Composable
+private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = EDGE),
+        horizontalArrangement = Arrangement.End
+    ) {
+        val iconInteraction = remember { MutableInteractionSource() }
+        val isIconPressed by iconInteraction.collectIsPressedAsState()
+        val iconScale by animateFloatAsState(
+            targetValue = if (isIconPressed) 0.85f else 1f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+            label = "iconScale"
+        )
+
+        IconButton(
+            onClick = onToggle,
+            interactionSource = iconInteraction,
+            modifier = Modifier.graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+            }
+        ) {
+            Icon(
+                imageVector = if (isManual) Icons.Outlined.AccessTime else Icons.Outlined.Keyboard,
+                contentDescription = if (isManual) "Use dial" else "Type time",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WideTimeField(state: TimePickerState) {
@@ -478,8 +490,8 @@ private fun ManualTimeEntry(state: TimePickerState) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center), 
-            modifier = Modifier.width(116.dp).height(100.dp), 
+            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center),
+            modifier = Modifier.width(106.dp), // Natural height, only forcing width
         )
         Text(
             ":",
@@ -500,7 +512,7 @@ private fun ManualTimeEntry(state: TimePickerState) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = MaterialTheme.shapes.large,
             textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center),
-            modifier = Modifier.width(116.dp).height(100.dp), 
+            modifier = Modifier.width(106.dp),
         )
         if (!state.is24hour) {
             Spacer(Modifier.width(12.dp))
