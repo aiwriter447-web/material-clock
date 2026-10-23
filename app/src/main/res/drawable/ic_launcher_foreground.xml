@@ -5,22 +5,32 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Solid White Clock Face (Resized for original padding) -->
+    <!-- Solid White Clock Face Dial -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M54,54m-25,0a25,25 0 1,0 50,0a25,25 0 1,0 -50,0" />
 
-    <!-- Top Pink Hand -->
+    <!-- Hour Hand (Short & Thick, Pink #F4B8D5) -->
     <path
-        android:pathData="M54,54 L54,34"
+        android:pathData="M54,54 L40,51.5"
         android:strokeColor="#F4B8D5"
-        android:strokeWidth="7"
+        android:strokeWidth="7.5"
         android:strokeLineCap="round" />
 
-    <!-- Bottom-Right Dark Blue Hand -->
+    <!-- Minute Hand (Long, Navy #161D3B - Doesn't touch border) -->
     <path
-        android:pathData="M54,54 L67,67"
+        android:pathData="M54,54 L68,68"
         android:strokeColor="#161D3B"
-        android:strokeWidth="7"
+        android:strokeWidth="7.5"
         android:strokeLineCap="round" />
+
+    <!-- Center Cap Pin Backing (Navy) -->
+    <path
+        android:fillColor="#161D3B"
+        android:pathData="M54,54m-4.5,0a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0" />
+
+    <!-- Tiny Center Cap Pin Inner Circle (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
 </vector>
