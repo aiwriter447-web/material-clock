@@ -31,6 +31,7 @@ import java.util.Locale
 import kotlin.math.min
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.res.ResourcesCompat
 import kotlinx.coroutines.flow.first
 
 /**
@@ -82,6 +83,17 @@ object WorldClockRenderer {
 
         val options = WidgetRefresh.optionsFor(context, manager, appWidgetId)
         WidgetRefresh.push(context, manager, appWidgetId) { build(context, settings, config, sides[0], sides[1], options) }
+    }
+
+    /** [sizePx], or smaller if [text] would be wider than [maxWidth] at that size (never below 60%). */
+    private fun fitCityPx(context: Context, text: String, sizePx: Float, maxWidth: Float): Float {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex)
+            fontVariationSettings = "'wght' 600"
+            textSize = sizePx
+        }
+        val width = paint.measureText(text)
+        return if (width <= maxWidth) sizePx else (sizePx * maxWidth / width).coerceAtLeast(sizePx * 0.60f)
     }
 
     private fun build(
@@ -208,10 +220,11 @@ object WorldClockRenderer {
         fun panel(side: Side, color: Int, city: Int, date: Int, time: Int, ampm: Int) {
             views.setTextViewText(city, side.label)
             views.setTextColor(city, color)
-            views.setTextViewTextSize(city, TypedValue.COMPLEX_UNIT_PX, cityPx)
-            // A name too long for its half scrolls along, like a headline, instead of being cut.
-            // A marquee only moves while its view is "selected".
-            views.setBoolean(city, "setSelected", true)
+            // A name too long for its half is shrunk until it fits (down to 60% of its size), and
+            // only then cut with "...". Scrolling text cannot be had in a widget: the launcher
+            // decides when a view moves, and asking for it (setSelected) is not allowed on a
+            // widget's views, which made the whole widget fail to load.
+            views.setTextViewTextSize(city, TypedValue.COMPLEX_UNIT_PX, fitCityPx(context, side.label, cityPx, panelW * 0.92f))
 
             views.setString(time, "setTimeZone", side.zone.id)
             views.setCharSequence(time, "setFormat12Hour", if (is24) "HH:mm" else "h:mm")
