@@ -18,8 +18,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -31,20 +31,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
@@ -60,31 +59,33 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePickerSelectionMode
 import androidx.compose.material3.TimePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
@@ -106,6 +107,7 @@ fun AlarmEditSheet(
     onSave: (Alarm) -> Unit,
     onDelete: ((Long) -> Unit)?,
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
     var label by rememberSaveable(initial.id) { mutableStateOf(initial.label) }
@@ -166,267 +168,225 @@ fun AlarmEditSheet(
 
     BackHandler { commitAndClose() }
 
-    // Dialog Architecture: Replaces ModalBottomSheet to permanently solve IME focus bugs
-    Dialog(
+    ModalBottomSheet(
         onDismissRequest = { commitAndClose() },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false, // Allows the dialog to span full width like a bottom sheet
-            decorFitsSystemWindows = false
-        )
+        sheetState = sheetState,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
-        // Full screen box that handles outside clicks and natural IME padding
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { commitAndClose() } // Dismiss when clicking outside the sheet
-                )
-                .imePadding(), // Smoothly pushes the layout up when keyboard opens
-            contentAlignment = Alignment.BottomCenter
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
         ) {
-            // Surface mimicking the ModalBottomSheet visual design
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {} // Intercept clicks so they don't dismiss the dialog
-                    ),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp
+            
+            Spacer(Modifier.height(16.dp))
+
+            // Smooth transition since no keyboard will pop up
+            AnimatedContent(
+                targetState = manualEntry,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
+                        .using(SizeTransform(clip = false) { _, _ ->
+                            spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioNoBouncy
+                            )
+                        })
+                },
+                label = "TimeInputModeAnim"
+            ) { isManual ->
+                if (isManual) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        ToggleIcon(isManual) { manualEntry = !manualEntry }
+                        SwipeTimeEntry(state = timeState) // Switched to Swipe Picker
+                        Spacer(Modifier.height(16.dp))
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        WideTimeField(state = timeState)
+                        Spacer(Modifier.height(4.dp))
+                        ToggleIcon(isManual) { manualEntry = !manualEntry }
+                        PillDial(
+                            state = timeState,
+                            modifier = Modifier.padding(horizontal = EDGE),
+                            onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+                        )
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
+            }
+
+            DayToggles(
+                order = weekStart.order(systemFirstDay()),
+                selected = days,
+                onToggle = { d -> days = if (d in days) days - d else days + d },
+            )
+
+            Spacer(Modifier.height(20.dp))
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                label = { Text("Alarm Name") },
+                singleLine = true,
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
+            )
+
+            Spacer(Modifier.height(12.dp))
+            GroupPicker(
+                groups = groups,
+                selectedId = groupId,
+                onSelect = { groupId = it },
+                onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
+            )
+
+            Spacer(Modifier.height(12.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = EDGE),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
+                val soundInteraction = remember { MutableInteractionSource() }
+                val isSoundPressed by soundInteraction.collectIsPressedAsState()
+                val soundScale by animateFloatAsState(
+                    targetValue = if (isSoundPressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "soundScale"
+                )
+
+                FilledTonalButton(
+                    onClick = {
+                        ringtonePicker.launch(
+                            Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                .putExtra(
+                                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                    soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
+                                )
+                        )
+                    },
+                    interactionSource = soundInteraction,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding() // Prevent overlap with system navigation
-                        .padding(bottom = 20.dp)
-                ) {
-                    // Custom Drag Handle (Visually identical to ModalBottomSheet handle)
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 22.dp, bottom = 12.dp)
-                            .width(32.dp)
-                            .height(4.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                shape = CircleShape
-                            )
-                            .align(Alignment.CenterHorizontally)
-                    )
-
-                    // Targetted Animation: Silky smooth size transformation with zero bounce
-                    AnimatedContent(
-                        targetState = manualEntry,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
-                                .using(SizeTransform(clip = false) { _, _ ->
-                                    spring(
-                                        stiffness = Spring.StiffnessMediumLow,
-                                        dampingRatio = Spring.DampingRatioNoBouncy // Kills the earthquake glitch
-                                    )
-                                })
+                        .weight(1f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = soundScale
+                            scaleY = soundScale
                         },
-                        label = "TimeInputModeAnim"
-                    ) { isManual ->
-                        if (isManual) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                ToggleIcon(isManual) { manualEntry = !manualEntry }
-                                ManualTimeEntry(state = timeState)
-                                Spacer(Modifier.height(16.dp))
-                            }
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                WideTimeField(state = timeState)
-                                Spacer(Modifier.height(4.dp))
-                                ToggleIcon(isManual) { manualEntry = !manualEntry }
-                                PillDial(
-                                    state = timeState,
-                                    modifier = Modifier.padding(horizontal = EDGE),
-                                    onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
-                                )
-                                Spacer(Modifier.height(16.dp))
-                            }
-                        }
-                    }
+                ) {
+                    Icon(Icons.Outlined.MusicNote, contentDescription = null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        ringtoneName(soundUri),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
 
-                    DayToggles(
-                        order = weekStart.order(systemFirstDay()),
-                        selected = days,
-                        onToggle = { d -> days = if (d in days) days - d else days + d },
+                FilledIconToggleButton(
+                    checked = vibrate,
+                    onCheckedChange = { vibrate = it },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = IconButtonDefaults.filledIconToggleButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    modifier = Modifier.size(ROW_H),
+                ) {
+                    Icon(
+                        Icons.Outlined.Vibration,
+                        contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = EDGE),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (onDelete != null) {
+                    val deleteInteraction = remember { MutableInteractionSource() }
+                    val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                    val deleteScale by animateFloatAsState(
+                        targetValue = if (isDeletePressed) 0.93f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                        label = "deleteScale"
                     )
 
-                    Spacer(Modifier.height(20.dp))
-                    OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text("Alarm Name") },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-                    GroupPicker(
-                        groups = groups,
-                        selectedId = groupId,
-                        onSelect = { groupId = it },
-                        onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = EDGE),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val soundInteraction = remember { MutableInteractionSource() }
-                        val isSoundPressed by soundInteraction.collectIsPressedAsState()
-                        val soundScale by animateFloatAsState(
-                            targetValue = if (isSoundPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "soundScale"
-                        )
-
-                        FilledTonalButton(
-                            onClick = {
-                                ringtonePicker.launch(
-                                    Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                                        .putExtra(
-                                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                                            soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
-                                        )
-                                )
+                    FilledTonalButton(
+                        onClick = { onDelete(initial.id); onDismiss() },
+                        interactionSource = deleteInteraction,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(ROW_H)
+                            .graphicsLayer {
+                                scaleX = deleteScale
+                                scaleY = deleteScale
                             },
-                            interactionSource = soundInteraction,
-                            contentPadding = PaddingValues(horizontal = 18.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = soundScale
-                                    scaleY = soundScale
-                                },
-                        ) {
-                            Icon(Icons.Outlined.MusicNote, contentDescription = null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                ringtoneName(soundUri),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-
-                        // Fixed Vibration Shape
-                        FilledIconToggleButton(
-                            checked = vibrate,
-                            onCheckedChange = { vibrate = it },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = IconButtonDefaults.filledIconToggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier.size(ROW_H),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Vibration,
-                                contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = EDGE),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        if (onDelete != null) {
-                            val deleteInteraction = remember { MutableInteractionSource() }
-                            val isDeletePressed by deleteInteraction.collectIsPressedAsState()
-                            val deleteScale by animateFloatAsState(
-                                targetValue = if (isDeletePressed) 0.93f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                                label = "deleteScale"
-                            )
-
-                            FilledTonalButton(
-                                onClick = { onDelete(initial.id); onDismiss() },
-                                interactionSource = deleteInteraction,
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(ROW_H)
-                                    .graphicsLayer {
-                                        scaleX = deleteScale
-                                        scaleY = deleteScale
-                                    },
-                            ) {
-                                Icon(Icons.Outlined.Delete, contentDescription = null, Modifier.size(20.dp))
-                            }
-                        }
-
-                        val cancelInteraction = remember { MutableInteractionSource() }
-                        val isCancelPressed by cancelInteraction.collectIsPressedAsState()
-                        val cancelScale by animateFloatAsState(
-                            targetValue = if (isCancelPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "cancelScale"
-                        )
-
-                        OutlinedButton(
-                            onClick = { discard = true; onDismiss() },
-                            interactionSource = cancelInteraction,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = cancelScale
-                                    scaleY = cancelScale
-                                },
-                        ) {
-                            Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                        }
-
-                        val saveInteraction = remember { MutableInteractionSource() }
-                        val isSavePressed by saveInteraction.collectIsPressedAsState()
-                        val saveScale by animateFloatAsState(
-                            targetValue = if (isSavePressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "saveScale"
-                        )
-
-                        Button(
-                            onClick = { commitAndClose(explicit = true) },
-                            interactionSource = saveInteraction,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .weight(if (onDelete != null) 1.8f else 2.4f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = saveScale
-                                    scaleY = saveScale
-                                },
-                        ) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                        }
+                        Icon(Icons.Outlined.Delete, contentDescription = null, Modifier.size(20.dp))
                     }
+                }
+
+                val cancelInteraction = remember { MutableInteractionSource() }
+                val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                val cancelScale by animateFloatAsState(
+                    targetValue = if (isCancelPressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "cancelScale"
+                )
+
+                OutlinedButton(
+                    onClick = { discard = true; onDismiss() },
+                    interactionSource = cancelInteraction,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = cancelScale
+                            scaleY = cancelScale
+                        },
+                ) {
+                    Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+
+                val saveInteraction = remember { MutableInteractionSource() }
+                val isSavePressed by saveInteraction.collectIsPressedAsState()
+                val saveScale by animateFloatAsState(
+                    targetValue = if (isSavePressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "saveScale"
+                )
+
+                Button(
+                    onClick = { commitAndClose(explicit = true) },
+                    interactionSource = saveInteraction,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier
+                        .weight(if (onDelete != null) 1.8f else 2.4f)
+                        .height(ROW_H)
+                        .graphicsLayer {
+                            scaleX = saveScale
+                            scaleY = saveScale
+                        },
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -456,8 +416,9 @@ private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
             }
         ) {
             Icon(
-                imageVector = if (isManual) Icons.Outlined.AccessTime else Icons.Outlined.Keyboard,
-                contentDescription = if (isManual) "Use dial" else "Type time",
+                // Replaced Keyboard icon with UnfoldMore to represent scrolling/swiping
+                imageVector = if (isManual) Icons.Outlined.AccessTime else Icons.Outlined.UnfoldMore,
+                contentDescription = if (isManual) "Use dial" else "Use swipe picker",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -501,71 +462,159 @@ private fun WideTimeField(state: TimePickerState) {
     }
 }
 
+// ---------------------------------------------------------
+// NEW: Swipe-based Wheel Time Picker Implementation
+// ---------------------------------------------------------
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ManualTimeEntry(state: TimePickerState) {
-    var hourText by remember(state.is24hour) {
-        val h = if (state.is24hour) state.hour else (state.hour % 12).takeIf { it != 0 } ?: 12
-        mutableStateOf("%02d".format(h))
-    }
-    var minuteText by remember { mutableStateOf("%02d".format(state.minute)) }
-
+private fun SwipeTimeEntry(state: TimePickerState) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = EDGE),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedTextField(
-            value = hourText,
-            onValueChange = { new ->
-                val digits = new.filter(Char::isDigit).take(2)
-                hourText = digits
-                val n = digits.toIntOrNull()
-                if (n != null) {
+        // Hours Column
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Hours",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            WheelPicker(
+                range = if (state.is24hour) 0..23 else 1..12,
+                value = if (state.is24hour) state.hour else ((state.hour % 12).takeIf { it != 0 } ?: 12),
+                onValueChanged = { newVal ->
                     if (state.is24hour) {
-                        if (n in 0..23) state.hour = n
-                    } else if (n in 1..12) {
-                        state.hour = (n % 12) + if (state.hour >= 12) 12 else 0
+                        state.hour = newVal
+                    } else {
+                        val isPm = state.hour >= 12
+                        state.hour = (newVal % 12) + if (isPm) 12 else 0
                     }
                 }
-            },
-            label = { Text("Hour") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center),
-            modifier = Modifier.width(106.dp), 
-        )
+            )
+        }
+
+        // Separator aligned with the center of the wheels
         Text(
             ":",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(top = 24.dp)
         )
-        OutlinedTextField(
-            value = minuteText,
-            onValueChange = { new ->
-                val digits = new.filter(Char::isDigit).take(2)
-                minuteText = digits
-                val n = digits.toIntOrNull()
-                if (n != null && n in 0..59) state.minute = n
-            },
-            label = { Text("Min") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            shape = MaterialTheme.shapes.large,
-            textStyle = MaterialTheme.typography.displayMedium.copy(textAlign = TextAlign.Center),
-            modifier = Modifier.width(106.dp),
-        )
+
+        // Minutes Column
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Minutes",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            WheelPicker(
+                range = 0..59,
+                value = state.minute,
+                onValueChanged = { state.minute = it }
+            )
+        }
+
+        // AM/PM Toggle for 12-hour mode
         if (!state.is24hour) {
-            Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.width(16.dp))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 24.dp)
+            ) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun WheelPicker(
+    range: IntRange,
+    value: Int,
+    onValueChanged: (Int) -> Unit
+) {
+    val items = range.toList()
+    val virtualCount = 100_000 // Enables Infinite Scrolling Illusion
+    val initialCenter = virtualCount / 2
+    val initialIndex = initialCenter - (initialCenter % items.size) + items.indexOf(value).coerceAtLeast(0)
+    
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+
+    // Sync Wheel state to external value
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }.collect { idx ->
+            val realIndex = idx % items.size
+            if (realIndex in items.indices) {
+                val newVal = items[realIndex]
+                if (newVal != value) {
+                    onValueChanged(newVal)
+                }
+            }
+        }
+    }
+
+    // Sync external value to Wheel state
+    LaunchedEffect(value) {
+        val currentRealIndex = listState.firstVisibleItemIndex % items.size
+        val targetRealIndex = items.indexOf(value)
+        if (currentRealIndex != targetRealIndex && targetRealIndex >= 0) {
+            var diff = targetRealIndex - currentRealIndex
+            if (diff > items.size / 2) diff -= items.size
+            else if (diff < -items.size / 2) diff += items.size
+            
+            listState.animateScrollToItem(listState.firstVisibleItemIndex + diff)
+        }
+    }
+
+    val firstVisible by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+
+    LazyColumn(
+        state = listState,
+        flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+        modifier = Modifier
+            .height(150.dp)
+            .width(80.dp),
+        contentPadding = PaddingValues(vertical = 50.dp), // Pads top and bottom to center the middle item
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items(virtualCount) { index ->
+            val realIndex = index % items.size
+            val itemValue = items[realIndex]
+            val isSelected = index == firstVisible
+            
+            val alpha by animateFloatAsState(if (isSelected) 1f else 0.3f, label = "alpha")
+            val scale by animateFloatAsState(if (isSelected) 1f else 0.85f, label = "scale")
+            
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(50.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "%02d".format(itemValue),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------
 
 @Composable
 private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
