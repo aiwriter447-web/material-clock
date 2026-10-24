@@ -97,11 +97,17 @@ object DigitalRenderer {
             ampmPx = time * 0.46f,
             gapPx = if (stackLayout) 0f else time * 0.10f,
             // The date is bigger on the square card, where there is room for it.
-            datePx = when {
-                rowLayout -> dateRowPx
-                stackLayout -> time * 0.44f
-                else -> time * 0.34f
-            },
+            datePx = min(
+                // Never wider than the card: even the longest date ("Wednesday, 30 September") fits.
+                // On a tall widget the time is huge and the date, sized from it, used to run off the
+                // sides and be cut.
+                w * 0.92f / ((if (if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP) 22f else 11f) * 0.56f),
+                when {
+                    rowLayout -> dateRowPx
+                    stackLayout -> time * 0.44f
+                    else -> time * 0.34f
+                },
+            ),
             showDate = showDate,
             longDate = if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP,
             rowLayout = rowLayout,
