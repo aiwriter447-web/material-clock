@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Analog Clock, added as 2x2. The size it starts at is the target cell size. It can be resized from 2x1 up to
+  2x2, no further.
+
+  The limits are in dp, and the launcher turns them into grid cells with the usual rule (a size of
+  n cells is 70n - 30 dp), rounding UP. So the limits sit just under the next cell: 108dp tall is
+  2 rows (a 3rd row would need over 110), 248dp wide is 4 columns (a 5th would need over 250). The
+  earlier 170dp tall rounded up to 3 rows, which is what let widgets grow too tall.
+
+  updatePeriodMillis is 30 minutes, the shortest the system allows: the time itself is ticked by the
+  launcher's own clock views, and this refresh only brings the colours (wallpaper, dark mode) and the
+  battery level up to date. Set it to 0 to switch it off.
+  configure is fully qualified. A leading dot would be a silent ActivityNotFoundException.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="108dp"
+    android:maxResizeHeight="108dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_loading"
+    android:previewLayout="@layout/wp_analog_2x2"
+    android:configure="app.materialclock.widget.ClockWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable" />
