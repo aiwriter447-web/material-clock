@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -46,7 +47,7 @@ import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,6 +77,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -93,6 +95,7 @@ import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.theme.Numerals
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -111,15 +114,16 @@ fun AlarmEditSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope() // Smooth closing animation के लिए
 
     var label by rememberSaveable(initial.id) { mutableStateOf(initial.label) }
     var days by remember(initial.id) { mutableStateOf(initial.days) }
     var vibrate by rememberSaveable(initial.id) { mutableStateOf(initial.vibrate) }
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
-    var discard by remember(initial.id) { mutableStateOf(false) }
-
+    
     var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) } // Delete confirmation dialog state
 
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(groups) {
@@ -137,21 +141,32 @@ fun AlarmEditSheet(
         is24Hour = android.text.format.DateFormat.is24HourFormat(context),
     )
 
+    // Smooth Closing Animation Logic
     fun commitAndClose(explicit: Boolean = false) {
-        if (!discard && (explicit || onDelete != null)) {
-            onSave(
-                initial.copy(
-                    time = LocalTime.of(timeState.hour, timeState.minute),
-                    label = label.trim(),
-                    days = days,
-                    enabled = initial.enabled,
-                    vibrate = vibrate,
-                    soundUri = soundUri,
-                    groupId = groupId,
+        scope.launch {
+            sheetState.hide() // पहले बॉटम शीट को नीचे एनिमेट करो
+            if (explicit || onDelete != null) {
+                onSave(
+                    initial.copy(
+                        time = LocalTime.of(timeState.hour, timeState.minute),
+                        label = label.trim(),
+                        days = days,
+                        enabled = initial.enabled,
+                        vibrate = vibrate,
+                        soundUri = soundUri,
+                        groupId = groupId,
+                    )
                 )
-            )
+            }
+            onDismiss() // फिर असली डिसमिस कॉल करो
         }
-        onDismiss()
+    }
+
+    BackHandler {
+        scope.launch {
+            sheetState.hide()
+            onDismiss()
+        }
     }
 
     val ringtonePicker = rememberLauncherForActivityResult(
@@ -168,10 +183,38 @@ fun AlarmEditSheet(
         }
     }
 
-    BackHandler { commitAndClose() }
+    // Delete Confirmation Dialog
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Alarm?") },
+            text = { Text("Are you sure you want to permanently delete this alarm?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        scope.launch {
+                            sheetState.hide()
+                            onDelete(initial.id)
+                            onDismiss()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     ModalBottomSheet(
-        onDismissRequest = { commitAndClose() },
+        onDismissRequest = { 
+            scope.launch { sheetState.hide(); onDismiss() } 
+        },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
@@ -180,64 +223,67 @@ fun AlarmEditSheet(
                 .fillMaxWidth()
                 .padding(bottom = 20.dp)
         ) {
-            
             Spacer(Modifier.height(8.dp))
 
-            // टॉप-राइट कॉर्नर में टॉगल आइकॉन (खाली जगह खत्म करने के लिए)
-            Row(Modifier.fillMaxWidth().padding(horizontal = EDGE), horizontalArrangement = Arrangement.End) {
-                ToggleIcon(manualEntry) { manualEntry = !manualEntry }
-            }
-
-            // एनिमेशन और मोड स्विचिंग
-            AnimatedContent(
-                targetState = manualEntry,
-                transitionSpec = {
-                    (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
-                        .using(SizeTransform(clip = false) { _, _ ->
-                            spring(
-                                stiffness = Spring.StiffnessMediumLow,
-                                dampingRatio = Spring.DampingRatioNoBouncy
-                            )
-                        })
-                },
-                label = "TimeInputModeAnim"
-            ) { isManual ->
-                if (isManual) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SwipeTimeEntry(state = timeState) 
-                        Spacer(Modifier.height(16.dp))
-                    }
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        WideTimeField(state = timeState)
-                        Spacer(Modifier.height(12.dp))
-                        
-                        // डायल का लाइव पॉप (Heartbeat) एनिमेशन
-                        var popScale by remember { mutableStateOf(1f) }
-                        LaunchedEffect(timeState.hour, timeState.minute) {
-                            popScale = 1.04f
-                            delay(60)
-                            popScale = 1f
+            // Box wrapping the time picker to position the Toggle Icon at Top-Right (like Pic 4)
+            Box(Modifier.fillMaxWidth().padding(horizontal = EDGE)) {
+                
+                AnimatedContent(
+                    targetState = manualEntry,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
+                            .using(SizeTransform(clip = false) { _, _ ->
+                                spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioNoBouncy
+                                )
+                            })
+                    },
+                    label = "TimeInputModeAnim",
+                    modifier = Modifier.fillMaxWidth()
+                ) { isManual ->
+                    if (isManual) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            SwipeTimeEntry(state = timeState) 
+                            Spacer(Modifier.height(16.dp))
                         }
-                        val animatedPopScale by animateFloatAsState(
-                            targetValue = popScale,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                            label = "dialPop"
-                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            WideTimeField(state = timeState)
+                            Spacer(Modifier.height(12.dp))
+                            
+                            var popScale by remember { mutableStateOf(1f) }
+                            LaunchedEffect(timeState.hour, timeState.minute) {
+                                popScale = 1.04f
+                                delay(60)
+                                popScale = 1f
+                            }
+                            val animatedPopScale by animateFloatAsState(
+                                targetValue = popScale,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                label = "dialPop"
+                            )
 
-                        PillDial(
-                            state = timeState,
-                            modifier = Modifier
-                                .padding(horizontal = EDGE)
-                                .graphicsLayer {
-                                    scaleX = animatedPopScale
-                                    scaleY = animatedPopScale
-                                },
-                            onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
-                        )
-                        Spacer(Modifier.height(16.dp))
+                            PillDial(
+                                state = timeState,
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = animatedPopScale
+                                        scaleY = animatedPopScale
+                                    },
+                                onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
                     }
                 }
+
+                // Toggle Icon strictly positioned at Top-End
+                ToggleIcon(
+                    isManual = manualEntry, 
+                    onToggle = { manualEntry = !manualEntry },
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
             }
 
             DayToggles(
@@ -313,6 +359,15 @@ fun AlarmEditSheet(
                     )
                 }
 
+                // Lively Vibration Icon Animation
+                val vibrateAnim = remember { Animatable(0f) }
+                LaunchedEffect(vibrate) {
+                    if (vibrate) {
+                        vibrateAnim.animateTo(15f, spring(dampingRatio = 0.2f, stiffness = Spring.StiffnessHigh))
+                        vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+
                 FilledIconToggleButton(
                     checked = vibrate,
                     onCheckedChange = { vibrate = it },
@@ -324,10 +379,10 @@ fun AlarmEditSheet(
                     ),
                     modifier = Modifier.size(ROW_H),
                 ) {
-                    // स्टेट के आधार पर वाइब्रेशन आइकॉन बदलना
                     Icon(
                         imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
                         contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
+                        modifier = Modifier.graphicsLayer { rotationZ = vibrateAnim.value }
                     )
                 }
             }
@@ -341,13 +396,14 @@ fun AlarmEditSheet(
                     val deleteInteraction = remember { MutableInteractionSource() }
                     val isDeletePressed by deleteInteraction.collectIsPressedAsState()
                     val deleteScale by animateFloatAsState(
-                        targetValue = if (isDeletePressed) 0.93f else 1f,
+                        targetValue = if (isDeletePressed) 0.90f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
                         label = "deleteScale"
                     )
 
+                    // Red Expressive Delete Button
                     FilledTonalButton(
-                        onClick = { onDelete(initial.id); onDismiss() },
+                        onClick = { showDeleteConfirm = true },
                         interactionSource = deleteInteraction,
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -362,7 +418,7 @@ fun AlarmEditSheet(
                                 scaleY = deleteScale
                             },
                     ) {
-                        Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(24.dp))
                     }
                 }
 
@@ -375,7 +431,9 @@ fun AlarmEditSheet(
                 )
 
                 OutlinedButton(
-                    onClick = { discard = true; onDismiss() },
+                    onClick = { 
+                        scope.launch { sheetState.hide(); onDismiss() }
+                    },
                     interactionSource = cancelInteraction,
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     modifier = Modifier
@@ -419,11 +477,11 @@ fun AlarmEditSheet(
 }
 
 @Composable
-private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
+private fun ToggleIcon(isManual: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
     val iconInteraction = remember { MutableInteractionSource() }
     val isIconPressed by iconInteraction.collectIsPressedAsState()
     val iconScale by animateFloatAsState(
-        targetValue = if (isIconPressed) 0.85f else 1f,
+        targetValue = if (isIconPressed) 0.80f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
         label = "iconScale"
     )
@@ -431,14 +489,13 @@ private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
     IconButton(
         onClick = onToggle,
         interactionSource = iconInteraction,
-        modifier = Modifier.graphicsLayer {
+        modifier = modifier.graphicsLayer {
             scaleX = iconScale
             scaleY = iconScale
         }
     ) {
         Icon(
-            // एक्सप्रेसिव Rounded आइकॉन
-            imageVector = if (isManual) Icons.Rounded.Schedule else Icons.Rounded.TouchApp,
+            imageVector = if (isManual) Icons.Rounded.Schedule else Icons.Rounded.SwipeVertical,
             contentDescription = if (isManual) "Use dial" else "Use swipe picker",
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -446,7 +503,7 @@ private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
 }
 
 // ---------------------------------------------------------
-// Dial Mode Header with Titles
+// Dial Mode Header
 // ---------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -455,7 +512,6 @@ private fun WideTimeField(state: TimePickerState) {
     val onHour = state.selection == TimePickerSelectionMode.Hour
 
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = EDGE),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -508,13 +564,12 @@ private fun WideTimeField(state: TimePickerState) {
 }
 
 // ---------------------------------------------------------
-// Swipe Mode Header with Massive Fonts
+// Swipe Mode Header
 // ---------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = EDGE),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -617,7 +672,7 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = Modifier
-            .height(180.dp) // ऊँचाई बढ़ाई गई ताकि फोंट को जगह मिले
+            .height(180.dp) 
             .width(90.dp),
         contentPadding = PaddingValues(vertical = 65.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -628,7 +683,12 @@ private fun WheelPicker(
             val isSelected = index == firstVisible
             
             val alpha by animateFloatAsState(if (isSelected) 1f else 0.3f, label = "alpha")
-            val scale by animateFloatAsState(if (isSelected) 1f else 0.85f, label = "scale")
+            // Removed bold weight, using standard medium/normal displayLarge but scaling up slightly
+            val scale by animateFloatAsState(
+                targetValue = if (isSelected) 1.1f else 0.85f, 
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "scale"
+            )
             
             Box(
                 contentAlignment = Alignment.Center,
@@ -638,8 +698,8 @@ private fun WheelPicker(
             ) {
                 Text(
                     text = "%02d".format(itemValue),
-                    style = MaterialTheme.typography.displayLarge.copy( // फोंट साइज़ बढ़ाकर displayLarge किया गया
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Medium // Reverted to non-distorted medium weight
                     ),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                     modifier = Modifier.graphicsLayer {
@@ -660,14 +720,13 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
+        targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
         label = "fieldPillPressScale"
     )
     
-    // सिलेक्ट होने पर बाउंस एनिमेशन
     val selectionScale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
+        targetValue = if (selected) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "fieldPillSelectionScale"
     )
@@ -693,8 +752,8 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
                 text = text,
                 capHeight = FIELD_CAP,
                 color = contentColor,
-                width = 151f,
-                weight = 460,
+                width = 160f, // Slightly wider for bigger font
+                weight = 550, // Increased weight to make the Dial font slightly Bolder/Thicker
             )
         }
     }
@@ -705,10 +764,15 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "meridiemScale"
+        label = "meridiemPressScale"
+    )
+    val selectionScale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "meridiemSelectionScale"
     )
 
     val targetContainer = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
@@ -722,8 +786,8 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .height(36.dp) 
             .width(48.dp)  
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = pressScale * selectionScale
+                scaleY = pressScale * selectionScale
             }, 
         color = containerColor,
         contentColor = contentColor,
@@ -877,10 +941,16 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
             val isPressed by interactionSource.collectIsPressedAsState()
             val isChecked = day in selected
 
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.90f else 1f,
+            val pressScale by animateFloatAsState(
+                targetValue = if (isPressed) 0.85f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                label = "dayToggleScale"
+                label = "dayTogglePressScale"
+            )
+            
+            val selectionScale by animateFloatAsState(
+                targetValue = if (isChecked) 1.05f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "dayToggleSelectionScale"
             )
 
             val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
@@ -899,8 +969,8 @@ private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggl
                     .weight(1f)
                     .height(52.dp)
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
+                        scaleX = pressScale * selectionScale
+                        scaleY = pressScale * selectionScale
                     }
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
