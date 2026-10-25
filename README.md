@@ -1,27 +1,36 @@
-# Clock
-*A Material 3 Expressive clock app*
 
-![Alarms, the timer keypad, Stopwatch, World Clock, a running timer and the alarm editor, across several themes](docs/screenshots.png)
+#Clock
 
-App #2 in the suite. A real Compose app, not a mockup: it builds, installs and runs.
+A Material 3 Expressive design-based Android Clock App built entirely with Jetpack Compose.
+This repository contains a functional, fully realized Android application based on Google's unshipped Material 3 Expressive research-concept clock. Unlike static UI mockups, this is a real Compose application that builds, installs, and runs natively on Android.
+The design is carefully extrapolated from Google's 46-study design program (specifically the concept renders rather than the production Google Clock 8.8). Source renders and detailed measurements used to build the interface can be found in ../clock-mockups/reference/concept/.
 
-It is a recreation of the M3 Expressive research-concept clock, meaning the unshipped one from
-Google's 46-study programme rather than Google Clock 8.8. Source renders and the measurements taken
-off them are in `../clock-mockups/reference/concept/`.
+#Features
+(docs/screenshots.png)
 
-Four tabs: Alarms · World Clock · Timers · Stopwatch. The concept has three (Alarms, Map, Settings)
-and no stopwatch, so two of these are extrapolated.
+The application expands on the original three-tab research concept (Alarms, Map, Settings) to provide a complete, production-ready clock utility with four distinct tabs:
+• Alarms: Expressive, gesture-friendly alarm management based closely on the original M3 research concepts.
+• World Clock: Global time tracking featuring the extrapolated design language of the Expressive study.
+• Timers: Clean, highly visible countdown interfaces tailored for daily use.
+• Stopwatch: A precise time-tracking tool designed from the ground up to fit the broader Material 3 Expressive ecosystem.
 
-## Licence
+#Technical Implementation
 
-This project's own code is MIT. See [`LICENSE`](LICENSE).
+• 100% Jetpack Compose: Built entirely using modern, declarative UI principles.
+• Material 3 Expressive Motion & Styling: Implements the bold, fluid typography and dynamic scaling found in the research documentation.
+• Custom Typography Integration: Leverages advanced variable font capabilities to match the precise aesthetic intent of the original study.
 
-It bundles two font binaries which are not MIT: Google Sans Flex and a ten-glyph subset of Noto Sans
-Arabic, both under the SIL Open Font License 1.1. Their copyright notices, what was modified and
-why, and the full licence text are in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) and
-[`licenses/OFL-1.1.txt`](licenses/OFL-1.1.txt).
+#Licence
 
-Google, Google Sans, Material, Android and Pixel are trademarks of Google LLC. This project is not
-affiliated with, sponsored by or endorsed by Google. It is an independent recreation of a published
-Material 3 Expressive concept design. The concept renders it was measured against are Google's
-copyright and are not included here.
+This project's own code is licensed under the MIT License. See the LICENSE file for details.
+
+#Third-Party Materials & Attribution
+
+This project bundles two font binaries which are not covered by the MIT license:
+• Google Sans Flex (SIL Open Font License 1.1)
+• Noto Sans Arabic (Ten-glyph subset, SIL Open Font License 1.1)
+Detailed copyright notices, modifications, and the full text of the SIL Open Font License are available in THIRD-PARTY-NOTICES.md and licenses/OFL-1.1.txt.
+
+#Trademarks
+
+Google, Google Sans, Material, Android, and Pixel are trademarks of Google LLC. This project is an independent recreation of a published Material 3 Expressive concept design. It is not affiliated with, sponsored by, or endorsed by Google. The original concept renders used as a measurement reference remain the copyright of Google and are not included in this repository.
