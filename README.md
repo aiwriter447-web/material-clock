@@ -6,7 +6,7 @@ This repository contains a functional, fully realized Android application based 
 The design is carefully extrapolated from Google's 46-study design program (specifically the concept renders rather than the production Google Clock 8.8). Source renders and detailed measurements used to build the interface can be found in ../clock-mockups/reference/concept/.
 
 #Features
-(docs/screenshots.png)
+
 
 The application expands on the original three-tab research concept (Alarms, Map, Settings) to provide a complete, production-ready clock utility with four distinct tabs:
 • Alarms: Expressive, gesture-friendly alarm management based closely on the original M3 research concepts.
