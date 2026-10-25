@@ -39,14 +39,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccessTime
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Group
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -91,6 +92,7 @@ import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.theme.Numerals
+import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -179,9 +181,14 @@ fun AlarmEditSheet(
                 .padding(bottom = 20.dp)
         ) {
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // Smooth transition since no keyboard will pop up
+            // टॉप-राइट कॉर्नर में टॉगल आइकॉन (खाली जगह खत्म करने के लिए)
+            Row(Modifier.fillMaxWidth().padding(horizontal = EDGE), horizontalArrangement = Arrangement.End) {
+                ToggleIcon(manualEntry) { manualEntry = !manualEntry }
+            }
+
+            // एनिमेशन और मोड स्विचिंग
             AnimatedContent(
                 targetState = manualEntry,
                 transitionSpec = {
@@ -197,18 +204,35 @@ fun AlarmEditSheet(
             ) { isManual ->
                 if (isManual) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        ToggleIcon(isManual) { manualEntry = !manualEntry }
-                        SwipeTimeEntry(state = timeState) // Switched to Swipe Picker
+                        SwipeTimeEntry(state = timeState) 
                         Spacer(Modifier.height(16.dp))
                     }
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         WideTimeField(state = timeState)
-                        Spacer(Modifier.height(4.dp))
-                        ToggleIcon(isManual) { manualEntry = !manualEntry }
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // डायल का लाइव पॉप (Heartbeat) एनिमेशन
+                        var popScale by remember { mutableStateOf(1f) }
+                        LaunchedEffect(timeState.hour, timeState.minute) {
+                            popScale = 1.04f
+                            delay(60)
+                            popScale = 1f
+                        }
+                        val animatedPopScale by animateFloatAsState(
+                            targetValue = popScale,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                            label = "dialPop"
+                        )
+
                         PillDial(
                             state = timeState,
-                            modifier = Modifier.padding(horizontal = EDGE),
+                            modifier = Modifier
+                                .padding(horizontal = EDGE)
+                                .graphicsLayer {
+                                    scaleX = animatedPopScale
+                                    scaleY = animatedPopScale
+                                },
                             onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
                         )
                         Spacer(Modifier.height(16.dp))
@@ -278,7 +302,7 @@ fun AlarmEditSheet(
                             scaleY = soundScale
                         },
                 ) {
-                    Icon(Icons.Outlined.MusicNote, contentDescription = null, Modifier.size(20.dp))
+                    Icon(Icons.Rounded.MusicNote, contentDescription = null, Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
                         ringtoneName(soundUri),
@@ -300,8 +324,9 @@ fun AlarmEditSheet(
                     ),
                     modifier = Modifier.size(ROW_H),
                 ) {
+                    // स्टेट के आधार पर वाइब्रेशन आइकॉन बदलना
                     Icon(
-                        Icons.Outlined.Vibration,
+                        imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
                         contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
                     )
                 }
@@ -337,7 +362,7 @@ fun AlarmEditSheet(
                                 scaleY = deleteScale
                             },
                     ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null, Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(20.dp))
                     }
                 }
 
@@ -395,36 +420,34 @@ fun AlarmEditSheet(
 
 @Composable
 private fun ToggleIcon(isManual: Boolean, onToggle: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = EDGE),
-        horizontalArrangement = Arrangement.End
-    ) {
-        val iconInteraction = remember { MutableInteractionSource() }
-        val isIconPressed by iconInteraction.collectIsPressedAsState()
-        val iconScale by animateFloatAsState(
-            targetValue = if (isIconPressed) 0.85f else 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-            label = "iconScale"
-        )
+    val iconInteraction = remember { MutableInteractionSource() }
+    val isIconPressed by iconInteraction.collectIsPressedAsState()
+    val iconScale by animateFloatAsState(
+        targetValue = if (isIconPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "iconScale"
+    )
 
-        IconButton(
-            onClick = onToggle,
-            interactionSource = iconInteraction,
-            modifier = Modifier.graphicsLayer {
-                scaleX = iconScale
-                scaleY = iconScale
-            }
-        ) {
-            Icon(
-                // Replaced Keyboard icon with UnfoldMore to represent scrolling/swiping
-                imageVector = if (isManual) Icons.Outlined.AccessTime else Icons.Outlined.UnfoldMore,
-                contentDescription = if (isManual) "Use dial" else "Use swipe picker",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    IconButton(
+        onClick = onToggle,
+        interactionSource = iconInteraction,
+        modifier = Modifier.graphicsLayer {
+            scaleX = iconScale
+            scaleY = iconScale
         }
+    ) {
+        Icon(
+            // एक्सप्रेसिव Rounded आइकॉन
+            imageVector = if (isManual) Icons.Rounded.Schedule else Icons.Rounded.TouchApp,
+            contentDescription = if (isManual) "Use dial" else "Use swipe picker",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
+// ---------------------------------------------------------
+// Dial Mode Header with Titles
+// ---------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WideTimeField(state: TimePickerState) {
@@ -436,25 +459,47 @@ private fun WideTimeField(state: TimePickerState) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FieldPill(
-            text = "%02d".format(hour),
-            selected = onHour,
-            onClick = { state.selection = TimePickerSelectionMode.Hour },
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Hours",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            FieldPill(
+                text = "%02d".format(hour),
+                selected = onHour,
+                onClick = { state.selection = TimePickerSelectionMode.Hour },
+            )
+        }
+        
         Text(
             ":",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 6.dp),
+            modifier = Modifier.padding(horizontal = 6.dp).padding(top = 24.dp),
         )
-        FieldPill(
-            text = "%02d".format(state.minute),
-            selected = !onHour,
-            onClick = { state.selection = TimePickerSelectionMode.Minute },
-        )
+        
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Minutes",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            FieldPill(
+                text = "%02d".format(state.minute),
+                selected = !onHour,
+                onClick = { state.selection = TimePickerSelectionMode.Minute },
+            )
+        }
+
         if (!state.is24hour) {
             Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp), 
+                modifier = Modifier.padding(top = 24.dp)
+            ) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
             }
@@ -463,9 +508,8 @@ private fun WideTimeField(state: TimePickerState) {
 }
 
 // ---------------------------------------------------------
-// NEW: Swipe-based Wheel Time Picker Implementation
+// Swipe Mode Header with Massive Fonts
 // ---------------------------------------------------------
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
@@ -474,7 +518,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Hours Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Hours",
@@ -496,17 +539,13 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
-        // Separator aligned with the center of the wheels
         Text(
             ":",
-            style = MaterialTheme.typography.displayMedium,
+            style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .padding(top = 24.dp)
+            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 24.dp)
         )
 
-        // Minutes Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Minutes",
@@ -521,7 +560,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
-        // AM/PM Toggle for 12-hour mode
         if (!state.is24hour) {
             Spacer(Modifier.width(16.dp))
             Column(
@@ -543,13 +581,12 @@ private fun WheelPicker(
     onValueChanged: (Int) -> Unit
 ) {
     val items = range.toList()
-    val virtualCount = 100_000 // Enables Infinite Scrolling Illusion
+    val virtualCount = 100_000 
     val initialCenter = virtualCount / 2
     val initialIndex = initialCenter - (initialCenter % items.size) + items.indexOf(value).coerceAtLeast(0)
     
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
 
-    // Sync Wheel state to external value
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }.collect { idx ->
             val realIndex = idx % items.size
@@ -562,7 +599,6 @@ private fun WheelPicker(
         }
     }
 
-    // Sync external value to Wheel state
     LaunchedEffect(value) {
         val currentRealIndex = listState.firstVisibleItemIndex % items.size
         val targetRealIndex = items.indexOf(value)
@@ -581,9 +617,9 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = Modifier
-            .height(150.dp)
-            .width(80.dp),
-        contentPadding = PaddingValues(vertical = 50.dp), // Pads top and bottom to center the middle item
+            .height(180.dp) // ऊँचाई बढ़ाई गई ताकि फोंट को जगह मिले
+            .width(90.dp),
+        contentPadding = PaddingValues(vertical = 65.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
@@ -602,7 +638,9 @@ private fun WheelPicker(
             ) {
                 Text(
                     text = "%02d".format(itemValue),
-                    style = MaterialTheme.typography.displayMedium,
+                    style = MaterialTheme.typography.displayLarge.copy( // फोंट साइज़ बढ़ाकर displayLarge किया गया
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    ),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
@@ -621,10 +659,17 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "fieldPillScale"
+        label = "fieldPillPressScale"
+    )
+    
+    // सिलेक्ट होने पर बाउंस एनिमेशन
+    val selectionScale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "fieldPillSelectionScale"
     )
 
     val targetContainer = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
@@ -639,8 +684,8 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
         onClick = onClick,
         interactionSource = interactionSource,
         modifier = Modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
+            scaleX = pressScale * selectionScale
+            scaleY = pressScale * selectionScale
         }
     ) {
         Box(Modifier.padding(horizontal = 22.dp, vertical = FIELD_PAD_V)) {
@@ -732,7 +777,7 @@ private fun GroupPicker(
                     scaleY = scale
                 },
         ) {
-            Icon(Icons.Outlined.Group, contentDescription = null, Modifier.size(20.dp))
+            Icon(Icons.Rounded.Group, contentDescription = null, Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Text(
                 selectedName,
