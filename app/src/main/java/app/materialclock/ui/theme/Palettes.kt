@@ -315,7 +315,7 @@ enum class Palette(
         light = lightColorScheme(
             primary = Color(0xFF212121),
             onPrimary = Color(0xFFF4F2F4), // Corrected contrast
-            primaryContainer = Color(0xFFD61818),
+            primaryContainer = Color(0xFF212121),
             onPrimaryContainer = Color(0xFF212121),
             secondary = Color(0xFFD71918),
             onSecondary = Color(0xFFFFFFFF),
@@ -323,8 +323,8 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF1B1C1E),
             tertiary = Color(0xFFD71918),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFD61818), 
-            onTertiaryContainer = Color(0xFF212121),
+            tertiaryContainer = Color(0xFF212121), 
+            onTertiaryContainer = Color(0xFF000000),
             background = Color(0xFFF4F2F4),
             onBackground = Color(0xFF1B1C1E),
             surface = Color(0xFFF3F2F4),
@@ -338,7 +338,7 @@ enum class Palette(
         dark = darkColorScheme(
             primary = Color(0xFFF4F2F4),
             onPrimary = Color(0xFF000000), // Corrected contrast
-            primaryContainer = Color(0xFFD61818),
+            primaryContainer = Color(0xFF212121),
             onPrimaryContainer = Color(0xFFF4F2F4),
             secondary = Color(0xFFFFB4A9),
             onSecondary = Color(0xFF690003),
@@ -346,7 +346,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFFFDAD6),
             tertiary = Color(0xFFFFB4A9),
             onTertiary = Color(0xFF690003),
-            tertiaryContainer = Color(0xFFD61818), 
+            tertiaryContainer = Color(0xFF212121), 
             onTertiaryContainer = Color(0xFFF4F2F4),
             background = Color(0xFF000000),
             onBackground = Color(0xFFEAE0E0),
@@ -373,7 +373,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF002022),
             tertiary = Color(0xFF00838F),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFD71917), // Unchanged
+            tertiaryContainer = Color(0xFF4DD0E1),
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF8F9FD),
             onBackground = Color(0xFF041014),
@@ -396,7 +396,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFE0F7FA),
             tertiary = Color(0xFF80DEEA),
             onTertiary = Color(0xFF00363A),
-            tertiaryContainer = Color(0xFF004D40), // Unchanged
+            tertiaryContainer = Color(0xFF4DD0E1),
             onTertiaryContainer = Color(0xFFE0F7FA),
             background = Color(0xFF0B1618),
             onBackground = Color(0xFFE0F7FA),
@@ -423,7 +423,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF5C0028),
             tertiary = Color(0xFFF06292),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFEC407A), // Unchanged
+            tertiaryContainer = Color(0xFFEC407A), 
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF8F9FD),
             onBackground = Color(0xFF201A1C),
@@ -446,7 +446,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFFFCE4EC),
             tertiary = Color(0xFFFF80AB),
             onTertiary = Color(0xFF4A001F),
-            tertiaryContainer = Color(0xFFF06292), // Unchanged
+            tertiaryContainer = Color(0xFFF06292), 
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFF1A1114),
             onBackground = Color(0xFFEBE0E2),
@@ -473,7 +473,7 @@ enum class Palette(
             onSecondaryContainer = Color(0xFF4B2000),
             tertiary = Color(0xFFEF6C00),
             onTertiary = Color(0xFFFFFFFF),
-            tertiaryContainer = Color(0xFFEF6C00), // Unchanged
+            tertiaryContainer = Color(0xFFEF6C00), 
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = Color(0xFFF8F9FD),
             onBackground = Color(0xFF201A18),
