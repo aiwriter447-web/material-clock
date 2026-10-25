@@ -5,32 +5,32 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Perfectly Proportioned White Dial (Radius 24) -->
+    <!-- Larger White Dial (Radius 30) for balanced background -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-24,0a24,24 0 1,0 48,0a24,24 0 1,0 -48,0" />
+        android:pathData="M54,54m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0" />
 
-    <!-- Pink Hour Hand (10 o'clock, Length 11, Stroke 5.5) -->
+    <!-- Pink Hour Hand (10 o'clock, Slimmer Width 4.5) -->
     <path
-        android:pathData="M54,54 L44.5,48.5"
+        android:pathData="M54,54 L42,47"
         android:strokeColor="#F4B8D5"
-        android:strokeWidth="5.5"
+        android:strokeWidth="4.5"
         android:strokeLineCap="round" />
 
-    <!-- Navy Minute Hand (2 o'clock, Length 17, Stroke 5.5, Stops 4dp before border) -->
+    <!-- Navy Minute Hand (2 o'clock, Shorter length to avoid exact copy, Slimmer Width 4.5) -->
     <path
-        android:pathData="M54,54 L68.7,45.5"
+        android:pathData="M54,54 L73,43"
         android:strokeColor="#161D3B"
-        android:strokeWidth="5.5"
+        android:strokeWidth="4.5"
         android:strokeLineCap="round" />
 
-    <!-- Small Navy Center Pin (Radius 3.5) -->
+    <!-- Larger Navy Center Pin (Radius 5.5) -->
     <path
         android:fillColor="#161D3B"
-        android:pathData="M54,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" />
+        android:pathData="M54,54m-5.5,0a5.5,5.5 0 1,0 11,0a5.5,5.5 0 1,0 -11,0" />
 
-    <!-- Tiny White Center Dot (Radius 1.5) -->
+    <!-- Clearer White Center Dot (Radius 2) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
+        android:pathData="M54,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
 </vector>
