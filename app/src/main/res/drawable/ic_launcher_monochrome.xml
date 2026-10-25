@@ -5,29 +5,29 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Dial Outline -->
+    <!-- Dial Outline (Matches Radius 24) -->
     <path
-        android:pathData="M54,21 A33,33 0 1,0 54,87 A33,33 0 1,0 54,21 Z"
+        android:pathData="M54,30 A24,24 0 1,0 54,78 A24,24 0 1,0 54,30 Z"
         android:strokeColor="#000000"
         android:strokeWidth="4" />
 
-    <!-- Hour Hand (Pointing at 10) -->
+    <!-- Hour Hand (10 o'clock) -->
     <path
-        android:pathData="M54,54 L40,46"
+        android:pathData="M54,54 L44.5,48.5"
         android:strokeColor="#000000"
-        android:strokeWidth="6"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round" />
 
-    <!-- Minute Hand (Pointing at 2) -->
+    <!-- Minute Hand (2 o'clock) -->
     <path
-        android:pathData="M54,54 L73,43"
+        android:pathData="M54,54 L68.7,45.5"
         android:strokeColor="#000000"
-        android:strokeWidth="6"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round" />
 
-    <!-- Center Pivot with Cutout Dot for Theming -->
+    <!-- Center Pin with Translucent Dot Cutout -->
     <path
         android:fillColor="#000000"
         android:fillType="evenOdd"
-        android:pathData="M54,49.5 A4.5,4.5 0 1,0 54,58.5 A4.5,4.5 0 1,0 54,49.5 Z M54,52.5 A1.5,1.5 0 1,1 54,55.5 A1.5,1.5 0 1,1 54,52.5 Z" />
+        android:pathData="M54,50.5 A3.5,3.5 0 1,0 54,57.5 A3.5,3.5 0 1,0 54,50.5 Z M54,52.5 A1.5,1.5 0 1,1 54,55.5 A1.5,1.5 0 1,1 54,52.5 Z" />
 </vector>
