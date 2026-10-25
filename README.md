@@ -5,6 +5,8 @@ A Material 3 Expressive design-based Android Clock App built entirely with Jetpa
 This repository contains a functional, fully realized Android application based on Google's unshipped Material 3 Expressive research-concept clock. Unlike static UI mockups, this is a real Compose application that builds, installs, and runs natively on Android.
 The design is carefully extrapolated from Google's 46-study design program (specifically the concept renders rather than the production Google Clock 8.8). Source renders and detailed measurements used to build the interface can be found in ../clock-mockups/reference/concept/.
 
+(https://github.com/aiwriter447-web/material-clock/tree/f8af328b9efc8e414b12bfe04944ae62b47e989d/screenshot)
+
 #Features
 
 
