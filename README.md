@@ -20,17 +20,21 @@ The design draws inspiration from Google's 46-study design program, specifically
 
 📱 Screenshots
 
+<h2 align="center">📸 App Screenshots</h2>
+
 <p align="center">
   <img src="screenshot/Preview%20_Alrams.jpg" width="24%" alt="Alarms">
   <img src="screenshot/Preview_World%20Clock.jpg" width="24%" alt="World Clock">
   <img src="screenshot/Preview_Timers.jpg" width="24%" alt="Timers">
-  <img src="screenshot/Preview_Stopwatch.jpg" width="24%" alt="Stopwatch">
-</p><p align="center">
-  <b>⏰ Alarms</b> &nbsp; · &nbsp;
-  <b>🌍 World Clock</b> &nbsp; · &nbsp;
-  <b>⏳ Timers</b> &nbsp; · &nbsp;
+  <img src="screenshot/Preview%20_Stopwatch.jpg" width="24%" alt="Stopwatch">
+</p>
+
+<p align="center">
+  <b>⏰ Alarms</b> &nbsp;·&nbsp;
+  <b>🌍 World Clock</b> &nbsp;·&nbsp;
+  <b>⏳ Timers</b> &nbsp;·&nbsp;
   <b>⏱️ Stopwatch</b>
-</p>---
+</p>
 
 🚀 Features
 
