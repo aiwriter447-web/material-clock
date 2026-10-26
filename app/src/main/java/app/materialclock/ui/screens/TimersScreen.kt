@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -70,8 +71,8 @@ import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
 private const val RING_SIZE_DP = 300
-private const val KEY_HEIGHT = 64.dp
-private const val KEYPAD_SPACING = 12.dp
+private val KEY_HEIGHT = 64.dp
+private val KEYPAD_SPACING = 12.dp
 
 // Selection state enum for the Tap-to-Type feature
 enum class TimerField { HOURS, MINUTES, SECONDS }
