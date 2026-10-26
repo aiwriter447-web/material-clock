@@ -89,8 +89,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Height reduced by ~20% to make the cards slimmer while maintaining the pill shape
-private const val ROW_HEIGHT_DP = 86 
+// Height reduced by ~5% to maintain shape and data fit
+private const val ROW_HEIGHT_DP = 98 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +150,7 @@ fun WorldClockScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(8.dp), // Consistent gap for all items
+            verticalArrangement = Arrangement.spacedBy(8.dp), 
         ) {
             item(key = "main-clock", contentType = "header") {
                 Crossfade(
@@ -166,8 +166,7 @@ fun WorldClockScreen(
                             showSeconds = settings.showSeconds,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // Removed extra bottom padding to maintain consistent 8dp gap
-                                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp),
+                                .padding(horizontal = 16.dp, top = 12.dp, bottom = 0.dp),
                         )
                     } else {
                         CityDial(
@@ -176,7 +175,7 @@ fun WorldClockScreen(
                             measurer = measurer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // Removed bottom padding (18.dp -> 0.dp) to let LazyColumn's spacedBy(8.dp) work perfectly
+                                // Bottom padding removed to match standard list spacing
                                 .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 0.dp)
                                 .aspectRatio(1f),
                         )
@@ -285,7 +284,9 @@ private fun HomeDigitalClock(
     val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp, bottom = 0.dp), // Bottom padding removed for correct alignment
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -443,13 +444,17 @@ private fun CityRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Increased tactile bounce animation for lively feedback (0.97f to 0.93f)
+    // Bouncy scale animation for a "living" reactive feel
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.92f else 1f, // Increased scale reduction
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy, // Made it bouncier
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "cityRowScale"
     )
 
+    // Smooth color state transitions
     val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val targetContent = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface 
     val targetTimeColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
@@ -505,10 +510,10 @@ private fun CityRow(
             }
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = null, // Custom animation replacing default ripple
                 onClick = { 
-                    // Now registers clicks in normal mode too to trigger the bounce animation
                     if (inSelectionMode) onToggleSelect() 
+                    // Empty block for normal mode to still capture press events for the animation
                 },
                 onLongClick = { onToggleSelect() }
             )
@@ -516,8 +521,7 @@ private fun CityRow(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                // Reduced vertical padding to safely fit text within the new slimmer 86dp height
-                .padding(horizontal = 20.dp, vertical = 6.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp), // Reduced vertical padding to fit content in new height
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
