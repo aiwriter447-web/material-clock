@@ -98,7 +98,7 @@ This project is an independent recreation of a published Material 3 Expressive c
 **App in internal testing to fix some bugs and ui & animation enhancement.**
 
 <div align="center">
-  <h2>⭐ WAITING MATERIAL CLOCK?</h2>
+  <h2>⏰️ WAITING MATERIAL CLOCK ? 🤔</h2>
   <p><b>If you like this project, consider giving the repository a star!</b></p>
   <p><i>Modern Design. Native Android. Expressive Timekeeping.</i></p>
 </div>
