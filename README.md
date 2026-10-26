@@ -23,8 +23,6 @@
   </p>
 </div>
 
----
-
 ## 📱 SCREENSHOTS
 
 <p align="center">  
@@ -37,35 +35,23 @@
   <b>ALARMS</b> &nbsp; • &nbsp; <b>WORLD CLOCK</b> &nbsp; • &nbsp; <b>TIMERS</b> &nbsp; • &nbsp; <b>STOPWATCH</b>  
 </p>
 
----
-
 ## ✨ ABOUT THE PROJECT
 
-> **Material Clock** is a fully functional native Android application inspired by Google's **Material 3 Expressive** research concepts.
+Material Clock is a fully functional native Android application inspired by Google's Material 3 Expressive research concepts.
 
-Unlike static UI mockups, this is a deeply integrated, real Android application built entirely with **Kotlin** and **Jetpack Compose**. It is designed to build, install, and run natively on your Android device.
+Unlike static UI mockups, this is a deeply integrated, real Android application built entirely with Kotlin and Jetpack Compose. It is designed to build, install, and run natively on your Android device. 
 
 The design draws inspiration from Google's 46-study design program—specifically focusing on the fluid concept renders rather than the production Google Clock 8.8. Our goal is to merge expressive typography, thoughtful adaptive layouts, and modern Android development into a distinctive, premium timekeeping experience.
 
----
+## 🚀 CORE FEATURES & HIGHLIGHTS
 
-## 🚀 FEATURES
-
-*   **⏰ Alarms:** Expressive, gesture-friendly alarm management inspired by original Material 3 research concepts.
-*   **🌍 World Clock:** Track time across different cities with a beautifully crafted, immersive interface.
-*   **⏳ Timers:** Clean, highly visible countdown interfaces designed for quick, everyday use.
-*   **⏱️ Stopwatch:** A dedicated time-tracking experience built to complement the application's expressive visual style.
-
----
-
-## 🎨 DESIGN HIGHLIGHTS
-
-*   **Expressive UI:** A distinctive interface inspired by Google's Material 3 research concepts.
-*   **Bold Typography:** Custom variable-font integration for a cohesive visual identity.
-*   **Modern Styling:** Thoughtful layouts, fluid animations, and clear visual hierarchy.
-*   **Native Experience:** Built directly with Jetpack Compose, delivering 60fps native performance rather than static web-based mockups.
-
----
+*   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups.
+*   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation[span_0](start_span)[span_0](end_span).
+*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain[span_1](start_span)[span_1](end_span).
+*   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive, and Galaxia[span_2](start_span)[span_2](end_span).
+*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets[span_3](start_span)[span_3](end_span). Options include 4x2 World Clock layouts[span_4](start_span)[span_4](end_span), distinctive scalloped analog faces[span_5](start_span)[span_5](end_span), and dual-city digital pill designs[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span).
+*   **⏰ Smart Alarms:** Manage your routine with intuitive grouped Morning and Night cards, day-specific indicators, and easy toggles[span_8](start_span)[span_8](end_span).
+*   **🌍 World Clock:** Track time across multiple time zones like London, San Francisco, and Seoul simultaneously[span_9](start_span)[span_9](end_span)[span_10](start_span)[span_10](end_span).
 
 ## 🛠️ TECHNOLOGY STACK
 
@@ -75,15 +61,11 @@ The design draws inspiration from Google's 46-study design program—specificall
 | **Jetpack Compose** | Modern declarative UI toolkit |
 | **Material 3 Expressive** | Design language and UI styling |
 | **Variable Fonts** | Custom typography integration |
-| **Android** | Native application platform |
 
-### ⚙️ Implementation Details
+**⚙️ Implementation Details**
 - 100% Jetpack Compose UI architecture.
 - Material 3 Expressive-inspired styling and motion.
 - Custom typography utilizing advanced variable-font capabilities.
-- Robust, native Android application architecture.
-
----
 
 ## 📂 PROJECT REFERENCES
 
@@ -92,30 +74,24 @@ The source renders and detailed measurements used to guide the interface are ref
 
 📸 **[Browse All Screenshots](screenshot/)**
 
----
-
 ## 📜 LICENSE & ATTRIBUTION
 
 The original application code in this project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for complete terms.
 
-### Third-Party Fonts
+**Third-Party Fonts**
 This project bundles two font binaries distributed under separate licenses:
 - **Google Sans Flex** — SIL Open Font License 1.1.
 - **Noto Sans Arabic** (ten-glyph subset) — SIL Open Font License 1.1.
 
-For copyright notices, modifications, and full license details, see:
+For full license details, see:
 - [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
 - [OFL-1.1.txt](licenses/OFL-1.1.txt)
-
----
 
 ## ⚖️ TRADEMARKS & DISCLAIMER
 
 *Google, Google Sans, Material, Android, and Pixel are trademarks of Google LLC.* 
 
 This project is an independent recreation of a published Material 3 Expressive concept design. It is **not** affiliated with, sponsored by, or endorsed by Google. The original concept renders used as measurement references remain the copyright of Google and are not included in this repository.
-
----
 
 <div align="center">
   <h2>⭐ ENJOYING MATERIAL CLOCK?</h2>
