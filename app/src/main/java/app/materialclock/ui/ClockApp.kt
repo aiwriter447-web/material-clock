@@ -552,7 +552,7 @@ fun ClockApp(
                                     draft = vm.draftDuration,
                                     nowElapsedMillis = now,
                                     presets = presets,
-                                    onDigit = vm::pressDigit,
+                                    onDigit = { char, _ -> vm.pressDigit(char) },
                                     onBackspace = vm::backspace,
                                     onWind = vm::windToMinutes,
                                     onStart = { vm.startTimer() },
