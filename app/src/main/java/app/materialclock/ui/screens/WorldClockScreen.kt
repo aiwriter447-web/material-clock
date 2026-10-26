@@ -166,7 +166,7 @@ fun WorldClockScreen(
                             showSeconds = settings.showSeconds,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, top = 12.dp, bottom = 0.dp),
+                                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp),
                         )
                     } else {
                         CityDial(
