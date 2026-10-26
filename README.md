@@ -23,7 +23,7 @@ Material Clock is a fully functional native Android application inspired by Goog
 
 Unlike static UI mockups, this is a deeply integrated, real Android application built entirely with Kotlin and Jetpack Compose. It is designed to build, install, and run natively on your Android device. 
 
-The design draws inspiration from Google's 46-study design program—specifically focusing on the fluid concept renders rather than the production Google Clock 8.8 and some elementsfrom Samsung Clock. Our goal is to merge expressive typography, thoughtful adaptive layouts, and modern Android development into a distinctive, premium timekeeping experience.
+The design draws inspiration from Google's 46-study design program—specifically focusing on the fluid concept renders rather than the production Google Clock 8.8 and some elements from Samsung Clock. Our goal is to merge expressive typography, thoughtful adaptive layouts, and modern Android development into a distinctive, premium timekeeping experience.
 
 ## 🚀 CORE FEATURES & HIGHLIGHTS
 
