@@ -14,13 +14,6 @@
     <img src="https://img.shields.io/badge/Jetpack_Compose-4285F4?style=for-the-badge&logo=android&logoColor=white" alt="Jetpack Compose">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License">
   </p>
-
-  <p>  
-    ⏰ <b>Alarms</b> &nbsp; • &nbsp;  
-    🌍 <b>World Clock</b> &nbsp; • &nbsp;  
-    ⏳ <b>Timers</b> &nbsp; • &nbsp;  
-    ⏱️ <b>Stopwatch</b>  
-  </p>
 </div>
 
 ## 📱 SCREENSHOTS
@@ -32,8 +25,12 @@
   <img src="screenshot/Preview%20_Stopwatch.jpg" width="23%" alt="Stopwatch">  
 </p>
 <p align="center">  
-  <b>ALARMS</b> &nbsp; • &nbsp; <b>WORLD CLOCK</b> &nbsp; • &nbsp; <b>TIMERS</b> &nbsp; • &nbsp; <b>STOPWATCH</b>  
-</p>
+<p>  
+    ⏰ <b>Alarms</b> &nbsp; • &nbsp;  
+    🌍 <b>World Clock</b> &nbsp; • &nbsp;  
+    ⏳ <b>Timers</b> &nbsp; • &nbsp;  
+    ⏱️ <b>Stopwatch</b>  
+  </p>
 
 ## ✨ ABOUT THE PROJECT
 
