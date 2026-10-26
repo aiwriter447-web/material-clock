@@ -32,13 +32,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
@@ -114,7 +117,8 @@ fun AlarmEditSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
-    val scope = rememberCoroutineScope() // Smooth closing animation के लिए
+    val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     var label by rememberSaveable(initial.id) { mutableStateOf(initial.label) }
     var days by remember(initial.id) { mutableStateOf(initial.days) }
@@ -123,7 +127,7 @@ fun AlarmEditSheet(
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
     
     var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) } // Delete confirmation dialog state
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(groups) {
@@ -141,10 +145,9 @@ fun AlarmEditSheet(
         is24Hour = android.text.format.DateFormat.is24HourFormat(context),
     )
 
-    // Smooth Closing Animation Logic
     fun commitAndClose(explicit: Boolean = false) {
         scope.launch {
-            sheetState.hide() // पहले बॉटम शीट को नीचे एनिमेट करो
+            sheetState.hide()
             if (explicit || onDelete != null) {
                 onSave(
                     initial.copy(
@@ -158,7 +161,7 @@ fun AlarmEditSheet(
                     )
                 )
             }
-            onDismiss() // फिर असली डिसमिस कॉल करो
+            onDismiss()
         }
     }
 
@@ -183,7 +186,6 @@ fun AlarmEditSheet(
         }
     }
 
-    // Delete Confirmation Dialog
     if (showDeleteConfirm && onDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -221,13 +223,13 @@ fun AlarmEditSheet(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp)
+                .imePadding()
+                .verticalScroll(scrollState)
+                .padding(bottom = 24.dp)
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Box wrapping the time picker to position the Toggle Icon at Top-Right (like Pic 4)
             Box(Modifier.fillMaxWidth().padding(horizontal = EDGE)) {
-                
                 AnimatedContent(
                     targetState = manualEntry,
                     transitionSpec = {
@@ -278,7 +280,6 @@ fun AlarmEditSheet(
                     }
                 }
 
-                // Toggle Icon strictly positioned at Top-End
                 ToggleIcon(
                     isManual = manualEntry, 
                     onToggle = { manualEntry = !manualEntry },
@@ -359,7 +360,6 @@ fun AlarmEditSheet(
                     )
                 }
 
-                // Lively Vibration Icon Animation
                 val vibrateAnim = remember { Animatable(0f) }
                 LaunchedEffect(vibrate) {
                     if (vibrate) {
@@ -401,7 +401,6 @@ fun AlarmEditSheet(
                         label = "deleteScale"
                     )
 
-                    // Red Expressive Delete Button
                     FilledTonalButton(
                         onClick = { showDeleteConfirm = true },
                         interactionSource = deleteInteraction,
@@ -502,9 +501,6 @@ private fun ToggleIcon(isManual: Boolean, modifier: Modifier = Modifier, onToggl
     }
 }
 
-// ---------------------------------------------------------
-// Dial Mode Header
-// ---------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WideTimeField(state: TimePickerState) {
@@ -518,8 +514,8 @@ private fun WideTimeField(state: TimePickerState) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Hours",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
             FieldPill(
@@ -533,14 +529,14 @@ private fun WideTimeField(state: TimePickerState) {
             ":",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 6.dp).padding(top = 24.dp),
+            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 28.dp),
         )
         
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Minutes",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
             FieldPill(
@@ -554,7 +550,7 @@ private fun WideTimeField(state: TimePickerState) {
             Spacer(Modifier.width(12.dp))
             Column(
                 verticalArrangement = Arrangement.spacedBy(6.dp), 
-                modifier = Modifier.padding(top = 24.dp)
+                modifier = Modifier.padding(top = 28.dp)
             ) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
@@ -563,9 +559,6 @@ private fun WideTimeField(state: TimePickerState) {
     }
 }
 
-// ---------------------------------------------------------
-// Swipe Mode Header
-// ---------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
@@ -576,8 +569,8 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Hours",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
             WheelPicker(
@@ -596,16 +589,16 @@ private fun SwipeTimeEntry(state: TimePickerState) {
 
         Text(
             ":",
-            style = MaterialTheme.typography.displayLarge,
+            style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 24.dp)
+            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 28.dp)
         )
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Minutes",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
             WheelPicker(
@@ -616,10 +609,10 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         }
 
         if (!state.is24hour) {
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 24.dp)
+                modifier = Modifier.padding(top = 28.dp)
             ) {
                 MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
                 MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
@@ -672,9 +665,9 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = Modifier
-            .height(180.dp) 
-            .width(90.dp),
-        contentPadding = PaddingValues(vertical = 65.dp),
+            .height(200.dp) 
+            .width(100.dp),
+        contentPadding = PaddingValues(vertical = 75.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
@@ -683,9 +676,8 @@ private fun WheelPicker(
             val isSelected = index == firstVisible
             
             val alpha by animateFloatAsState(if (isSelected) 1f else 0.3f, label = "alpha")
-            // Removed bold weight, using standard medium/normal displayLarge but scaling up slightly
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.1f else 0.85f, 
+                targetValue = if (isSelected) 1.08f else 0.85f, 
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
@@ -698,8 +690,8 @@ private fun WheelPicker(
             ) {
                 Text(
                     text = "%02d".format(itemValue),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Medium // Reverted to non-distorted medium weight
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                     ),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                     modifier = Modifier.graphicsLayer {
@@ -711,8 +703,6 @@ private fun WheelPicker(
         }
     }
 }
-
-// ---------------------------------------------------------
 
 @Composable
 private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
@@ -726,7 +716,7 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
     )
     
     val selectionScale by animateFloatAsState(
-        targetValue = if (selected) 1.08f else 1f,
+        targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "fieldPillSelectionScale"
     )
@@ -747,13 +737,13 @@ private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
             scaleY = pressScale * selectionScale
         }
     ) {
-        Box(Modifier.padding(horizontal = 22.dp, vertical = FIELD_PAD_V)) {
+        Box(Modifier.padding(horizontal = 24.dp, vertical = 18.dp)) {
             Numerals(
                 text = text,
-                capHeight = FIELD_CAP,
+                capHeight = 40.dp, // Increased size for better readability
                 color = contentColor,
-                width = 160f, // Slightly wider for bigger font
-                weight = 550, // Increased weight to make the Dial font slightly Bolder/Thicker
+                width = 170f, 
+                weight = 500, 
             )
         }
     }
@@ -783,8 +773,8 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
 
     Surface(
         modifier = Modifier
-            .height(36.dp) 
-            .width(48.dp)  
+            .height(38.dp) 
+            .width(52.dp)  
             .graphicsLayer {
                 scaleX = pressScale * selectionScale
                 scaleY = pressScale * selectionScale
@@ -801,7 +791,7 @@ private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
         ) {
             Text(
                 text = text, 
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -909,7 +899,7 @@ private fun GroupPicker(
 
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
-private val FIELD_CAP = 30.dp
+private val FIELD_CAP = 36.dp
 private val FIELD_PAD_V = 16.dp
 
 const val SILENT = "silent"
