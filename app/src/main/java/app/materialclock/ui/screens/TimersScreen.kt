@@ -193,7 +193,8 @@ private fun PresetRow(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, bottom = 20.dp)
+            .padding(horizontal = 20.dp) // FIXED: Chain modifiers separately to fix compile error
+            .padding(bottom = 20.dp)
     ) {
         presets.forEach { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
