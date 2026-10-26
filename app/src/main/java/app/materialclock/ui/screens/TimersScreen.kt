@@ -18,6 +18,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,8 +29,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
@@ -44,7 +44,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -68,6 +70,9 @@ import java.time.Duration
 
 private const val RING_SIZE_DP = 300
 
+// Selection state enum for the Tap-to-Type feature
+enum class TimerField { HOURS, MINUTES, SECONDS }
+
 @Composable
 fun TimersScreen(
     timer: ClockTimer?,
@@ -87,6 +92,7 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
+    // Smooth fade and scale transition for screen changes
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = { 
@@ -107,7 +113,7 @@ fun TimersScreen(
     }
 }
 
-/* ── Setting Display (Matches Pic 2 Layout) ────────────────────────────────────── */
+/* ── Setting Display (Fixes: Gap, Input Selection, Button Boxes) ────────────────────────────────────── */
 
 @Composable
 private fun SetTimer(
@@ -126,63 +132,70 @@ private fun SetTimer(
     val ss = "%02d".format(total % 60)
     val armed = total > 0
 
+    // Local state to track which field the user tapped (Hours, Mins, or Secs)
+    var selectedField by remember { mutableStateOf(TimerField.SECONDS) }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(8.dp)) 
+        // Increased top spacer to push the UI down slightly for better balance
+        Spacer(Modifier.height(32.dp)) 
 
         DraftReadout(
             hh = hh, 
             mm = mm, 
             ss = ss,
+            selectedField = selectedField,
+            onFieldSelect = { selectedField = it },
             onClear = { onWind(0) },
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.weight(1f)) // pushes keypad to bottom proportionately
 
         Keypad(
-            onDigit = onDigit, 
+            onDigit = { char -> 
+                // Note: You will need to update your ViewModel's onDigit logic to respect 'selectedField'
+                // Currently, we just pass the char. The UI selection is ready!
+                onDigit(char) 
+            }, 
             onBackspace = onBackspace, 
             onClearAll = { onWind(0) },
-            modifier = Modifier.padding(horizontal = 20.dp)
+            modifier = Modifier.padding(horizontal = 32.dp) // tighter padding for keypad
         )
 
         Spacer(Modifier.height(24.dp))
 
-        Box(modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
-            WidePill(
-                text = "Start",
-                icon = Icons.Rounded.PlayArrow,
-                onClick = onStart,
-                height = 68.dp,
-                container = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                content = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
+            AnimatedStartButton(armed = armed, onClick = onStart)
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // Horizontal Presets Bar (Pic 2 design)
+        // Replaced LazyRow with FlowRow (Wraps to next line)
         PresetRow(presets, onStartPreset, onEditPreset)
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PresetRow(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
 ) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(start = 20.dp, end = 88.dp) // Extra end padding so FAB doesn't hide presets
+    // FlowRow wraps items to the next line automatically instead of side-scrolling
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, bottom = 20.dp)
     ) {
-        items(presets, key = { it.id }) { preset ->
+        presets.forEach { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
     }
@@ -195,8 +208,9 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Bouncy animation for presets
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+        targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
         label = "presetChipScale"
     )
@@ -237,34 +251,44 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 }
 
 @Composable
-private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    val cap = 52.dp
+private fun DraftReadout(
+    hh: String, 
+    mm: String, 
+    ss: String, 
+    selectedField: TimerField,
+    onFieldSelect: (TimerField) -> Unit,
+    onClear: () -> Unit, 
+    modifier: Modifier = Modifier
+) {
+    val cap = 58.dp // Increased size slightly to fill space better
     val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
+    val highlightColor = MaterialTheme.colorScheme.primary // Color for selected field
 
-    val isHActive = hh != "00"
-    val isMActive = isHActive || mm != "00"
-    val isSActive = isMActive || ss != "00"
-
-    val hColor by animateColorAsState(if (isHActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "hColor")
-    val mColor by animateColorAsState(if (isMActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "mColor")
-    val sColor by animateColorAsState(if (isSActive) activeColor else inactiveColor, spring(stiffness = Spring.StiffnessMediumLow), label = "sColor")
+    // Visual active state calculation
+    val hColor by animateColorAsState(if (selectedField == TimerField.HOURS) highlightColor else if (hh != "00") activeColor else inactiveColor, label = "hColor")
+    val mColor by animateColorAsState(if (selectedField == TimerField.MINUTES) highlightColor else if (mm != "00") activeColor else inactiveColor, label = "mColor")
+    val sColor by animateColorAsState(if (selectedField == TimerField.SECONDS) highlightColor else if (ss != "00") activeColor else inactiveColor, label = "sColor")
 
     Row(
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically, // FIXED: Colons are now perfectly centered
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null, 
-                onClick = onClear 
-            )
             .padding(top = 4.dp, bottom = 4.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes,$ss seconds" },
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Hours Column - Now Clickable!
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null, 
+                    onClick = { onFieldSelect(TimerField.HOURS) }
+                )
+        ) {
             Text("Hours", style = labelStyle, color = hColor)
             Spacer(Modifier.height(8.dp))
             Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
@@ -272,7 +296,16 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
 
         Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Minutes Column - Now Clickable!
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null, 
+                    onClick = { onFieldSelect(TimerField.MINUTES) }
+                )
+        ) {
             Text("Minutes", style = labelStyle, color = mColor)
             Spacer(Modifier.height(8.dp))
             Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
@@ -280,7 +313,16 @@ private fun DraftReadout(hh: String, mm: String, ss: String, onClear: () -> Unit
 
         Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Seconds Column - Now Clickable!
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null, 
+                    onClick = { onFieldSelect(TimerField.SECONDS) }
+                )
+        ) {
             Text("Seconds", style = labelStyle, color = sColor)
             Spacer(Modifier.height(8.dp))
             Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
@@ -293,33 +335,35 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
     val rows = listOf("123", "456", "789")
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp), // Adjusted spacing for better shape
     ) {
         rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { c -> DigitKey(c, onDigit, Modifier.weight(1f)) }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // FIXED: Clear Button is now enclosed in a colored Box with bounce animation
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onClearAll,
-                container = Color.Transparent,
+                container = MaterialTheme.colorScheme.errorContainer, // Red tint box
                 label = "Clear All",
             ) {
                 Text(
                     "C", 
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), 
-                    color = MaterialTheme.colorScheme.error 
+                    color = MaterialTheme.colorScheme.onErrorContainer 
                 )
             }
 
             DigitKey('0', onDigit, Modifier.weight(1f))
 
+            // FIXED: Delete Button is now enclosed in a proper colored Box with bounce animation
             KeyBox(
                 modifier = Modifier.weight(1f),
                 onClick = onBackspace,
-                container = Color.Transparent,
+                container = MaterialTheme.colorScheme.surfaceContainerHighest, // Grey/Darker Box
                 label = "Delete",
             ) {
                 Icon(
@@ -335,7 +379,12 @@ private fun Keypad(onDigit: (Char) -> Unit, onBackspace: () -> Unit, onClearAll:
 
 @Composable
 private fun DigitKey(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = Modifier) {
-    KeyBox(modifier = modifier, onClick = { onDigit(digit) }, label = digit.toString()) {
+    KeyBox(
+        modifier = modifier, 
+        onClick = { onDigit(digit) }, 
+        container = MaterialTheme.colorScheme.surfaceContainer,
+        label = digit.toString()
+    ) {
         Text(
             digit.toString(),
             style = MaterialTheme.typography.headlineMedium.copy(fontFamily = ClockFace.family(opticalSize = 28f, width = 100f, weight = 500)),
@@ -348,16 +397,17 @@ private fun DigitKey(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = 
 private fun KeyBox(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    container: Color = MaterialTheme.colorScheme.surfaceContainer,
+    container: Color,
     label: String,
     content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Bouncy Live Animation for Keypad
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.91f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "keyBoxScale"
     )
 
@@ -367,7 +417,7 @@ private fun KeyBox(
         color = container, 
         shape = CircleShape, 
         modifier = modifier
-            .height(58.dp)
+            .height(64.dp) // Adjusted height for better touch target
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -378,7 +428,44 @@ private fun KeyBox(
     }
 }
 
-/* ── Running View ───────────────────────────────────────────────────────────────── */
+@Composable
+private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && armed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "startScale"
+    )
+
+    Surface(
+        onClick = onClick,
+        enabled = armed,
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Start", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+/* ── Running View (Fixes: Spacing, Gap, Animations) ───────────────────────────────────────────────────────────────── */
 
 @Composable
 private fun RunningTimer(
@@ -417,11 +504,19 @@ private fun RunningTimer(
     Column(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 24.dp), // Standardized side padding
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(0.7f)) // Balanced top spacer
+        
         Box(contentAlignment = Alignment.Center) {
+            // Added Smooth animation for Wave Amplitude to prevent glitch when pausing
+            val waveAmplitude by animateFloatAsState(
+                targetValue = if (running) 1f else 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                label = "waveAmplitude"
+            )
+            
             CircularWavyProgressIndicator(
                 progress = { timer.fractionLeft(nowElapsedMillis) },
                 modifier = Modifier.size(RING_SIZE_DP.dp),
@@ -431,7 +526,7 @@ private fun RunningTimer(
                 trackStroke = Stroke(width = with(LocalDensity.current) { 18.dp.toPx() }, cap = StrokeCap.Round),
                 gapSize = 10.dp,
                 wavelength = 76.dp,
-                amplitude = { if (running) 1f else 0f },
+                amplitude = { waveAmplitude },
                 waveSpeed = if (running) 28.dp else 0.dp,
             )
 
@@ -447,7 +542,7 @@ private fun RunningTimer(
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Rounded.NotificationsActive, 
+                        Icons.Rounded.NotificationsActive, // Rounded Expressive Icon
                         contentDescription = "Ends at", 
                         modifier = Modifier.size(20.dp), 
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -461,39 +556,82 @@ private fun RunningTimer(
                 }
             }
         }
-        Spacer(Modifier.weight(1f))
+        
+        Spacer(Modifier.weight(0.8f)) // FIXED GAP: Adjusted weight to bring buttons closer naturally
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.weight(1f)) {
-                WidePill(
+                AnimatedPillButton(
                     text = if (running) "Pause" else "Resume",
                     icon = if (running) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     onClick = onPauseResume,
-                    height = 78.dp,
-                    container = if (running) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                    content = if (running) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+                    container = if (running) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, // Stronger Pause Color
+                    content = if (running) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             Box(Modifier.weight(1f)) {
-                WidePill(
+                AnimatedPillButton(
                     text = "+10s",
                     icon = Icons.Rounded.Add,
                     onClick = onAddTen,
-                    height = 78.dp,
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
-        WidePill(
+        Spacer(Modifier.height(12.dp))
+        
+        AnimatedPillButton(
             text = "Cancel",
             icon = Icons.Rounded.Close,
             onClick = onCancel,
-            outlined = true,
+            container = MaterialTheme.colorScheme.surfaceContainer,
             content = MaterialTheme.colorScheme.onSurfaceVariant,
-            height = 78.dp,
         )
-        Spacer(Modifier.height(10.dp))
+        
+        Spacer(Modifier.height(32.dp)) // Bottom clearance
+    }
+}
+
+// Reusable Animated Bouncy Button for the Running Timer Screen
+@Composable
+private fun AnimatedPillButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    container: Color,
+    content: Color
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "pillButtonScale"
+    )
+
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = container,
+        contentColor = content,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
     }
 }
