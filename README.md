@@ -35,15 +35,15 @@ The design draws inspiration from Google's 46-study design program—specificall
 
 *  **⏱️ Stopwatch:** A easy to use Timers,different 44 shades for laps and more.
 
-*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets. Options include 2×1 to 4x2 like Alrams,Digital Clock, distinctive scalloped analog faces and World Clock dual-city digital pill designs.
+*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets. Options include 2×1 to 4x2 like Alrams,Digital Clock, Analog widgets with distinctive scalloped analog faces and World Clock dual-city digital pill designs.
 
-*   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups.
+*   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups with oled screen Pixel burn protection.
 
 *   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive and many more.
 
 *   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation.
 
-*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain.
+*   **🌑 Pure Black (AMOLED) option:** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain.
 
 ## 📱 SCREENSHOTS
 
