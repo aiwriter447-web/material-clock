@@ -83,8 +83,6 @@ fun TimersScreen(
     draft: Duration,
     nowElapsedMillis: Long,
     presets: List<TimerPreset>,
-    // FIX #2: selected field now flows into the ViewModel so digits land
-    // where the user tapped (HOURS/MINUTES/SECONDS) instead of always SECONDS.
     onDigit: (Char, TimerField) -> Unit,
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
@@ -98,7 +96,6 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // Smooth fade and scale transition for screen changes
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
@@ -133,19 +130,14 @@ private fun SetTimer(
     onEditPreset: (TimerPreset) -> Unit,
 ) {
     val total = draft.seconds
-    // FIX #7 (minor): if the draft exceeds 99:59:59 the hours readout would grow to
-    // 3 digits and break the layout; the ViewModel should clamp, but we also guard here.
     val clamped = total.coerceAtMost(99 * 3600 + 59 * 60 + 59)
     val hh = "%02d".format(clamped / 3600)
     val mm = "%02d".format((clamped % 3600) / 60)
     val ss = "%02d".format(clamped % 60)
     val armed = total > 0
 
-    // Local state to track which field the user tapped (Hours, Mins, or Secs)
     var selectedField by remember { mutableStateOf(TimerField.SECONDS) }
 
-    // FIX #3: scrollable so keypad + wrapped presets never clip on small screens
-    // or in landscape. The weighted spacer degrades gracefully to a minimum gap.
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -160,8 +152,6 @@ private fun SetTimer(
             ss = ss,
             selectedField = selectedField,
             onFieldSelect = { selectedField = it },
-            // FIX #6: clearing also resets the selection back to SECONDS,
-            // matching the keypad's default typing position.
             onClear = {
                 onWind(0)
                 selectedField = TimerField.SECONDS
@@ -202,7 +192,6 @@ private fun PresetRow(
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
 ) {
-    // FlowRow wraps items to the next line automatically instead of side-scrolling
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -224,7 +213,6 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Bouncy animation for presets
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
@@ -277,7 +265,6 @@ private fun DraftReadout(
     modifier: Modifier = Modifier
 ) {
     val cap = 58.dp
-    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
     val highlightColor = MaterialTheme.colorScheme.primary
@@ -303,7 +290,6 @@ private fun DraftReadout(
             .padding(top = 4.dp, bottom = 4.dp)
             .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
     ) {
-        // Refactored: each field is the same composable instead of 3 copy-pasted Columns
         TimeField(label = "Hours", value = hh, color = hColor, cap = cap) { onFieldSelect(TimerField.HOURS) }
 
         Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
@@ -316,7 +302,6 @@ private fun DraftReadout(
     }
 }
 
-// Single reusable tap-target for a H/M/S column in the draft readout
 @Composable
 private fun TimeField(
     label: String,
@@ -428,7 +413,6 @@ private fun KeyBox(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Bouncy Live Animation for Keypad
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.88f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -463,7 +447,6 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         label = "startScale"
     )
 
-    // Colors now animate smoothly when the timer becomes armed/disarmed
     val containerColor by animateColorAsState(
         if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         label = "startContainer"
@@ -522,8 +505,6 @@ private fun RunningTimer(
     val context = LocalContext.current
     val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
 
-    // FIX #1: LocalDateTime instead of LocalTime so timers longer than 24h
-    // show the correct "ends at" time instead of wrapping around midnight.
     val targetTime = remember(remaining) { java.time.LocalDateTime.now().plusSeconds(remaining.seconds) }
     val targetFormatter = remember(is24Hour) {
         if (is24Hour) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
@@ -531,16 +512,17 @@ private fun RunningTimer(
     }
     val targetString = targetTime.format(targetFormatter).lowercase()
 
-    // FIX #4: measure the WORST-CASE string for the current format instead of the
-    // live text. This keeps capHeight (and therefore numeral size) stable so the
-    // digits don't visibly jump every time the character count shrinks.
-    // Cached per format — not recomputed on every tick.
     val measurer = rememberTextMeasurer()
-    val capHeight = remember(hasHours) {
-        with(LocalDensity.current) {
+    val density = LocalDensity.current
+    
+    // Extracted out of remember block to avoid @Composable calls in non-composable scopes
+    val refStyle = ClockFace.numerals(capHeight = 62.dp, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+    val strokeWidthPx = with(density) { 18.dp.toPx() }
+
+    val capHeight = remember(hasHours, density, refStyle) {
+        with(density) {
             val maxTextWidth = RING_SIZE_DP.dp * 0.62f
             val ref = 62.dp
-            val refStyle = ClockFace.numerals(capHeight = ref, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
             val worstCase = if (hasHours) "88:88:88" else "88:88"
             val measured = measurer.measure(worstCase, refStyle).size.width.toDp()
             if (measured <= maxTextWidth) ref else ref * (maxTextWidth / measured)
@@ -556,15 +538,12 @@ private fun RunningTimer(
         Spacer(Modifier.weight(0.7f))
 
         Box(contentAlignment = Alignment.Center) {
-            // Smooth animation for Wave Amplitude — prevents glitch when pausing
             val waveAmplitude by animateFloatAsState(
                 targetValue = if (running) 1f else 0f,
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
                 label = "waveAmplitude"
             )
 
-            // FIX #5: waveSpeed is also animated now, so pausing/resuming
-            // smoothly decelerates the wave instead of freezing it abruptly.
             val waveSpeedFactor by animateFloatAsState(
                 targetValue = if (running) 1f else 0f,
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -576,8 +555,8 @@ private fun RunningTimer(
                 modifier = Modifier.size(RING_SIZE_DP.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                stroke = Stroke(width = with(LocalDensity.current) { 18.dp.toPx() }, cap = StrokeCap.Round),
-                trackStroke = Stroke(width = with(LocalDensity.current) { 18.dp.toPx() }, cap = StrokeCap.Round),
+                stroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
+                trackStroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
                 gapSize = 10.dp,
                 wavelength = 76.dp,
                 amplitude = { waveAmplitude },
@@ -597,7 +576,7 @@ private fun RunningTimer(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Rounded.NotificationsActive,
-                        contentDescription = null, // grouped semantics below describe the whole row
+                        contentDescription = null,
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -644,8 +623,6 @@ private fun RunningTimer(
     }
 }
 
-// Pause/Resume button with an animated text/icon/color swap so the state
-// change doesn't visually snap (rest of the screen animates, so should this).
 @Composable
 private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -709,7 +686,6 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     }
 }
 
-// Reusable Animated Bouncy Button for the Running Timer Screen
 @Composable
 private fun AnimatedPillButton(
     text: String,
