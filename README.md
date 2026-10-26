@@ -95,7 +95,7 @@ This project is an independent recreation of a published Material 3 Expressive c
 
 ## 🪄 RELEASE 
 
-**App in internal testing to fix fix some bugs and ui & animation enhancement.**
+**App in internal testing to fix some bugs and ui & animation enhancement.**
 
 <div align="center">
   <h2>⭐ ENJOYING MATERIAL CLOCK?</h2>
