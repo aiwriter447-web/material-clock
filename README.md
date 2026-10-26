@@ -3,7 +3,7 @@
   <img src="screenshot/Clock_Icon.png" alt="Material Clock Icon" width="120" height="120">
 
   <h1>🕒 MATERIAL CLOCK</h1>
-  <h3>✨ Time, Reimagined.</h3>
+  <h3>✨ Clock, Reimagined.</h3>
   
   <p><b>A Modern Android Clock Inspired by Material 3 Expressive</b></p>
   <p>Built with ❤️ using Kotlin & Jetpack Compose</p>
@@ -98,7 +98,7 @@ This project is an independent recreation of a published Material 3 Expressive c
 **App in internal testing to fix some bugs and ui & animation enhancement.**
 
 <div align="center">
-  <h2>⭐ ENJOYING MATERIAL CLOCK?</h2>
+  <h2>⭐ WAITING MATERIAL CLOCK?</h2>
   <p><b>If you like this project, consider giving the repository a star!</b></p>
   <p><i>Modern Design. Native Android. Expressive Timekeeping.</i></p>
 </div>
