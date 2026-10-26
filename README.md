@@ -93,6 +93,10 @@ For full license details, see:
 
 This project is an independent recreation of a published Material 3 Expressive concept design. It is **not** affiliated with, sponsored by, or endorsed by Google. The original concept renders used as measurement references remain the copyright of Google and are not included in this repository.
 
+## 🪄 RELEASE 
+
+**App in internal testing to fix fix some bugs and ui & animation enhancement.**
+
 <div align="center">
   <h2>⭐ ENJOYING MATERIAL CLOCK?</h2>
   <p><b>If you like this project, consider giving the repository a star!</b></p>
