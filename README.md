@@ -16,6 +16,35 @@
   </p>
 </div>
 
+
+## ✨ ABOUT THE PROJECT
+
+Material Clock is a fully functional native Android application inspired by Google's Material 3 Expressive design.
+
+Unlike static UI mockups, this is a deeply integrated, real Android application built entirely with Kotlin and Jetpack Compose. It is designed to build, install, and run natively on your Android device. 
+
+The design draws inspiration from Google's 46-study design program—specifically focusing on the fluid concept renders rather than the production Google Clock 8.8 and some elementsfrom Samsung Clock. Our goal is to merge expressive typography, thoughtful adaptive layouts, and modern Android development into a distinctive, premium timekeeping experience.
+
+## 🚀 CORE FEATURES & HIGHLIGHTS
+
+*   **⏰ Smart Alarms:** Manage your routine with intuitive grouped Morning and Night cards, day-specific indicators, and easy toggles.
+
+*   **🌍 World Clock:** Track time across multiple time zones like London, San Francisco,Tokyo and Seoul simultaneously.
+
+*  **⏳️ Timers:** Add or default preset for Timers, a numberpad to set Timers.
+
+*  **⏱️ Stopwatch:** A easy to use Timers,different 44 shades for laps and more.
+
+*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets. Options include 2×1 to 4x2 like Alrams,Digital Clock, distinctive scalloped analog faces and World Clock dual-city digital pill designs.
+
+*   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups.
+
+*   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive and many more.
+
+*   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation.
+
+*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain.
+
 ## 📱 SCREENSHOTS
 
 <p align="center">  
@@ -31,28 +60,6 @@
     ⏳ <b>Timers</b> &nbsp; • &nbsp;  
     ⏱️ <b>Stopwatch</b>  
   </p>
-
-## ✨ ABOUT THE PROJECT
-
-Material Clock is a fully functional native Android application inspired by Google's Material 3 Expressive design.
-
-Unlike static UI mockups, this is a deeply integrated, real Android application built entirely with Kotlin and Jetpack Compose. It is designed to build, install, and run natively on your Android device. 
-
-The design draws inspiration from Google's 46-study design program—specifically focusing on the fluid concept renders rather than the production Google Clock 8.8 and some elementsfrom Samsung Clock. Our goal is to merge expressive typography, thoughtful adaptive layouts, and modern Android development into a distinctive, premium timekeeping experience.
-
-## 🚀 CORE FEATURES & HIGHLIGHTS
-
-*   **⏰ Smart Alarms:** Manage your routine with intuitive grouped Morning and Night cards, day-specific indicators, and easy toggles.
-*   **🌍 World Clock:** Track time across multiple time zones like London, San Francisco, and Seoul simultaneously.
-*  **⏳️ Timers:** Add or default preset for Timers, a numberpad to set Timers.
-*  **⏱️ Stopwatch:** A easy to use Timers,different 44 shades for laps and more.
-*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets. Options include 2×1 to 4x2 like Alrams,Digital Clock, distinctive scalloped analog faces and World Clock dual-city digital pill designs.
-*   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups.
-*   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive and many more.
-*   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation.
-*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain.
-
-
 
 ## 🛠️ TECHNOLOGY STACK
 
