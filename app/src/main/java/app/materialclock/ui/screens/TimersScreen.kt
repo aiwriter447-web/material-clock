@@ -18,17 +18,18 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -45,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +63,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.materialclock.core.ClockTimer
@@ -71,10 +74,10 @@ import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
 private const val RING_SIZE_DP = 300
-private val KEY_HEIGHT = 64.dp
+// Reduced keypad size to give more room at the top
+private val KEY_HEIGHT = 56.dp
 private val KEYPAD_SPACING = 12.dp
 
-// Selection state enum for the Tap-to-Type feature
 enum class TimerField { HOURS, MINUTES, SECONDS }
 
 @Composable
@@ -104,14 +107,13 @@ fun TimersScreen(
                 SizeTransform(clip = false)
         },
         label = "timer-state",
-        modifier = modifier
-            .fillMaxSize()
-            .padding(contentPadding),
+        // Removed global padding here to fix the dock cut-off issue
+        modifier = modifier.fillMaxSize(),
     ) { running ->
         if (running && timer != null) {
-            RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel)
+            RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onWind, onStart, presets, onStartPreset, onEditPreset)
+            SetTimer(draft, onDigit, onBackspace, onWind, onStart, presets, onStartPreset, onEditPreset, onAddPreset, contentPadding)
         }
     }
 }
@@ -128,46 +130,88 @@ private fun SetTimer(
     presets: List<TimerPreset>,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
+    onAddPreset: () -> Unit,
+    contentPadding: PaddingValues,
 ) {
-    val total = draft.seconds
-    val clamped = total.coerceAtMost(99 * 3600 + 59 * 60 + 59)
-    val hh = "%02d".format(clamped / 3600)
-    val mm = "%02d".format((clamped % 3600) / 60)
-    val ss = "%02d".format(clamped % 60)
-    val armed = total > 0
-
     var selectedField by remember { mutableStateOf(TimerField.SECONDS) }
+
+    // Independent 2-digit state for each field
+    var hStr by remember { mutableStateOf("%02d".format(draft.seconds / 3600)) }
+    var mStr by remember { mutableStateOf("%02d".format((draft.seconds % 3600) / 60)) }
+    var sStr by remember { mutableStateOf("%02d".format(draft.seconds % 60)) }
+
+    // Reset local strings if timer is cancelled or fully cleared externally
+    LaunchedEffect(draft.seconds) {
+        if (draft.seconds == 0L) {
+            hStr = "00"
+            mStr = "00"
+            sStr = "00"
+        }
+    }
+
+    val armed = (hStr.toLongOrNull() ?: 0L) > 0 || (mStr.toLongOrNull() ?: 0L) > 0 || (sStr.toLongOrNull() ?: 0L) > 0
+
+    // Synchronize independent local entries with the ViewModel's underlying microwave logic
+    val syncToViewModel = {
+        repeat(6) { onBackspace() }
+        (hStr + mStr + sStr).forEach { onDigit(it, TimerField.SECONDS) }
+    }
+
+    val handleDigit = { digit: Char ->
+        when (selectedField) {
+            TimerField.HOURS -> hStr = (hStr + digit).takeLast(2)
+            TimerField.MINUTES -> mStr = (mStr + digit).takeLast(2)
+            TimerField.SECONDS -> sStr = (sStr + digit).takeLast(2)
+        }
+        syncToViewModel()
+    }
+
+    val handleBackspace = {
+        when (selectedField) {
+            TimerField.HOURS -> hStr = ("0" + hStr.dropLast(1)).takeLast(2)
+            TimerField.MINUTES -> mStr = ("0" + mStr.dropLast(1)).takeLast(2)
+            TimerField.SECONDS -> sStr = ("0" + sStr.dropLast(1)).takeLast(2)
+        }
+        syncToViewModel()
+    }
+
+    val handleClearAll = {
+        hStr = "00"
+        mStr = "00"
+        sStr = "00"
+        onWind(0)
+        syncToViewModel()
+        selectedField = TimerField.SECONDS
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            // Top and Bottom padding applied inside the scrollable container fixes the floating dock overlap
+            .padding(
+                top = contentPadding.calculateTopPadding(),
+                bottom = contentPadding.calculateBottomPadding()
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(42.dp))
 
         DraftReadout(
-            hh = hh,
-            mm = mm,
-            ss = ss,
+            hh = hStr,
+            mm = mStr,
+            ss = sStr,
             selectedField = selectedField,
             onFieldSelect = { selectedField = it },
-            onClear = {
-                onWind(0)
-                selectedField = TimerField.SECONDS
-            },
-            modifier = Modifier.padding(horizontal = 20.dp)
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
 
         Keypad(
-            onDigit = { char -> onDigit(char, selectedField) },
-            onBackspace = onBackspace,
-            onClearAll = {
-                onWind(0)
-                selectedField = TimerField.SECONDS
-            },
+            onDigit = handleDigit,
+            onBackspace = handleBackspace,
+            onClearAll = handleClearAll,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
 
@@ -179,29 +223,75 @@ private fun SetTimer(
 
         Spacer(Modifier.height(24.dp))
 
-        PresetRow(presets, onStartPreset, onEditPreset)
+        PresetRow(presets, onStartPreset, onEditPreset, onAddPreset)
 
         Spacer(Modifier.height(16.dp))
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PresetRow(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
     onEdit: (TimerPreset) -> Unit,
+    onAdd: () -> Unit
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 20.dp)
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        presets.forEach { preset ->
+        item {
+            PresetAddChip(onClick = onAdd)
+        }
+        items(presets, key = { it.id }) { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
+        }
+    }
+}
+
+@Composable
+private fun PresetAddChip(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "presetAddScale"
+    )
+
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Rounded.Add, 
+                contentDescription = "New Preset", 
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "New",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }
@@ -261,76 +351,77 @@ private fun DraftReadout(
     ss: String,
     selectedField: TimerField,
     onFieldSelect: (TimerField) -> Unit,
-    onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cap = 58.dp
+    val cap = 64.dp
+    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
     val activeColor = MaterialTheme.colorScheme.onSurface
     val highlightColor = MaterialTheme.colorScheme.primary
 
-    val hColor by animateColorAsState(
-        if (selectedField == TimerField.HOURS) highlightColor else if (hh != "00") activeColor else inactiveColor,
-        label = "hColor"
-    )
-    val mColor by animateColorAsState(
-        if (selectedField == TimerField.MINUTES) highlightColor else if (mm != "00") activeColor else inactiveColor,
-        label = "mColor"
-    )
-    val sColor by animateColorAsState(
-        if (selectedField == TimerField.SECONDS) highlightColor else if (ss != "00") activeColor else inactiveColor,
-        label = "sColor"
-    )
+    val hColor by animateColorAsState(if (selectedField == TimerField.HOURS) highlightColor else if (hh != "00") activeColor else inactiveColor, label = "hColor")
+    val mColor by animateColorAsState(if (selectedField == TimerField.MINUTES) highlightColor else if (mm != "00") activeColor else inactiveColor, label = "mColor")
+    val sColor by animateColorAsState(if (selectedField == TimerField.SECONDS) highlightColor else if (ss != "00") activeColor else inactiveColor, label = "sColor")
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 4.dp)
-            .clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" },
-    ) {
-        TimeField(label = "Hours", value = hh, color = hColor, cap = cap) { onFieldSelect(TimerField.HOURS) }
-
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
-
-        TimeField(label = "Minutes", value = mm, color = mColor, cap = cap) { onFieldSelect(TimerField.MINUTES) }
-
-        Text(" : ", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.padding(bottom = 6.dp))
-
-        TimeField(label = "Seconds", value = ss, color = sColor, cap = cap) { onFieldSelect(TimerField.SECONDS) }
-    }
-}
-
-@Composable
-private fun TimeField(
-    label: String,
-    value: String,
-    color: Color,
-    cap: androidx.compose.ui.unit.Dp,
-    onClick: () -> Unit,
-) {
+    val fieldWidth = 88.dp
+    val colonWidth = 24.dp
     val interactionSource = remember { MutableInteractionSource() }
+
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .clearAndSetSemantics { contentDescription = "$label: $value" }
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp), color = color)
-        Spacer(Modifier.height(8.dp))
-        Numerals(
-            text = value,
-            capHeight = cap,
-            color = color,
-            width = ClockFace.TIMER_WIDTH,
-            weight = ClockFace.TIMER_WEIGHT,
-            slashedZero = true
-        )
+        // Labels row structured independently so numerals don't jump when labels change position
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text("Hours", style = labelStyle, color = hColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
+            Spacer(Modifier.width(colonWidth))
+            Text("Minutes", style = labelStyle, color = mColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
+            Spacer(Modifier.width(colonWidth))
+            Text("Seconds", style = labelStyle, color = sColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        // Values Row perfectly aligned with Colons
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" }
+        ) {
+            Box(
+                Modifier
+                    .width(fieldWidth)
+                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.HOURS) },
+                contentAlignment = Alignment.Center
+            ) {
+                Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            }
+            Box(Modifier.width(colonWidth), contentAlignment = Alignment.Center) {
+                Text(":", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.offset(y = (-6).dp))
+            }
+            Box(
+                Modifier
+                    .width(fieldWidth)
+                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.MINUTES) },
+                contentAlignment = Alignment.Center
+            ) {
+                Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            }
+            Box(Modifier.width(colonWidth), contentAlignment = Alignment.Center) {
+                Text(":", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.offset(y = (-6).dp))
+            }
+            Box(
+                Modifier
+                    .width(fieldWidth)
+                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.SECONDS) },
+                contentAlignment = Alignment.Center
+            ) {
+                Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
+            }
+        }
     }
 }
 
@@ -491,6 +582,7 @@ private fun RunningTimer(
     onPauseResume: () -> Unit,
     onAddTen: () -> Unit,
     onCancel: () -> Unit,
+    contentPadding: PaddingValues
 ) {
     val remaining = timer.remaining(nowElapsedMillis)
     val secs = remaining.seconds
@@ -515,7 +607,6 @@ private fun RunningTimer(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     
-    // Extracted out of remember block to avoid @Composable calls in non-composable scopes
     val refStyle = ClockFace.numerals(capHeight = 62.dp, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
     val strokeWidthPx = with(density) { 18.dp.toPx() }
 
@@ -532,6 +623,10 @@ private fun RunningTimer(
     Column(
         Modifier
             .fillMaxSize()
+            .padding(
+                top = contentPadding.calculateTopPadding(),
+                bottom = contentPadding.calculateBottomPadding()
+            )
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
