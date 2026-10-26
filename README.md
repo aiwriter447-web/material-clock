@@ -46,12 +46,12 @@ The design draws inspiration from Google's 46-study design program—specificall
 ## 🚀 CORE FEATURES & HIGHLIGHTS
 
 *   **📴 Screensaver & Bedside Setup:** A minimal, distraction-free display perfect for bedside charging setups.
-*   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation[span_0](start_span)[span_0](end_span).
-*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain[span_1](start_span)[span_1](end_span).
-*   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive, and Galaxia[span_2](start_span)[span_2](end_span).
-*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets[span_3](start_span)[span_3](end_span). Options include 4x2 World Clock layouts[span_4](start_span)[span_4](end_span), distinctive scalloped analog faces[span_5](start_span)[span_5](end_span), and dual-city digital pill designs[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span).
-*   **⏰ Smart Alarms:** Manage your routine with intuitive grouped Morning and Night cards, day-specific indicators, and easy toggles[span_8](start_span)[span_8](end_span).
-*   **🌍 World Clock:** Track time across multiple time zones like London, San Francisco, and Seoul simultaneously[span_9](start_span)[span_9](end_span)[span_10](start_span)[span_10](end_span).
+*   **🖐️ One-Hand Mode:** Swipe down on Alarms, Timers, and Stopwatch to bring the top into thumb reach for easier navigation.
+*   **🌑 Pure Black (AMOLED):** True black surfaces in dark mode optimized specifically for OLED screens to save battery and reduce eye strain.
+*   **🎨 Expressive Themes:** Multiple theme color options including Wallpaper, Artist, Earth, Expressive, and Galaxia.
+*   **📱 Diverse Widgets:** Long-press on the home screen to customize and add clock widgets. Options include 4x2 World Clock layouts, distinctive scalloped analog faces, and dual-city digital pill designs.
+*   **⏰ Smart Alarms:** Manage your routine with intuitive grouped Morning and Night cards, day-specific indicators, and easy toggles.
+*   **🌍 World Clock:** Track time across multiple time zones like London, San Francisco, and Seoul simultaneously.
 
 ## 🛠️ TECHNOLOGY STACK
 
