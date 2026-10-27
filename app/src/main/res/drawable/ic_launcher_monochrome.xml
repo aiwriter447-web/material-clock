@@ -4,21 +4,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+  <!-- Outline dial -->
   <path
       android:strokeColor="#FF000000"
       android:strokeWidth="5"
       android:fillColor="#00000000"
       android:pathData="M 54,26 A 28,28 0 1,1 53.9,26 Z" />
 
+  <!-- Blue needle -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="10"
+      android:strokeWidth="16"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 38,63" />
+      android:pathData="M 54,54 L 40,62" />
 
+  <!-- Pink needle -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="8"
+      android:strokeWidth="9"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 70,43" />
+      android:pathData="M 54,54 L 72,42" />
 </vector>
