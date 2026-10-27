@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Analog Clock, added as 4x1: the capsule stretched to four columns. It shows the small clock, the
+  full date, and the time on the right. It can be narrowed to 2x1 but not made taller (a 2x2 is
+  its own entry), so only horizontal resizing is on.
+  updatePeriodMillis is 30 minutes, the shortest the system allows: the time itself is ticked by the
+  launcher's own clock views, and this refresh only brings the colours (wallpaper, dark mode) up to
+  date. configure is fully qualified: a leading dot would be a silent ActivityNotFoundException.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="330dp"
+    android:maxResizeHeight="170dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_loading"
+    android:previewLayout="@layout/wp_analog_4x1"
+    android:configure="app.materialclock.widget.ClockWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable" />
