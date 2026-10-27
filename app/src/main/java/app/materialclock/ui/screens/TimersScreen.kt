@@ -238,7 +238,8 @@ private fun PresetRow(
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, bottom = 12.dp),
+        // Changed horizontal to start and end for correct PaddingValues syntax
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         item {
