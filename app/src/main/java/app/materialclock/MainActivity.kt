@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Keeps the first frame back until the saved settings have been read (at most 0.7 s).
+     * Keeps the first frame back until the saved settings have been read (at most 0.35 s).
      *
      * Until then the screen is an empty page in the app's default colours, and the page would flash
      * on screen and then be replaced. Waiting a few milliseconds for the data, with the system's
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
         val started = SystemClock.uptimeMillis()
         content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
-                val ready = clockViewModel.isLoaded.value || SystemClock.uptimeMillis() - started > 700
+                val ready = clockViewModel.isLoaded.value || SystemClock.uptimeMillis() - started > 350
                 if (ready) content.viewTreeObserver.removeOnPreDrawListener(this)
                 return ready
             }
