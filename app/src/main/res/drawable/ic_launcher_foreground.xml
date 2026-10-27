@@ -7,19 +7,19 @@
   <!-- White Dial inside Safe Zone -->
   <path
       android:fillColor="#FFFFFF"
-      android:pathData="M 54,26 A 28,28 0 1,1 53.9,26 Z" />
+      android:pathData="M 54,26 A 33,33 0 1,1 53.9,26 Z" />
 
   <!-- Hour Hand (Scaled for Foreground) -->
   <path
       android:strokeColor="#081026"
-      android:strokeWidth="14"
+      android:strokeWidth="12"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 41,46" />
 
   <!-- Minute Hand (Scaled for Foreground) -->
   <path
       android:strokeColor="#EE4B8E"
-      android:strokeWidth="8"
+      android:strokeWidth="6"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 67,46" />
+      android:pathData="M 54,54 L 70,40" />
 </vector>
