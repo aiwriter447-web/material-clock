@@ -210,18 +210,16 @@ fun AlarmEditSheet(
         Column(
             Modifier
                 .fillMaxWidth()
-                .imePadding() // Solves Keyboard overlapping text field
+                .imePadding()
                 .verticalScroll(scrollState)
                 .padding(bottom = 24.dp)
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // The Ultimate Swipe Time Picker (Dial Removed)
             SwipeTimeEntry(state = timeState)
             
             Spacer(Modifier.height(32.dp))
 
-            // New Beautiful Days Container
             DayTogglesContainer(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
@@ -408,28 +406,21 @@ fun AlarmEditSheet(
     }
 }
 
-// ---------------------------------------------------------
-// The Masterpiece Clean Swipe Picker (No Dial)
-// ---------------------------------------------------------
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
     val is24Hour = state.is24hour
     
-    // Generate Items
     val hoursList = if (is24Hour) (0..23).map { "%02d".format(it) } else (1..12).map { "%02d".format(it) }
     val minutesList = (0..59).map { "%02d".format(it) }
     val amPmList = listOf("am", "pm")
 
-    // Determine current indices based on TimePickerState
     val currentHourIndex = if (is24Hour) state.hour else {
         val h12 = (state.hour % 12).takeIf { it != 0 } ?: 12
         h12 - 1
     }
     val currentAmPmIndex = if (state.hour < 12) 0 else 1
 
-    // Text Styles (Not bold, slightly larger)
     val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
     val numberStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Normal)
     val amPmStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
@@ -439,7 +430,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // HOURS Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Hours", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
@@ -459,7 +449,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
-        // SEPARATOR
         Text(
             text = ":",
             style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light),
@@ -467,7 +456,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             modifier = Modifier.padding(horizontal = 12.dp).padding(top = 32.dp)
         )
 
-        // MINUTES Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
@@ -479,11 +467,9 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
-        // AM/PM Column (Only for 12-Hour Format, placed perfectly inline)
         if (!is24Hour) {
             Spacer(Modifier.width(16.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Invisible placeholder to keep AM/PM aligned with numbers (compensates for the Title height)
                 Text(text = " ", style = titleStyle) 
                 Spacer(Modifier.height(12.dp))
                 WheelPicker(
@@ -546,7 +532,7 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = modifier
-            .height(240.dp) // Keeps the tall, roomy height similar to Pic 3
+            .height(240.dp) 
             .width(80.dp),
         contentPadding = PaddingValues(vertical = 95.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -583,10 +569,6 @@ private fun WheelPicker(
     }
 }
 
-// ---------------------------------------------------------
-// Beautiful Days Container with Calendar Text
-// ---------------------------------------------------------
-
 @Composable
 private fun DayTogglesContainer(
     order: List<DayOfWeek>,
@@ -600,7 +582,7 @@ private fun DayTogglesContainer(
             selected == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
             selected == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
             else -> {
-                val sortedDays = selected.sortedBy { it.value } // Order mathematically 1(Mon)-7(Sun)
+                val sortedDays = selected.sortedBy { it.value }
                 "Every " + sortedDays.joinToString(", ") { it.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) }
             }
         }
@@ -634,7 +616,6 @@ private fun DayTogglesContainer(
             }
             Spacer(Modifier.height(16.dp))
             
-            // Days Row
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -669,7 +650,7 @@ private fun DayTogglesContainer(
                         color = containerColor,
                         contentColor = contentColor,
                         modifier = Modifier
-                            .size(44.dp) // Adjusted to fit beautifully inside the card
+                            .size(44.dp) 
                             .graphicsLayer {
                                 scaleX = pressScale * selectionScale
                                 scaleY = pressScale * selectionScale
@@ -689,10 +670,6 @@ private fun DayTogglesContainer(
         }
     }
 }
-
-// ---------------------------------------------------------
-// Remaining Helpers
-// ---------------------------------------------------------
 
 @Composable
 private fun GroupPicker(
@@ -793,9 +770,24 @@ private fun GroupPicker(
     }
 }
 
+@Composable
+private fun ringtoneName(uri: String?): String {
+    val context = LocalContext.current
+    return remember(uri) {
+        when {
+            uri == null -> "Default sound"
+            uri == SILENT -> "Silent"
+            else -> runCatching {
+                RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
+            }.getOrNull() ?: "Default sound"
+        }
+    }
+}
+
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
 const val SILENT = "silent"
+const val SHEET_MAX_FRACTION = 0.88f
 
 fun systemFirstDay(): DayOfWeek =
     java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
