@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -40,12 +41,18 @@ fun PresetEditSheet(
     initial: TimerPreset,
     onDismiss: () -> Unit,
     onSave: (TimerPreset) -> Unit,
-    onDelete: ((Long) -> Unit)? = null // No longer used in UI, but kept in signature to not break other files
+    onDelete: ((Long) -> Unit)? = null
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var name by remember(initial.name) { mutableStateOf(initial.name) }
     var mins by remember(initial.totalSeconds) { mutableIntStateOf(initial.totalSeconds / 60) }
+
+    // Functional Reset Logic
+    val resetToInitial = {
+        name = initial.name
+        mins = initial.totalSeconds / 60
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -59,64 +66,87 @@ fun PresetEditSheet(
                 .padding(bottom = 32.dp),
         ) {
             Text(
-                text = if (initial.id == 0L) "New Preset" else "Edit Preset",
+                text = "Edit Preset",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            Spacer(Modifier.height(24.dp))
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+            // Modern Pill-shaped Container
+            Surface(
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = { if (mins > 1) mins-- }) {
-                    Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
-                }
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                Text(
-                    text = "$mins min",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
+                    Spacer(Modifier.height(24.dp))
 
-                IconButton(onClick = { if (mins < 99) mins++ }) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Increase")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(onClick = { if (mins > 1) mins-- }) {
+                            Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
+                        }
+
+                        Text(
+                            text = "$mins min",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+
+                        IconButton(onClick = { if (mins < 999) mins++ }) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Increase")
+                        }
+                    }
                 }
             }
 
             Spacer(Modifier.height(32.dp))
 
+            // Three Buttons Row: Reset, Cancel, Save
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        if (name.isNotBlank() && mins > 0) {
-                            onSave(initial.copy(name = name.trim(), totalSeconds = mins * 60))
-                            onDismiss()
-                        }
-                    },
-                    enabled = name.isNotBlank() && mins > 0
+                TextButton(
+                    onClick = resetToInitial,
+                    // Disabled if values are already equal to initial
+                    enabled = name != initial.name || mins != (initial.totalSeconds / 60)
                 ) {
-                    Text("Save")
+                    Text("Reset")
+                }
+                
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            if (name.isNotBlank() && mins > 0) {
+                                onSave(initial.copy(name = name.trim(), totalSeconds = mins * 60))
+                                onDismiss()
+                            }
+                        },
+                        enabled = name.isNotBlank() && mins > 0,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text("Save")
+                    }
                 }
             }
         }
