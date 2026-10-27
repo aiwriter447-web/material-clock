@@ -35,6 +35,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+private const val SHEET_MAX_FRACTION = 0.9f
 
 /**
  * Pick a city.
