@@ -249,6 +249,9 @@ object AlarmWidgetRenderer {
             is24 -> "%02d:%02d".format(time.hour, time.minute)
             else -> "%d:%02d".format((time.hour % 12).takeIf { it != 0 } ?: 12, time.minute)
         }
+        // The alarm's name, if it has one. With none there is no name to show, and nothing is
+        // drawn in its place.
+        val name = alarm?.label?.takeIf { it.isNotBlank() }
         val ampm = if (time == null || is24) {
             ""
         } else {
@@ -330,14 +333,50 @@ object AlarmWidgetRenderer {
                 button = drawButton(left + dia / 2f, hf / 2f, dia)
                 val x0 = left + dia + hf * 0.14f
                 val avail = wf - x0 - hf * 0.16f
-                val ts = min(hf * 0.38f, avail / 2.8f)
+                if (name != null) {
+                    // The name small above the time, AM/PM beside the time: how a Samsung alarm
+                    // widget reads, and how this one reads once it has a name.
+                    val ts = min(hf * 0.34f, avail / 2.95f)
+                    val lblSize = ts * 0.55f
+                    val lblCap = lblSize * 0.72f
+                    val cap = ts * 0.72f
+                    val gap = ts * 0.16f
+                    val top = (hf - (lblCap + gap + cap)) / 2f
+                    texts += TextSpec(2, name, x0, top + lblCap, lblSize, alpha(fg, 0.85f))
+                    drawTimeInline(x0, top + lblCap + gap + cap, ts)
+                } else {
+                    val ts = min(hf * 0.38f, avail / 2.8f)
+                    val cap = ts * 0.72f
+                    val acap = ts * 0.46f * 0.72f
+                    val gap = ts * 0.14f
+                    val total = cap + if (ampm.isEmpty()) 0f else gap + acap
+                    val top = (hf - total) / 2f
+                    texts += TextSpec(0, timeStr, x0, top + cap, ts, textColour)
+                    if (ampm.isNotEmpty()) texts += TextSpec(1, ampm, x0, top + total, ts * 0.50f, textColour)
+                }
+            }
+
+            // One row, wide, with a name: the name above the time on the left, the weekdays on the
+            // right in whatever room is left.
+            oneRow && name != null -> {
+                val dia = hf * 0.70f
+                val left = hf * 0.15f
+                button = drawButton(left + dia / 2f, hf / 2f, dia)
+                val x0 = left + dia + hf * 0.16f
+                val ts = hf * 0.36f
+                val lblSize = ts * 0.55f
+                val lblCap = lblSize * 0.72f
                 val cap = ts * 0.72f
-                val acap = ts * 0.46f * 0.72f
-                val gap = ts * 0.14f
-                val total = cap + if (ampm.isEmpty()) 0f else gap + acap
-                val top = (hf - total) / 2f
-                texts += TextSpec(0, timeStr, x0, top + cap, ts, textColour)
-                if (ampm.isNotEmpty()) texts += TextSpec(1, ampm, x0, top + total, ts * 0.50f, textColour)
+                val gap = ts * 0.16f
+                val top = (hf - (lblCap + gap + cap)) / 2f
+                texts += TextSpec(2, name, x0, top + lblCap, lblSize, alpha(fg, 0.85f))
+                drawTimeInline(x0, top + lblCap + gap + cap, ts)
+                val blockEnd = x0 + maxOf(inlineWidth(ts), paint(fg, lblSize, 600).measureText(name))
+                val rightEdge = wf - hf * 0.20f
+                val avail = rightEdge - (blockEnd + hf * 0.20f)
+                val cell = min(hf * 0.30f * 1.9f, avail / 7f)
+                val ls = min(hf * 0.30f, cell * 0.85f)
+                if (ls > hf * 0.12f) drawDays(rightEdge - cell * 7f, cell, hf / 2f + ls * 0.4f, ls)
             }
 
             // 4x1 and wider: button, time, and the weekdays on the right. The weekdays only get
@@ -380,22 +419,26 @@ object AlarmWidgetRenderer {
             square -> {
                 val ts = min(wf * 0.84f / (if (is24) 2.9f else 3.5f), hf * 0.24f)
                 val cap = ts * 0.72f
-                val cy = hf * 0.27f
+                val cy = if (name != null) hf * 0.31f else hf * 0.27f
                 drawTimeInline((wf - inlineWidth(ts)) / 2f, cy + cap / 2f, ts)
+                if (name != null) {
+                    val lblSize = ts * 0.42f
+                    val lblWidth = paint(fg, lblSize, 600).measureText(name)
+                    texts += TextSpec(2, name, ((wf - lblWidth) / 2f).coerceAtLeast(hf * 0.06f), cy - cap / 2f - lblSize * 0.40f, lblSize, alpha(fg, 0.85f))
+                }
                 val ls = ts * 0.46f
                 val cell = min(ls * 2.0f, wf * 0.86f / 7f)
                 val dotsY = cy + cap / 2f + ts * 0.30f
                 drawDays((wf - cell * 7f) / 2f, cell, dotsY + ls * 1.25f, ls)
-                button = drawButton(wf / 2f, hf * 0.77f, min(hf * 0.34f, wf * 0.44f))
+                button = drawButton(wf / 2f, hf * (if (name != null) 0.80f else 0.77f), min(hf * 0.34f, wf * 0.44f))
             }
 
             // 4x2: label top-left, time and weekdays bottom-left, button bottom-right.
             else -> {
                 val pad = min(16f * d, hf * 0.14f)
                 val x0 = pad * 1.5f
-                val label = alarm?.label?.takeIf { it.isNotBlank() } ?: "Alarm"
                 val lblSize = hf * 0.17f
-                texts += TextSpec(2, label, x0, pad * 1.1f + lblSize * 0.8f, lblSize, alpha(fg, 0.85f))
+                if (name != null) texts += TextSpec(2, name, x0, pad * 1.1f + lblSize * 0.8f, lblSize, alpha(fg, 0.85f))
 
                 val ts = min(hf * 0.30f, wf * 0.52f / (if (is24) 2.9f else 3.5f))
                 val ls = ts * 0.46f
