@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: Analog Clock, 2x2.
+  Shown in the widget picker. It is a plain layout: no app code runs for it, and it may only
+  use the views a widget may use (no plain View, for one).
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="0dp">
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <AnalogClock
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:dial="@drawable/wp_dial_ripple"
+            android:hand_hour="@drawable/wp_hand_hour"
+            android:hand_minute="@drawable/wp_hand_minute"
+            android:hand_second="@drawable/wp_hand_second" />
+    </FrameLayout>
+</FrameLayout>

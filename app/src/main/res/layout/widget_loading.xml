@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What a widget shows before its first real picture arrives, and the picture it falls back to if
+  drawing ever fails. It is a plain visible card so a widget can never look as if it had vanished.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="6dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/wp_card_surface">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Clock"
+            android:textColor="@color/wp_on_surface"
+            android:textSize="16sp"
+            android:fontFamily="@font/google_sans_flex_family" />
+    </FrameLayout>
+</FrameLayout>

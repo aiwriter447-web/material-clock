@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: World Clock, 4x2.
+  Shown in the widget picker. It is a plain layout: no app code runs for it, and it may only
+  use the views a widget may use (no plain View, for one). The clocks in it tick: they are the
+  launcher's own TextClock views, each set to its city's time zone.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:background="@drawable/wp_card_container"
+        android:clipToOutline="true">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tokyo"
+                android:textColor="@color/wp_on_container"
+                android:textSize="20sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="600"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:ellipsize="end" />
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="EEE, d MMM"
+                android:format24Hour="EEE, d MMM"
+                android:textColor="@color/wp_on_container"
+                android:textSize="12sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="500"
+                android:includeFontPadding="false"
+                android:timeZone="Asia/Tokyo"
+                android:layout_marginTop="2dp" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom"
+                android:layout_marginTop="2dp">
+                <TextClock
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="h:mm"
+                    android:format24Hour="h:mm"
+                    android:textColor="@color/wp_on_container"
+                    android:textSize="40sp"
+                    android:fontFamily="@font/google_sans_flex_family"
+                    android:textFontWeight="700"
+                    android:includeFontPadding="false"
+                    android:timeZone="Asia/Tokyo" />
+                <TextClock
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="a"
+                    android:format24Hour="a"
+                    android:textColor="@color/wp_on_container"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/google_sans_flex_family"
+                    android:textFontWeight="700"
+                    android:includeFontPadding="false"
+                    android:timeZone="Asia/Tokyo"
+                    android:layout_marginStart="3dp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/wp_primary">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="London"
+                android:textColor="@color/wp_on_primary"
+                android:textSize="20sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="600"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:ellipsize="end" />
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="EEE, d MMM"
+                android:format24Hour="EEE, d MMM"
+                android:textColor="@color/wp_on_primary"
+                android:textSize="12sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="500"
+                android:includeFontPadding="false"
+                android:timeZone="Europe/London"
+                android:layout_marginTop="2dp" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom"
+                android:layout_marginTop="2dp">
+                <TextClock
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="h:mm"
+                    android:format24Hour="h:mm"
+                    android:textColor="@color/wp_on_primary"
+                    android:textSize="40sp"
+                    android:fontFamily="@font/google_sans_flex_family"
+                    android:textFontWeight="700"
+                    android:includeFontPadding="false"
+                    android:timeZone="Europe/London" />
+                <TextClock
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="a"
+                    android:format24Hour="a"
+                    android:textColor="@color/wp_on_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/google_sans_flex_family"
+                    android:textFontWeight="700"
+                    android:includeFontPadding="false"
+                    android:timeZone="Europe/London"
+                    android:layout_marginStart="3dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picture shown in the widget picker for "Analog & Digital Clock": the analog clock above and the
+  digital time and date below, so the picker shows that this one widget can be either.
+
+  Only views that need no app code are used: the picker inflates this layout as it is, so
+  AnalogClock and TextClock (which tick by themselves) are fine; anything we would normally
+  draw at runtime is not.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/widget_preview_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <AnalogClock
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="3" />
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="h:mm"
+        android:format24Hour="HH:mm"
+        android:textColor="@color/widget_preview_on_dark"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="EEE, d MMM"
+        android:format24Hour="EEE, d MMM"
+        android:textColor="@color/widget_preview_on_dark"
+        android:textSize="13sp" />
+</LinearLayout>

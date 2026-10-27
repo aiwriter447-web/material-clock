@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: Alarm Clock, 2x1.
+  Shown in the widget picker. It is a plain layout: no app code runs for it, and it may only
+  use the views a widget may use (no plain View, for one).
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:background="@drawable/wp_pill_container"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/wp_circle_primary"
+            android:padding="10dp"
+            android:src="@drawable/ic_widget_alarm"
+            android:tint="@color/wp_on_primary"
+            android:layout_marginStart="8dp" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="6:00"
+                android:textColor="@color/wp_on_container"
+                android:textSize="24sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="700"
+                android:includeFontPadding="false" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AM"
+                android:textColor="@color/wp_on_container"
+                android:textSize="12sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="700"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
