@@ -94,7 +94,7 @@ fun TimersScreen(
     onCancel: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
-    onAddPreset: () -> Unit,
+    onAddPreset: () -> Unit, // FAB removed, but signature kept intact
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -160,6 +160,13 @@ private fun SetTimer(
         ).sortedBy { it.totalSeconds }
     }
 
+    // Bulb effect color for colons
+    val colonColor by animateColorAsState(
+        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "colonBulbColor"
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -194,9 +201,7 @@ private fun SetTimer(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val colonColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                
-                WheelPicker(
+                InfiniteWheelPicker(
                     range = 0..99,
                     initialValue = hours,
                     onValueChange = { hours = it; syncToViewModel() }
@@ -206,10 +211,10 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayMedium, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
                 )
                 
-                WheelPicker(
+                InfiniteWheelPicker(
                     range = 0..59,
                     initialValue = mins,
                     onValueChange = { mins = it; syncToViewModel() }
@@ -219,10 +224,10 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayMedium, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
                 )
                 
-                WheelPicker(
+                InfiniteWheelPicker(
                     range = 0..59,
                     initialValue = secs,
                     onValueChange = { secs = it; syncToViewModel() }
@@ -233,12 +238,12 @@ private fun SetTimer(
 
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 text = "Long press a preset to edit it",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
 
             Spacer(Modifier.height(24.dp))
@@ -255,36 +260,46 @@ private fun SetTimer(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WheelPicker(
+private fun InfiniteWheelPicker(
     range: IntRange,
     initialValue: Int,
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialValue)
+    val count = range.last - range.first + 1
+    // Calculate a safe middle point for infinite scrolling
+    val middlePoint = (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % count)
+    val initialIndex = middlePoint + (initialValue - range.first)
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    
+    // Smooth snapping behavior
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
     LaunchedEffect(initialValue) {
-        if (initialValue == 0 && listState.firstVisibleItemIndex != 0) {
-            listState.animateScrollToItem(0)
+        val currentIndex = listState.firstVisibleItemIndex
+        val currentValue = (currentIndex % count) + range.first
+        if (initialValue == 0 && currentValue != 0) {
+            listState.animateScrollToItem(middlePoint)
         }
     }
 
     LaunchedEffect(listState.firstVisibleItemIndex) {
-        onValueChange(listState.firstVisibleItemIndex + range.first)
+        val actualValue = (listState.firstVisibleItemIndex % count) + range.first
+        onValueChange(actualValue)
     }
 
     LazyColumn(
         state = listState,
         flingBehavior = flingBehavior,
         modifier = modifier
-            .height(180.dp) // Adjusted height
+            .height(180.dp)
             .width(88.dp),
-        contentPadding = PaddingValues(vertical = 60.dp), // Centering the active item
+        contentPadding = PaddingValues(vertical = 60.dp), // Centering the active item perfectly
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        items(range.last - range.first + 1) { index ->
-            val actualValue = index + range.first
+        items(Int.MAX_VALUE) { index ->
+            val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
             Box(
@@ -295,7 +310,7 @@ private fun WheelPicker(
             ) {
                 Numerals(
                     text = "%02d".format(actualValue),
-                    capHeight = if (isSelected) 56.dp else 36.dp, // Reduced font size for better fit
+                    capHeight = if (isSelected) 52.dp else 30.dp, // Reduced font sizes for perfect 3-row fit
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                     width = ClockFace.TIMER_WIDTH,
                     weight = ClockFace.TIMER_WEIGHT,
@@ -351,10 +366,10 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     )
 
     Surface(
-        shape = RoundedCornerShape(percent = 50), // Standard Pill Shape
+        shape = RoundedCornerShape(percent = 50), 
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(100.dp) // Fixed width for uniform look
+            .width(100.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
