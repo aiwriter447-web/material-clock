@@ -11,14 +11,14 @@
 
   <!-- Hour Hand (Scaled for Foreground) -->
   <path
-      android:strokeColor="#081026"
+      android:strokeColor="#191F4F"
       android:strokeWidth="12"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 41,46" />
 
   <!-- Minute Hand (Scaled for Foreground) -->
   <path
-      android:strokeColor="#EE4B8E"
+      android:strokeColor="#FFADEA"
       android:strokeWidth="6"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 70,40" />
