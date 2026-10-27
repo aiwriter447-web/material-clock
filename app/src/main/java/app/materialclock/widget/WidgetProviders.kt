@@ -21,7 +21,11 @@ enum class WidgetKind { ANALOG, DIGITAL, WORLD, ALARM }
 object WidgetProviders {
 
     private val classes: Map<WidgetKind, List<Class<*>>> = mapOf(
-        WidgetKind.ANALOG to listOf(AnalogClock2x1Provider::class.java, AnalogClock2x2Provider::class.java),
+        WidgetKind.ANALOG to listOf(
+            AnalogClock2x1Provider::class.java,
+            AnalogClock2x2Provider::class.java,
+            AnalogClock4x1Provider::class.java,
+        ),
         WidgetKind.DIGITAL to listOf(DigitalClock2x1Provider::class.java, DigitalClock2x2Provider::class.java, DigitalClock4x1Provider::class.java, DigitalClock4x2Provider::class.java),
         WidgetKind.WORLD to listOf(WorldClock2x1Provider::class.java, WorldClock2x2Provider::class.java, WorldClock4x1Provider::class.java, WorldClock4x2Provider::class.java),
         WidgetKind.ALARM to listOf(AlarmWidget2x1Provider::class.java, AlarmWidget2x2Provider::class.java, AlarmWidget4x1Provider::class.java, AlarmWidget4x2Provider::class.java),
@@ -52,6 +56,7 @@ object WidgetProviders {
 // One class per entry in the widget picker. Nothing to add: see the note above.
 class AnalogClock2x1Provider : ClockWidgetProvider()
 class AnalogClock2x2Provider : ClockWidgetProvider()
+class AnalogClock4x1Provider : ClockWidgetProvider()
 class DigitalClock2x1Provider : ClockWidgetProvider()
 class DigitalClock2x2Provider : ClockWidgetProvider()
 class DigitalClock4x1Provider : ClockWidgetProvider()
