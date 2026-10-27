@@ -43,7 +43,6 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -78,8 +77,6 @@ import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
 private const val RING_SIZE_DP = 300
-
-// We no longer need TimerField enum for typing, but keeping it if needed elsewhere
 enum class TimerField { HOURS, MINUTES, SECONDS }
 
 @Composable
@@ -88,7 +85,7 @@ fun TimersScreen(
     draft: Duration,
     nowElapsedMillis: Long,
     presets: List<TimerPreset>,
-    onDigit: (Char, TimerField) -> Unit, // Still used behind the scenes for sync
+    onDigit: (Char, TimerField) -> Unit, 
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
     onStart: () -> Unit,
@@ -114,7 +111,7 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onStart, presets, onStartPreset, onEditPreset, onAddPreset, contentPadding)
+            SetTimer(draft, onDigit, onBackspace, onStart, onStartPreset, onEditPreset, contentPadding)
         }
     }
 }
@@ -127,17 +124,14 @@ private fun SetTimer(
     onDigit: (Char, TimerField) -> Unit,
     onBackspace: () -> Unit,
     onStart: () -> Unit,
-    presets: List<TimerPreset>,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
-    onAddPreset: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     var hours by remember { mutableStateOf((draft.seconds / 3600).toInt()) }
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // Reset visually if cleared externally
     LaunchedEffect(draft.seconds) {
         if (draft.seconds == 0L) {
             hours = 0
@@ -148,11 +142,22 @@ private fun SetTimer(
 
     val armed = hours > 0 || mins > 0 || secs > 0
 
-    // Invisible sync function: feeds exact HH:MM:SS directly into the ViewModel's state
     val syncToViewModel = {
-        repeat(6) { onBackspace() } // Clear internal draft
+        repeat(6) { onBackspace() } 
         val digits = "%02d%02d%02d".format(hours, mins, secs)
         digits.forEach { onDigit(it, TimerField.SECONDS) }
+    }
+
+    // Default Hardcoded Presets, sorted from smallest to largest time
+    val defaultPresets = remember {
+        listOf(
+            TimerPreset(1L, "Short Break", 5 * 60),
+            TimerPreset(2L, "Long Break", 15 * 60),
+            TimerPreset(3L, "Focus", 25 * 60),
+            TimerPreset(4L, "Deep Work", 50 * 60),
+            TimerPreset(5L, "Study", 60 * 60),
+            TimerPreset(6L, "Sleep", 6 * 60 * 60)
+        ).sortedBy { it.totalSeconds }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -162,19 +167,18 @@ private fun SetTimer(
                 .verticalScroll(rememberScrollState())
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 88.dp // Extra space for FAB
+                    bottom = contentPadding.calculateBottomPadding() + 24.dp 
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(32.dp))
 
-            // Labels Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 val color = MaterialTheme.colorScheme.onSurfaceVariant
                 Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
                 Spacer(Modifier.width(16.dp))
@@ -185,7 +189,6 @@ private fun SetTimer(
 
             Spacer(Modifier.height(16.dp))
 
-            // Wheel Pickers Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -228,34 +231,24 @@ private fun SetTimer(
 
             Spacer(Modifier.height(48.dp))
 
-            // Presets Grid
-            if (presets.isNotEmpty()) {
-                PresetGrid(presets, onStartPreset, onEditPreset)
-                Spacer(Modifier.height(40.dp))
-            }
+            PresetGrid(defaultPresets, onStartPreset, onEditPreset)
+            
+            Spacer(Modifier.height(16.dp))
 
-            // Start Button at the bottom
+            Text(
+                text = "Long press a preset to edit it",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
                     syncToViewModel()
                     onStart()
                 })
             }
-        }
-
-        // Dedicated FAB for Timers Screen
-        FloatingActionButton(
-            onClick = onAddPreset,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    end = 24.dp, 
-                    bottom = contentPadding.calculateBottomPadding() + 24.dp
-                )
-        ) {
-            Icon(Icons.Rounded.Add, contentDescription = "Add Preset", modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -271,7 +264,6 @@ private fun WheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialValue)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Reset visually to 0 when clear is triggered externally
     LaunchedEffect(initialValue) {
         if (initialValue == 0 && listState.firstVisibleItemIndex != 0) {
             listState.animateScrollToItem(0)
@@ -286,26 +278,24 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = flingBehavior,
         modifier = modifier
-            .height(210.dp) // Exactly fits 3 items (70dp each)
+            .height(180.dp) // Adjusted height
             .width(88.dp),
-        // Padding forces one item to perfectly center in the viewport
-        contentPadding = PaddingValues(vertical = 70.dp), 
+        contentPadding = PaddingValues(vertical = 60.dp), // Centering the active item
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(range.last - range.first + 1) { index ->
             val actualValue = index + range.first
-            // Since viewport content size is 70dp, the top item IS the centered item
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
             Box(
                 modifier = Modifier
-                    .height(70.dp)
+                    .height(60.dp)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 Numerals(
                     text = "%02d".format(actualValue),
-                    capHeight = if (isSelected) 62.dp else 40.dp,
+                    capHeight = if (isSelected) 56.dp else 36.dp, // Reduced font size for better fit
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                     width = ClockFace.TIMER_WIDTH,
                     weight = ClockFace.TIMER_WEIGHT,
@@ -341,7 +331,15 @@ private fun PresetGrid(
 private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
     val totalMins = preset.totalSeconds / 60
     val secs = preset.totalSeconds % 60
-    val timeLabel = if (secs > 0) "$totalMins m $secs s" else "$totalMins min"
+    val timeLabel = if (totalMins >= 60) {
+        val h = totalMins / 60
+        val m = totalMins % 60
+        if (m > 0) "$h h $m m" else "$h h"
+    } else if (secs > 0) {
+        "$totalMins m $secs s"
+    } else {
+        "$totalMins min"
+    }
     
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -353,9 +351,10 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     )
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(percent = 50), // Standard Pill Shape
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
+            .width(100.dp) // Fixed width for uniform look
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -368,12 +367,12 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = preset.name,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
@@ -381,8 +380,10 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             Spacer(Modifier.height(2.dp))
             Text(
                 text = timeLabel,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
             )
         }
     }
