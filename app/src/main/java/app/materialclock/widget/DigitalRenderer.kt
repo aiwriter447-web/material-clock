@@ -59,6 +59,23 @@ object DigitalRenderer {
         val radiusPx: Float,
     )
 
+    /**
+     * How wide the widest time is, as a multiple of its type size, measured in the real font. The
+     * widest is "00:00" (or "00:00:00" with seconds); on a 12-hour clock AM/PM beside it adds
+     * [ampmEm] of the time's size plus a gap. The older guesses (2.95, 4.6) were too roomy, which is
+     * why the time came out smaller than the card allowed, most of all with seconds on.
+     */
+    private fun measureTimeWidthEm(context: Context, seconds: Boolean, ampmInline: Boolean, ampmEm: Float, gapEm: Float): Float {
+        val typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex)
+        fun em(text: String): Float = android.graphics.Paint().apply {
+            this.typeface = typeface
+            fontVariationSettings = "'wght' 700"
+            textSize = 100f
+        }.measureText(text) / 100f
+        val base = em(if (seconds) "00:00:00" else "00:00")
+        return base + if (ampmInline) gapEm + ampmEm * em("mm") else 0f
+    }
+
     private fun layoutFor(context: Context, config: WidgetConfig, w: Int, h: Int): Layout {
         val d = context.resources.displayMetrics.density
         val hDp = h / d
@@ -72,12 +89,12 @@ object DigitalRenderer {
         val is24 = DateFormat.is24HourFormat(context)
 
         // Rough width of the time string, in multiples of the text size: "12:45" is about 2.8.
-        val timeWidthEm = (if (config.digitalSeconds) 4.6f else 2.95f) + (if (is24 || stackLayout) 0f else 1.4f)
+        val timeWidthEm = measureTimeWidthEm(context, config.digitalSeconds, ampmInline = !(is24 || stackLayout), ampmEm = 0.46f, gapEm = 0.10f)
         val longRowDate = wDp >= 280f
         val byWidth = when {
-            rowLayout -> w * 0.54f
-            stackLayout -> w * 0.92f
-            else -> w * 0.88f
+            rowLayout -> w * 0.56f
+            stackLayout -> w * 0.94f
+            else -> w * 0.92f
         } / timeWidthEm
         val byHeight = when {
             rowLayout -> h * 0.58f
@@ -99,13 +116,12 @@ object DigitalRenderer {
             // The date is bigger on the square card, where there is room for it.
             datePx = min(
                 // Never wider than the card: even the longest date ("Wednesday, 30 September") fits.
-                // On a tall widget the time is huge and the date, sized from it, used to run off the
-                // sides and be cut.
                 w * 0.92f / ((if (if (rowLayout) longRowDate else wDp >= LONG_DATE_MIN_WIDTH_DP) 22f else 11f) * 0.56f),
+                // And always clearly smaller than the time: a third of it on the cards, 40% beside it.
                 when {
-                    rowLayout -> dateRowPx
-                    stackLayout -> time * 0.44f
-                    else -> time * 0.34f
+                    rowLayout -> min(dateRowPx, time * 0.40f)
+                    stackLayout -> time * 0.30f
+                    else -> time * 0.32f
                 },
             ),
             showDate = showDate,
