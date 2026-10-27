@@ -4,22 +4,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-  <!-- White circular dial -->
+  <!-- White Dial inside Safe Zone -->
   <path
       android:fillColor="#FFFFFF"
       android:pathData="M 54,26 A 28,28 0 1,1 53.9,26 Z" />
 
-  <!-- Blue needle: Thick (Width 16) and short -->
+  <!-- Hour Hand (Scaled for Foreground) -->
   <path
       android:strokeColor="#081026"
-      android:strokeWidth="16"
+      android:strokeWidth="14"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 40,62" />
+      android:pathData="M 54,54 L 41,46" />
 
-  <!-- Pink needle: Thin (Width 9) and long -->
+  <!-- Minute Hand (Scaled for Foreground) -->
   <path
       android:strokeColor="#EE4B8E"
-      android:strokeWidth="9"
+      android:strokeWidth="8"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 72,42" />
+      android:pathData="M 54,54 L 67,46" />
 </vector>
