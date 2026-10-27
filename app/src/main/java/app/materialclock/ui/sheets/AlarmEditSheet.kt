@@ -8,17 +8,11 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -43,14 +37,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,7 +54,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -70,7 +62,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TimePickerSelectionMode
 import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
@@ -88,6 +79,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,12 +88,10 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
-import app.materialclock.ui.theme.Numerals
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalTime
-import java.time.format.TextStyle
+import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,10 +116,9 @@ fun AlarmEditSheet(
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
     
-    var manualEntry by rememberSaveable(initial.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
+    
     LaunchedEffect(groups) {
         pendingNewGroupName?.let { pending ->
             groups.firstOrNull { it.name == pending }?.let {
@@ -214,86 +203,32 @@ fun AlarmEditSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = { 
-            scope.launch { sheetState.hide(); onDismiss() } 
-        },
+        onDismissRequest = { scope.launch { sheetState.hide(); onDismiss() } },
         sheetState = sheetState,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .imePadding()
+                .imePadding() // Solves Keyboard overlapping text field
                 .verticalScroll(scrollState)
                 .padding(bottom = 24.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Box(Modifier.fillMaxWidth().padding(horizontal = EDGE)) {
-                AnimatedContent(
-                    targetState = manualEntry,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220)))
-                            .using(SizeTransform(clip = false) { _, _ ->
-                                spring(
-                                    stiffness = Spring.StiffnessMediumLow,
-                                    dampingRatio = Spring.DampingRatioNoBouncy
-                                )
-                            })
-                    },
-                    label = "TimeInputModeAnim",
-                    modifier = Modifier.fillMaxWidth()
-                ) { isManual ->
-                    if (isManual) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            SwipeTimeEntry(state = timeState) 
-                            Spacer(Modifier.height(16.dp))
-                        }
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            WideTimeField(state = timeState)
-                            Spacer(Modifier.height(12.dp))
-                            
-                            var popScale by remember { mutableStateOf(1f) }
-                            LaunchedEffect(timeState.hour, timeState.minute) {
-                                popScale = 1.04f
-                                delay(60)
-                                popScale = 1f
-                            }
-                            val animatedPopScale by animateFloatAsState(
-                                targetValue = popScale,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                label = "dialPop"
-                            )
+            // The Ultimate Swipe Time Picker (Dial Removed)
+            SwipeTimeEntry(state = timeState)
+            
+            Spacer(Modifier.height(32.dp))
 
-                            PillDial(
-                                state = timeState,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        scaleX = animatedPopScale
-                                        scaleY = animatedPopScale
-                                    },
-                                onHourPicked = { timeState.selection = TimePickerSelectionMode.Minute },
-                            )
-                            Spacer(Modifier.height(16.dp))
-                        }
-                    }
-                }
-
-                ToggleIcon(
-                    isManual = manualEntry, 
-                    onToggle = { manualEntry = !manualEntry },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                )
-            }
-
-            DayToggles(
+            // New Beautiful Days Container
+            DayTogglesContainer(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
-                onToggle = { d -> days = if (d in days) days - d else days + d },
+                onToggle = { d -> days = if (d in days) days - d else days + d }
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
@@ -430,9 +365,7 @@ fun AlarmEditSheet(
                 )
 
                 OutlinedButton(
-                    onClick = { 
-                        scope.launch { sheetState.hide(); onDismiss() }
-                    },
+                    onClick = { scope.launch { sheetState.hide(); onDismiss() } },
                     interactionSource = cancelInteraction,
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     modifier = Modifier
@@ -475,147 +408,98 @@ fun AlarmEditSheet(
     }
 }
 
-@Composable
-private fun ToggleIcon(isManual: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
-    val iconInteraction = remember { MutableInteractionSource() }
-    val isIconPressed by iconInteraction.collectIsPressedAsState()
-    val iconScale by animateFloatAsState(
-        targetValue = if (isIconPressed) 0.80f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "iconScale"
-    )
-
-    IconButton(
-        onClick = onToggle,
-        interactionSource = iconInteraction,
-        modifier = modifier.graphicsLayer {
-            scaleX = iconScale
-            scaleY = iconScale
-        }
-    ) {
-        Icon(
-            imageVector = if (isManual) Icons.Rounded.Schedule else Icons.Rounded.SwipeVertical,
-            contentDescription = if (isManual) "Use dial" else "Use swipe picker",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WideTimeField(state: TimePickerState) {
-    val hour = if (state.is24hour) state.hour else ((state.hour % 12).takeIf { it != 0 } ?: 12)
-    val onHour = state.selection == TimePickerSelectionMode.Hour
-
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Hours",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
-            FieldPill(
-                text = "%02d".format(hour),
-                selected = onHour,
-                onClick = { state.selection = TimePickerSelectionMode.Hour },
-            )
-        }
-        
-        Text(
-            ":",
-            style = MaterialTheme.typography.displayMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp).padding(top = 28.dp),
-        )
-        
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Minutes",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
-            FieldPill(
-                text = "%02d".format(state.minute),
-                selected = !onHour,
-                onClick = { state.selection = TimePickerSelectionMode.Minute },
-            )
-        }
-
-        if (!state.is24hour) {
-            Spacer(Modifier.width(12.dp))
-            Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp), 
-                modifier = Modifier.padding(top = 28.dp)
-            ) {
-                MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
-                MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
-            }
-        }
-    }
-}
+// ---------------------------------------------------------
+// The Masterpiece Clean Swipe Picker (No Dial)
+// ---------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
+    val is24Hour = state.is24hour
+    
+    // Generate Items
+    val hoursList = if (is24Hour) (0..23).map { "%02d".format(it) } else (1..12).map { "%02d".format(it) }
+    val minutesList = (0..59).map { "%02d".format(it) }
+    val amPmList = listOf("am", "pm")
+
+    // Determine current indices based on TimePickerState
+    val currentHourIndex = if (is24Hour) state.hour else {
+        val h12 = (state.hour % 12).takeIf { it != 0 } ?: 12
+        h12 - 1
+    }
+    val currentAmPmIndex = if (state.hour < 12) 0 else 1
+
+    // Text Styles (Not bold, slightly larger)
+    val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
+    val numberStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Normal)
+    val amPmStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
+
     Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // HOURS Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Hours",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
+            Text(text = "Hours", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
             WheelPicker(
-                range = if (state.is24hour) 0..23 else 1..12,
-                value = if (state.is24hour) state.hour else ((state.hour % 12).takeIf { it != 0 } ?: 12),
-                onValueChanged = { newVal ->
-                    if (state.is24hour) {
-                        state.hour = newVal
+                items = hoursList,
+                selectedIndex = currentHourIndex,
+                textStyle = numberStyle,
+                onIndexChanged = { newIndex ->
+                    if (is24Hour) {
+                        state.hour = newIndex
                     } else {
+                        val newH12 = newIndex + 1
                         val isPm = state.hour >= 12
-                        state.hour = (newVal % 12) + if (isPm) 12 else 0
+                        state.hour = (newH12 % 12) + if (isPm) 12 else 0
                     }
                 }
             )
         }
 
+        // SEPARATOR
         Text(
-            ":",
-            style = MaterialTheme.typography.displayMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 28.dp)
+            text = ":",
+            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 32.dp)
         )
 
+        // MINUTES Column
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "Minutes",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
+            Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
             WheelPicker(
-                range = 0..59,
-                value = state.minute,
-                onValueChanged = { state.minute = it }
+                items = minutesList,
+                selectedIndex = state.minute,
+                textStyle = numberStyle,
+                onIndexChanged = { state.minute = it }
             )
         }
 
-        if (!state.is24hour) {
-            Spacer(Modifier.width(12.dp))
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 28.dp)
-            ) {
-                MeridiemChip("AM", state.hour < 12) { if (state.hour >= 12) state.hour -= 12 }
-                MeridiemChip("PM", state.hour >= 12) { if (state.hour < 12) state.hour += 12 }
+        // AM/PM Column (Only for 12-Hour Format, placed perfectly inline)
+        if (!is24Hour) {
+            Spacer(Modifier.width(16.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Invisible placeholder to keep AM/PM aligned with numbers (compensates for the Title height)
+                Text(text = " ", style = titleStyle) 
+                Spacer(Modifier.height(12.dp))
+                WheelPicker(
+                    items = amPmList,
+                    selectedIndex = currentAmPmIndex,
+                    textStyle = amPmStyle,
+                    onIndexChanged = { newIndex ->
+                        val isCurrentlyPm = state.hour >= 12
+                        val wantsPm = newIndex == 1
+                        if (wantsPm && !isCurrentlyPm) {
+                            state.hour += 12
+                        } else if (!wantsPm && isCurrentlyPm) {
+                            state.hour -= 12
+                        }
+                    }
+                )
             }
         }
     }
@@ -624,34 +508,31 @@ private fun SwipeTimeEntry(state: TimePickerState) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WheelPicker(
-    range: IntRange,
-    value: Int,
-    onValueChanged: (Int) -> Unit
+    items: List<String>,
+    selectedIndex: Int,
+    textStyle: TextStyle,
+    onIndexChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val items = range.toList()
     val virtualCount = 100_000 
     val initialCenter = virtualCount / 2
-    val initialIndex = initialCenter - (initialCenter % items.size) + items.indexOf(value).coerceAtLeast(0)
+    val initialIndex = initialCenter - (initialCenter % items.size) + selectedIndex.coerceAtLeast(0)
     
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }.collect { idx ->
             val realIndex = idx % items.size
-            if (realIndex in items.indices) {
-                val newVal = items[realIndex]
-                if (newVal != value) {
-                    onValueChanged(newVal)
-                }
+            if (realIndex != selectedIndex) {
+                onIndexChanged(realIndex)
             }
         }
     }
 
-    LaunchedEffect(value) {
+    LaunchedEffect(selectedIndex) {
         val currentRealIndex = listState.firstVisibleItemIndex % items.size
-        val targetRealIndex = items.indexOf(value)
-        if (currentRealIndex != targetRealIndex && targetRealIndex >= 0) {
-            var diff = targetRealIndex - currentRealIndex
+        if (currentRealIndex != selectedIndex) {
+            var diff = selectedIndex - currentRealIndex
             if (diff > items.size / 2) diff -= items.size
             else if (diff < -items.size / 2) diff += items.size
             
@@ -664,20 +545,20 @@ private fun WheelPicker(
     LazyColumn(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
-        modifier = Modifier
-            .height(200.dp) 
-            .width(100.dp),
-        contentPadding = PaddingValues(vertical = 75.dp),
+        modifier = modifier
+            .height(240.dp) // Keeps the tall, roomy height similar to Pic 3
+            .width(80.dp),
+        contentPadding = PaddingValues(vertical = 95.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
             val realIndex = index % items.size
-            val itemValue = items[realIndex]
+            val itemText = items[realIndex]
             val isSelected = index == firstVisible
             
-            val alpha by animateFloatAsState(if (isSelected) 1f else 0.3f, label = "alpha")
+            val alpha by animateFloatAsState(if (isSelected) 1f else 0.25f, label = "alpha")
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.08f else 0.85f, 
+                targetValue = if (isSelected) 1.05f else 0.8f, 
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
@@ -689,10 +570,8 @@ private fun WheelPicker(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "%02d".format(itemValue),
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    ),
+                    text = itemText,
+                    style = textStyle,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
@@ -704,99 +583,116 @@ private fun WheelPicker(
     }
 }
 
+// ---------------------------------------------------------
+// Beautiful Days Container with Calendar Text
+// ---------------------------------------------------------
+
 @Composable
-private fun FieldPill(text: String, selected: Boolean, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "fieldPillPressScale"
-    )
-    
-    val selectionScale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "fieldPillSelectionScale"
-    )
-
-    val targetContainer = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-    val targetContent = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-
-    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "pillContainer")
-    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "pillContent")
-
-    Surface(
-        color = containerColor,
-        shape = CircleShape,
-        onClick = onClick,
-        interactionSource = interactionSource,
-        modifier = Modifier.graphicsLayer {
-            scaleX = pressScale * selectionScale
-            scaleY = pressScale * selectionScale
-        }
-    ) {
-        Box(Modifier.padding(horizontal = 24.dp, vertical = 18.dp)) {
-            Numerals(
-                text = text,
-                capHeight = 40.dp, // Increased size for better readability
-                color = contentColor,
-                width = 170f, 
-                weight = 500, 
-            )
+private fun DayTogglesContainer(
+    order: List<DayOfWeek>,
+    selected: Set<DayOfWeek>,
+    onToggle: (DayOfWeek) -> Unit
+) {
+    val dayText = remember(selected) {
+        when {
+            selected.size == 7 -> "Every day"
+            selected.isEmpty() -> "Not repeating"
+            selected == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
+            selected == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
+            else -> {
+                val sortedDays = selected.sortedBy { it.value } // Order mathematically 1(Mon)-7(Sun)
+                "Every " + sortedDays.joinToString(", ") { it.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) }
+            }
         }
     }
-}
-
-@Composable
-private fun MeridiemChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "meridiemPressScale"
-    )
-    val selectionScale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "meridiemSelectionScale"
-    )
-
-    val targetContainer = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-    val targetContent = if (selected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-
-    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "meridiemBg")
-    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "meridiemFg")
 
     Surface(
-        modifier = Modifier
-            .height(38.dp) 
-            .width(52.dp)  
-            .graphicsLayer {
-                scaleX = pressScale * selectionScale
-                scaleY = pressScale * selectionScale
-            }, 
-        color = containerColor,
-        contentColor = contentColor,
-        shape = CircleShape,
-        onClick = onClick,
-        interactionSource = interactionSource,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)
         ) {
-            Text(
-                text = text, 
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = dayText, 
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth, 
+                    contentDescription = "Calendar",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            
+            // Days Row
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                order.forEach { day ->
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val isChecked = day in selected
+
+                    val pressScale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.85f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                        label = "dayTogglePressScale"
+                    )
+                    
+                    val selectionScale by animateFloatAsState(
+                        targetValue = if (isChecked) 1.05f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                        label = "dayToggleSelectionScale"
+                    )
+
+                    val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer
+                    val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+                    val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
+                    val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
+
+                    Surface(
+                        onClick = { onToggle(day) },
+                        interactionSource = interactionSource,
+                        shape = CircleShape,
+                        color = containerColor,
+                        contentColor = contentColor,
+                        modifier = Modifier
+                            .size(44.dp) // Adjusted to fit beautifully inside the card
+                            .graphicsLayer {
+                                scaleX = pressScale * selectionScale
+                                scaleY = pressScale * selectionScale
+                            }
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                day.getDisplayName(JavaTextStyle.NARROW, Locale.getDefault()),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
+
+// ---------------------------------------------------------
+// Remaining Helpers
+// ---------------------------------------------------------
 
 @Composable
 private fun GroupPicker(
@@ -899,82 +795,7 @@ private fun GroupPicker(
 
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
-private val FIELD_CAP = 36.dp
-private val FIELD_PAD_V = 16.dp
-
 const val SILENT = "silent"
-
-const val SHEET_MAX_FRACTION = 0.88f
-
-@Composable
-private fun ringtoneName(uri: String?): String {
-    val context = LocalContext.current
-    return remember(uri) {
-        when {
-            uri == null -> "Default sound"
-            uri == SILENT -> "Silent"
-            else -> runCatching {
-                RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
-            }.getOrNull() ?: "Default sound"
-        }
-    }
-}
-
-@Composable
-private fun DayToggles(order: List<DayOfWeek>, selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = EDGE - 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        order.forEach { day ->
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val isChecked = day in selected
-
-            val pressScale by animateFloatAsState(
-                targetValue = if (isPressed) 0.85f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                label = "dayTogglePressScale"
-            )
-            
-            val selectionScale by animateFloatAsState(
-                targetValue = if (isChecked) 1.05f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                label = "dayToggleSelectionScale"
-            )
-
-            val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
-            val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-
-            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
-            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
-
-            Surface(
-                onClick = { onToggle(day) },
-                interactionSource = interactionSource,
-                shape = CircleShape,
-                color = containerColor,
-                contentColor = contentColor,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp)
-                    .graphicsLayer {
-                        scaleX = pressScale * selectionScale
-                        scaleY = pressScale * selectionScale
-                    }
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-        }
-    }
-}
 
 fun systemFirstDay(): DayOfWeek =
     java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
