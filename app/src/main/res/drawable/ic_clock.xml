@@ -4,23 +4,27 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+  <!-- Dark navy squircle background -->
   <path
       android:fillColor="#081026"
       android:pathData="M 54,4 C 88,4 104,20 104,54 C 104,88 88,104 54,104 C 20,104 4,88 4,54 C 4,20 20,4 54,4 Z" />
 
+  <!-- White circular dial -->
   <path
       android:fillColor="#FFFFFF"
       android:pathData="M 54,20 A 34,34 0 1,1 53.9,20 Z" />
 
+  <!-- Blue needle: Very thick (Width 20) and short, pointing toward the bottom-left -->
   <path
       android:strokeColor="#081026"
-      android:strokeWidth="14"
+      android:strokeWidth="20"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 35,65" />
+      android:pathData="M 54,54 L 35,64" />
 
+  <!-- Pink needle: Thin (Width 11) and long, pointing toward the top-right -->
   <path
       android:strokeColor="#EE4B8E"
-      android:strokeWidth="12"
+      android:strokeWidth="11"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 76,40" />
+      android:pathData="M 54,54 L 77,39" />
 </vector>
