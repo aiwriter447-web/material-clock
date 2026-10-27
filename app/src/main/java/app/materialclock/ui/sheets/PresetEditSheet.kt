@@ -7,108 +7,116 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.materialclock.core.TimerPreset
 
-private const val MIN_MINUTES = 1
-private const val MAX_MINUTES = 180
-
-/**
- * Add or edit a [TimerPreset]. `initial.id == 0` is a new preset — the same "0 means insert"
- * convention [AlarmEditSheet] uses — and is the only case with no Delete button, since there is
- * nothing on disk yet to delete.
- *
- * No live-commit here unlike the alarm sheet: a preset is two fields and a much smaller
- * accidental-dismiss cost, so the simpler rule — only the Save button writes anything — is the
- * clearer contract for something this small.
- */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PresetEditSheet(
     initial: TimerPreset,
     onDismiss: () -> Unit,
     onSave: (TimerPreset) -> Unit,
-    onDelete: ((Long) -> Unit)?,
+    onDelete: ((Long) -> Unit)? = null // No longer used in UI, but kept in signature to not break other files
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var name by rememberSaveable(initial.id) { mutableStateOf(initial.name) }
-    var minutes by rememberSaveable(initial.id) {
-        mutableStateOf((initial.totalSeconds / 60).coerceIn(MIN_MINUTES, MAX_MINUTES))
-    }
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 4.dp).padding(bottom = 20.dp)) {
+    var name by remember(initial.name) { mutableStateOf(initial.name) }
+    var mins by remember(initial.totalSeconds) { mutableIntStateOf(initial.totalSeconds / 60) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = state,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+        ) {
+            Text(
+                text = if (initial.id == 0L) "New Preset" else "Edit Preset",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Name") },
-                placeholder = { Text("Study, Deep work, Break…") },
                 singleLine = true,
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(16.dp))
 
-            // Minutes only, not the full h:m:s field the timer itself uses: a preset is a length
-            // you reuse often, and that is a round number of minutes in practice far more often
-            // than it is an exact number of seconds.
+            Spacer(Modifier.height(24.dp))
+
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = { minutes = (minutes - 1).coerceIn(MIN_MINUTES, MAX_MINUTES) }) {
-                    Text("−", style = MaterialTheme.typography.headlineMedium)
+                IconButton(onClick = { if (mins > 1) mins-- }) {
+                    Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
                 }
+
                 Text(
-                    "$minutes min",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp),
+                    text = "$mins min",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
-                IconButton(onClick = { minutes = (minutes + 1).coerceIn(MIN_MINUTES, MAX_MINUTES) }) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
+
+                IconButton(onClick = { if (mins < 99) mins++ }) {
+                    Icon(Icons.Rounded.Add, contentDescription = "Increase")
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(32.dp))
+
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                if (onDelete != null) {
-                    IconButton(onClick = { onDelete(initial.id); onDismiss() }) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "Delete preset")
-                    }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
                 }
-                Spacer(Modifier.weight(1f))
-                OutlinedButton(onClick = onDismiss) { Text("Cancel") }
-                FilledTonalButton(
+                Spacer(Modifier.width(8.dp))
+                Button(
                     onClick = {
-                        if (name.isNotBlank()) {
-                            onSave(initial.copy(name = name.trim(), totalSeconds = minutes * 60))
+                        if (name.isNotBlank() && mins > 0) {
+                            onSave(initial.copy(name = name.trim(), totalSeconds = mins * 60))
+                            onDismiss()
                         }
-                        onDismiss()
                     },
-                ) { Text("Save") }
+                    enabled = name.isNotBlank() && mins > 0
+                ) {
+                    Text("Save")
+                }
             }
         }
     }
