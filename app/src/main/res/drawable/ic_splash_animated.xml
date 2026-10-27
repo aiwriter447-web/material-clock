@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The start-up icon, with its hands turning. Android runs this animation on the render thread, so it
+  keeps moving even while the app's own screen is still being built; the old still icon looked
+  frozen for exactly that long.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_splash_clock">
+    <target
+        android:name="minute"
+        android:animation="@animator/splash_minute" />
+    <target
+        android:name="hour"
+        android:animation="@animator/splash_hour" />
+</animated-vector>
