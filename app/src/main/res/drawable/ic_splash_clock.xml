@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The clock shown while the app starts: a white face and two hands. The hands are named groups so
+  ic_splash_animated can turn them. Everything sits inside the central 192dp circle of the 288dp
+  box, the only part Android 12's start-up screen shows.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M144,144 m-92,0 a92,92 0 1,0 184,0 a92,92 0 1,0 -184,0" />
+    <group
+        android:name="hour"
+        android:pivotX="144"
+        android:pivotY="144">
+        <path
+            android:strokeColor="#F7B8D7"
+            android:strokeWidth="24"
+            android:strokeLineCap="round"
+            android:pathData="M144,144 L104,120" />
+    </group>
+    <group
+        android:name="minute"
+        android:pivotX="144"
+        android:pivotY="144">
+        <path
+            android:strokeColor="#161D45"
+            android:strokeWidth="24"
+            android:strokeLineCap="round"
+            android:pathData="M144,144 L204,108" />
+    </group>
+    <path
+        android:fillColor="#161D45"
+        android:pathData="M144,144 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M144,144 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+</vector>
