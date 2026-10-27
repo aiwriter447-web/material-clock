@@ -11,13 +11,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,25 +30,27 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,10 +78,8 @@ import app.materialclock.ui.theme.Numerals
 import java.time.Duration
 
 private const val RING_SIZE_DP = 300
-// Reduced keypad size to give more room at the top
-private val KEY_HEIGHT = 56.dp
-private val KEYPAD_SPACING = 12.dp
 
+// We no longer need TimerField enum for typing, but keeping it if needed elsewhere
 enum class TimerField { HOURS, MINUTES, SECONDS }
 
 @Composable
@@ -86,7 +88,7 @@ fun TimersScreen(
     draft: Duration,
     nowElapsedMillis: Long,
     presets: List<TimerPreset>,
-    onDigit: (Char, TimerField) -> Unit,
+    onDigit: (Char, TimerField) -> Unit, // Still used behind the scenes for sync
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
     onStart: () -> Unit,
@@ -107,13 +109,12 @@ fun TimersScreen(
                 SizeTransform(clip = false)
         },
         label = "timer-state",
-        // Removed global padding here to fix the dock cut-off issue
         modifier = modifier.fillMaxSize(),
     ) { running ->
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onWind, onStart, presets, onStartPreset, onEditPreset, onAddPreset, contentPadding)
+            SetTimer(draft, onDigit, onBackspace, onStart, presets, onStartPreset, onEditPreset, onAddPreset, contentPadding)
         }
     }
 }
@@ -125,7 +126,6 @@ private fun SetTimer(
     draft: Duration,
     onDigit: (Char, TimerField) -> Unit,
     onBackspace: () -> Unit,
-    onWind: (Int) -> Unit,
     onStart: () -> Unit,
     presets: List<TimerPreset>,
     onStartPreset: (TimerPreset) -> Unit,
@@ -133,166 +133,205 @@ private fun SetTimer(
     onAddPreset: () -> Unit,
     contentPadding: PaddingValues,
 ) {
-    var selectedField by remember { mutableStateOf(TimerField.SECONDS) }
+    var hours by remember { mutableStateOf((draft.seconds / 3600).toInt()) }
+    var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
+    var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // Independent 2-digit state for each field
-    var hStr by remember { mutableStateOf("%02d".format(draft.seconds / 3600)) }
-    var mStr by remember { mutableStateOf("%02d".format((draft.seconds % 3600) / 60)) }
-    var sStr by remember { mutableStateOf("%02d".format(draft.seconds % 60)) }
-
-    // Reset local strings if timer is cancelled or fully cleared externally
+    // Reset visually if cleared externally
     LaunchedEffect(draft.seconds) {
         if (draft.seconds == 0L) {
-            hStr = "00"
-            mStr = "00"
-            sStr = "00"
+            hours = 0
+            mins = 0
+            secs = 0
         }
     }
 
-    val armed = (hStr.toLongOrNull() ?: 0L) > 0 || (mStr.toLongOrNull() ?: 0L) > 0 || (sStr.toLongOrNull() ?: 0L) > 0
+    val armed = hours > 0 || mins > 0 || secs > 0
 
-    // Synchronize independent local entries with the ViewModel's underlying microwave logic
+    // Invisible sync function: feeds exact HH:MM:SS directly into the ViewModel's state
     val syncToViewModel = {
-        repeat(6) { onBackspace() }
-        (hStr + mStr + sStr).forEach { onDigit(it, TimerField.SECONDS) }
+        repeat(6) { onBackspace() } // Clear internal draft
+        val digits = "%02d%02d%02d".format(hours, mins, secs)
+        digits.forEach { onDigit(it, TimerField.SECONDS) }
     }
 
-    val handleDigit = { digit: Char ->
-        when (selectedField) {
-            TimerField.HOURS -> hStr = (hStr + digit).takeLast(2)
-            TimerField.MINUTES -> mStr = (mStr + digit).takeLast(2)
-            TimerField.SECONDS -> sStr = (sStr + digit).takeLast(2)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    top = contentPadding.calculateTopPadding(),
+                    bottom = contentPadding.calculateBottomPadding() + 88.dp // Extra space for FAB
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(32.dp))
+
+            // Labels Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                val color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
+                Spacer(Modifier.width(16.dp))
+                Text("Minutes", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
+                Spacer(Modifier.width(16.dp))
+                Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Wheel Pickers Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val colonColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                
+                WheelPicker(
+                    range = 0..99,
+                    initialValue = hours,
+                    onValueChange = { hours = it; syncToViewModel() }
+                )
+                
+                Text(
+                    text = ":", 
+                    style = MaterialTheme.typography.displayMedium, 
+                    color = colonColor, 
+                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
+                )
+                
+                WheelPicker(
+                    range = 0..59,
+                    initialValue = mins,
+                    onValueChange = { mins = it; syncToViewModel() }
+                )
+                
+                Text(
+                    text = ":", 
+                    style = MaterialTheme.typography.displayMedium, 
+                    color = colonColor, 
+                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
+                )
+                
+                WheelPicker(
+                    range = 0..59,
+                    initialValue = secs,
+                    onValueChange = { secs = it; syncToViewModel() }
+                )
+            }
+
+            Spacer(Modifier.height(48.dp))
+
+            // Presets Grid
+            if (presets.isNotEmpty()) {
+                PresetGrid(presets, onStartPreset, onEditPreset)
+                Spacer(Modifier.height(40.dp))
+            }
+
+            // Start Button at the bottom
+            Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
+                AnimatedStartButton(armed = armed, onClick = {
+                    syncToViewModel()
+                    onStart()
+                })
+            }
         }
-        syncToViewModel()
-    }
 
-    val handleBackspace = {
-        when (selectedField) {
-            TimerField.HOURS -> hStr = ("0" + hStr.dropLast(1)).takeLast(2)
-            TimerField.MINUTES -> mStr = ("0" + mStr.dropLast(1)).takeLast(2)
-            TimerField.SECONDS -> sStr = ("0" + sStr.dropLast(1)).takeLast(2)
+        // Dedicated FAB for Timers Screen
+        FloatingActionButton(
+            onClick = onAddPreset,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 24.dp, 
+                    bottom = contentPadding.calculateBottomPadding() + 24.dp
+                )
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = "Add Preset", modifier = Modifier.size(28.dp))
         }
-        syncToViewModel()
-    }
-
-    val handleClearAll = {
-        hStr = "00"
-        mStr = "00"
-        sStr = "00"
-        onWind(0)
-        syncToViewModel()
-        selectedField = TimerField.SECONDS
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            // Top and Bottom padding applied inside the scrollable container fixes the floating dock overlap
-            .padding(
-                top = contentPadding.calculateTopPadding(),
-                bottom = contentPadding.calculateBottomPadding()
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(42.dp))
-
-        DraftReadout(
-            hh = hStr,
-            mm = mStr,
-            ss = sStr,
-            selectedField = selectedField,
-            onFieldSelect = { selectedField = it },
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        Keypad(
-            onDigit = handleDigit,
-            onBackspace = handleBackspace,
-            onClearAll = handleClearAll,
-            modifier = Modifier.padding(horizontal = 32.dp)
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
-            AnimatedStartButton(armed = armed, onClick = onStart)
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        PresetRow(presets, onStartPreset, onEditPreset, onAddPreset)
-
-        Spacer(Modifier.height(16.dp))
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PresetRow(
+private fun WheelPicker(
+    range: IntRange,
+    initialValue: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialValue)
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    // Reset visually to 0 when clear is triggered externally
+    LaunchedEffect(initialValue) {
+        if (initialValue == 0 && listState.firstVisibleItemIndex != 0) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        onValueChange(listState.firstVisibleItemIndex + range.first)
+    }
+
+    LazyColumn(
+        state = listState,
+        flingBehavior = flingBehavior,
+        modifier = modifier
+            .height(210.dp) // Exactly fits 3 items (70dp each)
+            .width(88.dp),
+        // Padding forces one item to perfectly center in the viewport
+        contentPadding = PaddingValues(vertical = 70.dp), 
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items(range.last - range.first + 1) { index ->
+            val actualValue = index + range.first
+            // Since viewport content size is 70dp, the top item IS the centered item
+            val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
+
+            Box(
+                modifier = Modifier
+                    .height(70.dp)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Numerals(
+                    text = "%02d".format(actualValue),
+                    capHeight = if (isSelected) 62.dp else 40.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                    width = ClockFace.TIMER_WIDTH,
+                    weight = ClockFace.TIMER_WEIGHT,
+                    slashedZero = true
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PresetGrid(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
-    onEdit: (TimerPreset) -> Unit,
-    onAdd: () -> Unit
+    onEdit: (TimerPreset) -> Unit
 ) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        // Changed horizontal to start and end for correct PaddingValues syntax
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        item {
-            PresetAddChip(onClick = onAdd)
-        }
-        items(presets, key = { it.id }) { preset ->
-            PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
-        }
-    }
-}
-
-@Composable
-private fun PresetAddChip(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "presetAddScale"
-    )
-
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                Icons.Rounded.Add, 
-                contentDescription = "New Preset", 
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "New",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        presets.forEach { preset ->
+            PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
         }
     }
 }
@@ -300,7 +339,10 @@ private fun PresetAddChip(onClick: () -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
-    val minutes = preset.totalSeconds / 60
+    val totalMins = preset.totalSeconds / 60
+    val secs = preset.totalSeconds % 60
+    val timeLabel = if (secs > 0) "$totalMins m $secs s" else "$totalMins min"
+    
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -311,8 +353,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     )
 
     Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .graphicsLayer {
                 scaleX = scale
@@ -326,205 +368,23 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = preset.name,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
             )
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = "$minutes min",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                text = timeLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun DraftReadout(
-    hh: String,
-    mm: String,
-    ss: String,
-    selectedField: TimerField,
-    onFieldSelect: (TimerField) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val cap = 64.dp
-    val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp)
-    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.32f)
-    val activeColor = MaterialTheme.colorScheme.onSurface
-    val highlightColor = MaterialTheme.colorScheme.primary
-
-    val hColor by animateColorAsState(if (selectedField == TimerField.HOURS) highlightColor else if (hh != "00") activeColor else inactiveColor, label = "hColor")
-    val mColor by animateColorAsState(if (selectedField == TimerField.MINUTES) highlightColor else if (mm != "00") activeColor else inactiveColor, label = "mColor")
-    val sColor by animateColorAsState(if (selectedField == TimerField.SECONDS) highlightColor else if (ss != "00") activeColor else inactiveColor, label = "sColor")
-
-    val fieldWidth = 88.dp
-    val colonWidth = 24.dp
-    val interactionSource = remember { MutableInteractionSource() }
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Labels row structured independently so numerals don't jump when labels change position
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Hours", style = labelStyle, color = hColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
-            Spacer(Modifier.width(colonWidth))
-            Text("Minutes", style = labelStyle, color = mColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
-            Spacer(Modifier.width(colonWidth))
-            Text("Seconds", style = labelStyle, color = sColor, modifier = Modifier.width(fieldWidth), textAlign = TextAlign.Center)
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        // Values Row perfectly aligned with Colons
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.clearAndSetSemantics { contentDescription = "$hh hours, $mm minutes, $ss seconds" }
-        ) {
-            Box(
-                Modifier
-                    .width(fieldWidth)
-                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.HOURS) },
-                contentAlignment = Alignment.Center
-            ) {
-                Numerals(text = hh, capHeight = cap, color = hColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-            }
-            Box(Modifier.width(colonWidth), contentAlignment = Alignment.Center) {
-                Text(":", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.offset(y = (-6).dp))
-            }
-            Box(
-                Modifier
-                    .width(fieldWidth)
-                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.MINUTES) },
-                contentAlignment = Alignment.Center
-            ) {
-                Numerals(text = mm, capHeight = cap, color = mColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-            }
-            Box(Modifier.width(colonWidth), contentAlignment = Alignment.Center) {
-                Text(":", style = MaterialTheme.typography.displayMedium, color = inactiveColor, modifier = Modifier.offset(y = (-6).dp))
-            }
-            Box(
-                Modifier
-                    .width(fieldWidth)
-                    .clickable(interactionSource = interactionSource, indication = null) { onFieldSelect(TimerField.SECONDS) },
-                contentAlignment = Alignment.Center
-            ) {
-                Numerals(text = ss, capHeight = cap, color = sColor, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-            }
-        }
-    }
-}
-
-@Composable
-private fun Keypad(
-    onDigit: (Char) -> Unit,
-    onBackspace: () -> Unit,
-    onClearAll: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val rows = listOf("123", "456", "789")
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(KEYPAD_SPACING),
-    ) {
-        rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KEYPAD_SPACING)) {
-                row.forEach { c -> DigitKey(c, onDigit, Modifier.weight(1f)) }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KEYPAD_SPACING)) {
-            KeyBox(
-                modifier = Modifier.weight(1f),
-                onClick = onClearAll,
-                container = MaterialTheme.colorScheme.errorContainer,
-                label = "Clear",
-            ) {
-                Text(
-                    "C",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-
-            DigitKey('0', onDigit, Modifier.weight(1f))
-
-            KeyBox(
-                modifier = Modifier.weight(1f),
-                onClick = onBackspace,
-                container = MaterialTheme.colorScheme.surfaceContainerHighest,
-                label = "Delete",
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.Backspace,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DigitKey(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = Modifier) {
-    KeyBox(
-        modifier = modifier,
-        onClick = { onDigit(digit) },
-        container = MaterialTheme.colorScheme.surfaceContainer,
-        label = digit.toString()
-    ) {
-        Text(
-            digit.toString(),
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontFamily = ClockFace.family(opticalSize = 28f, width = 100f, weight = 500)
-            ),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun KeyBox(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    container: Color,
-    label: String,
-    content: @Composable () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "keyBoxScale"
-    )
-
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        color = container,
-        shape = CircleShape,
-        modifier = modifier
-            .height(KEY_HEIGHT)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clearAndSetSemantics { contentDescription = label }
-    ) {
-        Box(contentAlignment = Alignment.Center) { content() }
     }
 }
 
@@ -557,7 +417,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .height(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
