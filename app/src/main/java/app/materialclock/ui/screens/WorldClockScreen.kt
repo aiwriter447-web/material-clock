@@ -166,7 +166,8 @@ fun WorldClockScreen(
                             showSeconds = settings.showSeconds,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp),
+                                // Increased bottom padding to 12.dp for extra gap
+                                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                         )
                     } else {
                         CityDial(
@@ -175,8 +176,8 @@ fun WorldClockScreen(
                             measurer = measurer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // Bottom padding removed to match standard list spacing
-                                .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 0.dp)
+                                // Increased bottom padding to 12.dp for extra gap
+                                .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 12.dp)
                                 .aspectRatio(1f),
                         )
                     }
@@ -286,7 +287,7 @@ private fun HomeDigitalClock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 32.dp, bottom = 0.dp), // Bottom padding removed for correct alignment
+            .padding(top = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -444,13 +445,17 @@ private fun CityRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Bouncy scale animation for a "living" reactive feel
+    // Bouncy scale animation for a "living" reactive feel - Updated for fast taps
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f, // Increased scale reduction
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy, // Made it bouncier
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        targetValue = if (isPressed) 0.90f else 1f, 
+        animationSpec = if (isPressed) {
+            spring(stiffness = Spring.StiffnessHigh) // Instantly shrink on touch
+        } else {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy, 
+                stiffness = Spring.StiffnessMediumLow
+            ) // Bounce back smoothly on release
+        },
         label = "cityRowScale"
     )
 
@@ -510,10 +515,9 @@ private fun CityRow(
             }
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = null, // Custom animation replacing default ripple
+                indication = null, 
                 onClick = { 
                     if (inSelectionMode) onToggleSelect() 
-                    // Empty block for normal mode to still capture press events for the animation
                 },
                 onLongClick = { onToggleSelect() }
             )
@@ -521,7 +525,7 @@ private fun CityRow(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 8.dp), // Reduced vertical padding to fit content in new height
+                .padding(horizontal = 20.dp, vertical = 8.dp), 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
