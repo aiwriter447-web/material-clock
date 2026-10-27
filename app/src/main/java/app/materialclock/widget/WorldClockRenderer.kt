@@ -220,11 +220,12 @@ object WorldClockRenderer {
         fun panel(side: Side, color: Int, city: Int, date: Int, time: Int, ampm: Int) {
             views.setTextViewText(city, side.label)
             views.setTextColor(city, color)
-            // A name too long for its half is shrunk until it fits (down to 60% of its size), and
-            // only then cut with "...". Scrolling text cannot be had in a widget: the launcher
+            // A name too long for its half is shrunk until it fits, and only then cut with "...".
+            // It gets 80% of the half, not all of it: the capsule's rounded ends cut into the top
+            // corners, so a name that fills its half pokes out past the curve. Scrolling text cannot be had in a widget: the launcher
             // decides when a view moves, and asking for it (setSelected) is not allowed on a
             // widget's views, which made the whole widget fail to load.
-            views.setTextViewTextSize(city, TypedValue.COMPLEX_UNIT_PX, fitCityPx(context, side.label, cityPx, panelW * 0.92f))
+            views.setTextViewTextSize(city, TypedValue.COMPLEX_UNIT_PX, fitCityPx(context, side.label, cityPx, panelW * 0.80f))
 
             views.setString(time, "setTimeZone", side.zone.id)
             views.setCharSequence(time, "setFormat12Hour", if (is24) "HH:mm" else "h:mm")
