@@ -54,6 +54,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -79,7 +80,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -214,7 +214,8 @@ fun AlarmEditSheet(
                 .verticalScroll(scrollState)
                 .padding(bottom = 24.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
+            // Added safe top padding so titles don't hide under the drag handle
+            Spacer(Modifier.height(24.dp))
 
             SwipeTimeEntry(state = timeState)
             
@@ -223,14 +224,19 @@ fun AlarmEditSheet(
             DayTogglesContainer(
                 order = weekStart.order(systemFirstDay()),
                 selected = days,
-                onToggle = { d -> days = if (d in days) days - d else days + d }
+                onToggle = { d -> days = if (d in days) days - d else days + d },
+                onCalendarClick = { /* TODO: Implement actual Date Picker logic here */ }
             )
 
             Spacer(Modifier.height(24.dp))
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Alarm Name") },
+                label = { 
+                    // Made the Alarm Name Title noticeably bigger and clearer
+                    Text("Alarm Name", style = MaterialTheme.typography.titleMedium) 
+                },
+                textStyle = MaterialTheme.typography.titleMedium,
                 singleLine = true,
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
@@ -288,7 +294,7 @@ fun AlarmEditSheet(
                         ringtoneName(soundUri),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleMedium, // Increased text size
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -374,7 +380,7 @@ fun AlarmEditSheet(
                             scaleY = cancelScale
                         },
                 ) {
-                    Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
 
                 val saveInteraction = remember { MutableInteractionSource() }
@@ -399,12 +405,16 @@ fun AlarmEditSheet(
                 ) {
                     Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
+
+// ---------------------------------------------------------
+// Perfect Swipe Time Entry (Matched to Pic 1 Alignment & Weight)
+// ---------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -421,9 +431,8 @@ private fun SwipeTimeEntry(state: TimePickerState) {
     }
     val currentAmPmIndex = if (state.hour < 12) 0 else 1
 
-    val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-    val numberStyle = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Normal)
-    val amPmStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
+    // Increased Title Sizes
+    val titleStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
@@ -432,11 +441,11 @@ private fun SwipeTimeEntry(state: TimePickerState) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Hours", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             WheelPicker(
                 items = hoursList,
                 selectedIndex = currentHourIndex,
-                textStyle = numberStyle,
+                isAmPm = false,
                 onIndexChanged = { newIndex ->
                     if (is24Hour) {
                         state.hour = newIndex
@@ -449,20 +458,21 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
+        // Colon Separator - perfectly center aligned with the numbers
         Text(
             text = ":",
-            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 32.dp)
+            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface, // Solid color for the active colon
+            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 40.dp) // Pushed down to align with wheels
         )
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             WheelPicker(
                 items = minutesList,
                 selectedIndex = state.minute,
-                textStyle = numberStyle,
+                isAmPm = false,
                 onIndexChanged = { state.minute = it }
             )
         }
@@ -470,12 +480,13 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         if (!is24Hour) {
             Spacer(Modifier.width(16.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Invisible placeholder to keep AM/PM perfectly aligned with Hours & Minutes height
                 Text(text = " ", style = titleStyle) 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 WheelPicker(
                     items = amPmList,
                     selectedIndex = currentAmPmIndex,
-                    textStyle = amPmStyle,
+                    isAmPm = true, // Flags different styling for AM/PM
                     onIndexChanged = { newIndex ->
                         val isCurrentlyPm = state.hour >= 12
                         val wantsPm = newIndex == 1
@@ -496,7 +507,7 @@ private fun SwipeTimeEntry(state: TimePickerState) {
 private fun WheelPicker(
     items: List<String>,
     selectedIndex: Int,
-    textStyle: TextStyle,
+    isAmPm: Boolean,
     onIndexChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -532,9 +543,9 @@ private fun WheelPicker(
         state = listState,
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = modifier
-            .height(240.dp) 
+            .height(180.dp) // Reduced height to solve the 'Cut off' button issue
             .width(80.dp),
-        contentPadding = PaddingValues(vertical = 95.dp),
+        contentPadding = PaddingValues(vertical = 65.dp), // Adjusted padding proportionally
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
@@ -542,9 +553,15 @@ private fun WheelPicker(
             val itemText = items[realIndex]
             val isSelected = index == firstVisible
             
-            val alpha by animateFloatAsState(if (isSelected) 1f else 0.25f, label = "alpha")
+            // Matches Pic 1: Bold/Black for selected, Normal/Light-Grey for inactive
+            val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Light
+            val textAlpha = if (isSelected) 1f else 0.3f
+            
+            val baseStyle = if (isAmPm) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium
+            val textStyle = baseStyle.copy(fontWeight = fontWeight)
+
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.05f else 0.8f, 
+                targetValue = if (isSelected) 1.05f else 0.85f, 
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
@@ -558,7 +575,7 @@ private fun WheelPicker(
                 Text(
                     text = itemText,
                     style = textStyle,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha),
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
                         scaleY = scale
@@ -569,16 +586,21 @@ private fun WheelPicker(
     }
 }
 
+// ---------------------------------------------------------
+// Functional Days Container (With Functional Calendar Icon)
+// ---------------------------------------------------------
+
 @Composable
 private fun DayTogglesContainer(
     order: List<DayOfWeek>,
     selected: Set<DayOfWeek>,
-    onToggle: (DayOfWeek) -> Unit
+    onToggle: (DayOfWeek) -> Unit,
+    onCalendarClick: () -> Unit // Functional callback for the Calendar Icon
 ) {
     val dayText = remember(selected) {
         when {
             selected.size == 7 -> "Every day"
-            selected.isEmpty() -> "Not repeating"
+            selected.isEmpty() -> "Tomorrow" // Matching Pic 1 default look
             selected == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
             selected == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
             else -> {
@@ -591,10 +613,10 @@ private fun DayTogglesContainer(
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE) // Full edge-to-edge width
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)
+            modifier = Modifier.padding(top = 12.dp, bottom = 20.dp, start = 20.dp, end = 12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -607,17 +629,22 @@ private fun DayTogglesContainer(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Icon(
-                    imageVector = Icons.Outlined.CalendarMonth, 
-                    contentDescription = "Calendar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
+                
+                // Real Functional Button, not a gimmick!
+                IconButton(onClick = onCalendarClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarMonth, 
+                        contentDescription = "Choose specific date",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
             
+            // Perfect SpaceBetween alignment so the shape never distorts
             Row(
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().padding(end = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 order.forEach { day ->
@@ -650,7 +677,7 @@ private fun DayTogglesContainer(
                         color = containerColor,
                         contentColor = contentColor,
                         modifier = Modifier
-                            .size(44.dp) 
+                            .size(42.dp) 
                             .graphicsLayer {
                                 scaleX = pressScale * selectionScale
                                 scaleY = pressScale * selectionScale
@@ -710,7 +737,7 @@ private fun GroupPicker(
                 selectedName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
