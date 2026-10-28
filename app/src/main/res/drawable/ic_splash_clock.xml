@@ -1,38 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="120dp"
-    android:height="120dp"
+    android:width="288dp"
+    android:height="288dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
     <!-- Dark Navy Squircle Background -->
     <path
         android:fillColor="#081026"
-        android:pathData="M54,4
-            C88,4 104,20 104,54
-            C104,88 88,104 54,104
-            C20,104 4,88 4,54
-            C4,20 20,4 54,4 Z" />
+        android:pathData="M 54,4 C 88,4 104,20 104,54 C 104,88 88,104 54,104 C 20,104 4,88 4,54 C 4,20 20,4 54,4 Z" />
 
-    <!-- White Clock Dial -->
+    <!-- White Dial (Radius 25.5) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,21
-            A33,33 0 1,1 54,87
-            A33,33 0 1,1 54,21 Z" />
+        android:pathData="M 54,28.5 A 25.5,25.5 0 1,1 53.9,28.5 Z" />
 
-    <!-- Hour Hand -->
-    <path
-        android:strokeColor="#191F4F"
-        android:strokeWidth="12"
-        android:strokeLineCap="round"
-        android:pathData="M54,54 L41,46" />
+    <!-- Hour Hand Group (Pivot exactly at center 54,54) -->
+    <group
+        android:name="hour"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:strokeColor="#191F4F"
+            android:strokeWidth="12"
+            android:strokeLineCap="round"
+            android:pathData="M 54,54 L 41,44" />
+    </group>
 
-    <!-- Minute Hand -->
-    <path
-        android:strokeColor="#FFADEA"
-        android:strokeWidth="6"
-        android:strokeLineCap="round"
-        android:pathData="M54,54 L70,40" />
-
+    <!-- Minute Hand Group (Pivot exactly at center 54,54) -->
+    <group
+        android:name="minute"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:strokeColor="#FFADEA"
+            android:strokeWidth="7"
+            android:strokeLineCap="round"
+            android:pathData="M 54,54 L 67,46" />
+    </group>
 </vector>
