@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -159,7 +160,6 @@ private fun SetTimer(
         ).sortedBy { it.totalSeconds }
     }
 
-    // Bulb effect color for colons
     val colonColor by animateColorAsState(
         targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -173,13 +173,13 @@ private fun SetTimer(
                 .verticalScroll(rememberScrollState())
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 24.dp 
+                    bottom = contentPadding.calculateBottomPadding() + 32.dp // Added extra padding at the bottom
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(24.dp))
+            // Increased top spacing for a more open layout
+            Spacer(Modifier.height(40.dp))
 
-            // Shifted labels more upper side and made size bigger/bolder
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -194,7 +194,8 @@ private fun SetTimer(
                 Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(12.dp))
+            // Increased spacing between labels and the wheel
+            Spacer(Modifier.height(24.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -211,7 +212,7 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-2).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -224,7 +225,7 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-2).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -234,11 +235,13 @@ private fun SetTimer(
                 )
             }
 
-            Spacer(Modifier.height(36.dp))
+            // Significantly increased spacing to push presets down and make layout breathe
+            Spacer(Modifier.height(56.dp))
 
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(16.dp))
+            // Increased spacing before instruction text
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 text = "Long press a preset to edit it",
@@ -246,7 +249,8 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
 
-            Spacer(Modifier.height(24.dp))
+            // Increased spacing before Start button
+            Spacer(Modifier.height(32.dp))
 
             Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
@@ -286,29 +290,48 @@ private fun InfiniteWheelPicker(
         onValueChange(actualValue)
     }
 
+    // Increased item height for a less tight/congested look
+    val itemHeight = 64.dp 
+
     LazyColumn(
         state = listState,
         flingBehavior = flingBehavior,
         modifier = modifier
-            .height(180.dp)
+            .height(itemHeight * 3) // Perfectly shows exactly 3 rows
             .width(88.dp),
-        contentPadding = PaddingValues(vertical = 60.dp),
+        contentPadding = PaddingValues(vertical = itemHeight),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(Int.MAX_VALUE) { index ->
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
+            // Smoothly animate the font size so there is NO delay or rigid snapping visually
+            val targetCap = if (isSelected) 40.dp else 28.dp // Center number made smaller (40dp), Inactive stays 28dp
+            val animatedCap by animateDpAsState(
+                targetValue = targetCap,
+                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                label = "capHeightAnim"
+            )
+
+            // Smoothly animate the color transition
+            val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+            val animatedColor by animateColorAsState(
+                targetValue = targetColor,
+                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                label = "colorAnim"
+            )
+
             Box(
                 modifier = Modifier
-                    .height(60.dp)
+                    .height(itemHeight)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 Numerals(
                     text = "%02d".format(actualValue),
-                    capHeight = if (isSelected) 46.dp else 28.dp, // Perfect proportion matching reference pics
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                    capHeight = animatedCap,
+                    color = animatedColor,
                     width = ClockFace.TIMER_WIDTH,
                     weight = ClockFace.TIMER_WEIGHT,
                     slashedZero = true
@@ -327,7 +350,7 @@ private fun PresetGrid(
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp), // Increased gap slightly for breathing room
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
@@ -379,7 +402,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp), // Slightly more vertical padding
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
