@@ -90,9 +90,9 @@ data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val amoledBlack: Boolean = false,
     /**
-     * Swiping down on the Alarms, Timers and Stopwatch tabs pulls the top of the screen (the title
-     * bar and the first things under it) down into thumb reach, and shows a large summary of the
-     * tab in the space it leaves ("All alarms are off"). Swiping up pushes it back. On by default:
+     * Swiping down on the Alarms screen pulls the top of the screen (the title bar and the first
+     * things under it) down into thumb reach, and shows a large summary in the space it leaves
+     * ("All alarms are off"). Swiping up pushes it back. The other screens do not use it. On by default:
      * the gesture only exists when you make it, so it cannot get in a two-handed user's way.
      */
     val oneHandMode: Boolean = true,
