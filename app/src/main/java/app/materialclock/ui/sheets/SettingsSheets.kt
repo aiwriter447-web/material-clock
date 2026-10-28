@@ -609,7 +609,7 @@ fun StopwatchSettingsSheet(
                     ItemDivider()
                     SwitchRow(
                         title = "One-hand mode",
-                        subtitle = "Swipe down on Alarms, Timers and Stopwatch to bring the top into thumb reach",
+                        subtitle = "Swipe down on the Alarms screen to bring the top into thumb reach",
                         checked = settings.theme.oneHandMode,
                         onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
                     )
@@ -833,3 +833,4 @@ private fun minutesLabel(minutes: Int): String = when (minutes) {
     1 -> "1 minute"
     else -> "$minutes minutes"
 }
+�a
