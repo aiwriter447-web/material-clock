@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -54,7 +55,7 @@ import java.time.Duration
 @Composable
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
-    val hue = ((index - 1) * (360f / 44f)) % 360f 
+    val hue = ((index - 1) * (360f / 44f)) % 360f
 
     val saturation = if (isDark) 0.75f else 0.7f
     val lightnessBadge = if (isDark) 0.45f else 0.85f
@@ -82,11 +83,24 @@ fun StopwatchScreen(
     val slowest = stopwatch.slowest
 
     val listState = rememberLazyListState()
+
     LaunchedEffect(stopwatch.laps.size) {
-        if (stopwatch.laps.isNotEmpty()) listState.animateScrollToItem(0)
+        if (stopwatch.laps.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
+    // CHANGE 1:
+    // Only apply Scaffold top padding.
+    // Bottom padding is intentionally removed.
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(
+                top = contentPadding.calculateTopPadding()
+            )
+    ) {
+
         Spacer(Modifier.height(12.dp))
 
         StackedDigits(
@@ -94,14 +108,19 @@ fun StopwatchScreen(
             capHeight = READOUT_CAP,
             color = MaterialTheme.colorScheme.primary,
             leading = Icons.Rounded.Timer,
-            label = "Stopwatch, $a minutes $b seconds $c hundredths" +
+            label = "Stopwatch, $b seconds $c hundredths" +
                 if (stopwatch.running) ", running" else ", stopped",
             modifier = Modifier.padding(horizontal = 20.dp),
         )
 
         Spacer(Modifier.height(STACK_GAP))
 
-        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+
             StopwatchControls(
                 idle = !stopwatch.running && elapsed.isZero,
                 running = stopwatch.running,
@@ -109,42 +128,69 @@ fun StopwatchScreen(
                 onLap = onLap,
                 onReset = onReset,
             )
+
             Spacer(Modifier.height(14.dp))
+
+            // CHANGE 2:
+            // LazyColumn extends behind Bottom Navigation.
+            // Extra bottom content padding keeps last lap accessible.
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(horizontal = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(LAP_GAP),
             ) {
+
                 val isIdle = !stopwatch.running && elapsed.isZero
+
                 if (!isIdle) {
                     item(key = "current_lap") {
-                        val currentSplit = elapsed.minus(stopwatch.laps.firstOrNull()?.total ?: Duration.ZERO)
+
+                        val currentSplit = elapsed.minus(
+                            stopwatch.laps.firstOrNull()?.total
+                                ?: Duration.ZERO
+                        )
+
                         val currentLap = Lap(
-                            index = (stopwatch.laps.firstOrNull()?.index ?: 0) + 1,
+                            index = (
+                                stopwatch.laps.firstOrNull()?.index ?: 0
+                            ) + 1,
                             split = currentSplit,
                             total = elapsed
                         )
+
                         LapRow(
-                            lap = currentLap, 
-                            isFastest = false, 
+                            lap = currentLap,
+                            isFastest = false,
                             isSlowest = false,
                             modifier = Modifier.animateItem()
                         )
                     }
                 }
 
-                items(stopwatch.laps, key = { it.index }) { lap ->
+                items(
+                    items = stopwatch.laps,
+                    key = { it.index }
+                ) { lap ->
+
                     LapRow(
-                        lap = lap, 
-                        isFastest = fastest == lap.index, 
+                        lap = lap,
+                        isFastest = fastest == lap.index,
                         isSlowest = slowest == lap.index,
                         modifier = Modifier.animateItem()
                     )
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
+
+        // CHANGE 3:
+        // Removed bottom Spacer(Modifier.height(10.dp))
     }
 }
 
@@ -167,6 +213,7 @@ private fun StopwatchControls(
         ),
         label = "expand",
     )
+
     val label by animateFloatAsState(
         targetValue = if (expanded) 0f else 1f,
         animationSpec = spring(
@@ -175,6 +222,7 @@ private fun StopwatchControls(
         ),
         label = "label",
     )
+
     val split by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -183,12 +231,18 @@ private fun StopwatchControls(
         ),
         label = "split",
     )
+
     val e = expand.coerceIn(0f, 1f)
 
     val startStop: @Composable (Boolean) -> Unit = { compact ->
+
         WidePill(
             text = if (running) "Stop" else "Start",
-            icon = if (running) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            icon = if (running) {
+                Icons.Rounded.Pause
+            } else {
+                Icons.Rounded.PlayArrow
+            },
             onClick = onToggle,
             container = if (running) {
                 MaterialTheme.colorScheme.tertiaryContainer
@@ -206,12 +260,17 @@ private fun StopwatchControls(
     }
 
     SubcomposeLayout(
-        Modifier.fillMaxWidth().height(ROW_HEIGHT).padding(horizontal = 20.dp),
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_HEIGHT)
+            .padding(horizontal = 20.dp),
     ) { constraints ->
+
         val full = constraints.maxWidth
         val h = ROW_HEIGHT.roundToPx()
 
         val inset = ROW_INK_INSET.roundToPx()
+
         val rowWidth = subcompose("rowProbe") {
             DigitRow(
                 part = "00",
@@ -231,17 +290,34 @@ private fun StopwatchControls(
                 fillWidth = false,
                 contentPaddingH = IDLE_PADDING_H,
             )
-        }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
+        }.first().measure(
+            Constraints(
+                minHeight = h,
+                maxHeight = h
+            )
+        ).width
 
-        val collapsedW = maxOf(rowWidth - inset, natural).coerceAtMost(full)
-        val collapsedX = ((full - rowWidth) / 2 + rowWidth - collapsedW).coerceAtLeast(0)
+        val collapsedW = maxOf(
+            rowWidth - inset,
+            natural
+        ).coerceAtMost(full)
+
+        val collapsedX = (
+            (full - rowWidth) / 2 + rowWidth - collapsedW
+        ).coerceAtLeast(0)
 
         val w = lerp(collapsedW, full, e)
         val x = lerp(collapsedX, 0, e)
 
         val single = if (split < 1f) {
+
             subcompose("single") {
-                Box(Modifier.graphicsLayer { alpha = 1f - split }) {
+
+                Box(
+                    Modifier.graphicsLayer {
+                        alpha = 1f - split
+                    }
+                ) {
                     WidePill(
                         text = "Start",
                         icon = Icons.Rounded.PlayArrow,
@@ -254,18 +330,40 @@ private fun StopwatchControls(
                         contentAlpha = label,
                     )
                 }
-            }.first().measure(Constraints.fixed(w, h))
+
+            }.first().measure(
+                Constraints.fixed(w, h)
+            )
+
         } else {
             null
         }
 
         val trio = if (split > 0f) {
+
             subcompose("trio") {
-                Box(Modifier.graphicsLayer { alpha = split }) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(GAP * split)) {
+
+                Box(
+                    Modifier.graphicsLayer {
+                        alpha = split
+                    }
+                ) {
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(
+                            GAP * split
+                        )
+                    ) {
+
                         Box(Modifier.weight(1f)) {
-                            WidePill(text = "Lap", onClick = onLap, height = ROW_HEIGHT, compact = true)
+                            WidePill(
+                                text = "Lap",
+                                onClick = onLap,
+                                height = ROW_HEIGHT,
+                                compact = true
+                            )
                         }
+
                         Box(Modifier.weight(1f)) {
                             WidePill(
                                 text = "Reset",
@@ -276,10 +374,17 @@ private fun StopwatchControls(
                                 compact = true,
                             )
                         }
-                        Box(Modifier.weight(1f)) { startStop(true) }
+
+                        Box(Modifier.weight(1f)) {
+                            startStop(true)
+                        }
                     }
                 }
-            }.first().measure(Constraints.fixed(full, h))
+
+            }.first().measure(
+                Constraints.fixed(full, h)
+            )
+
         } else {
             null
         }
@@ -294,6 +399,7 @@ private fun StopwatchControls(
 private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
+
 private val IDLE_PADDING_H = 48.dp
 private val STACK_GAP = 35.dp
 private val READOUT_CAP = 66.dp
@@ -304,20 +410,26 @@ private val LAP_GAP = 6.dp
 
 @Composable
 private fun LapRow(
-    lap: Lap, 
-    isFastest: Boolean, 
+    lap: Lap,
+    isFastest: Boolean,
     isSlowest: Boolean,
     modifier: Modifier = Modifier
 ) {
     val (badgeBg, badgeFg) = getLapColors(lap.index)
 
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
 
     // Tactile press response
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "lapScale"
     )
 
@@ -330,7 +442,9 @@ private fun LapRow(
     // Smooth color morphing for fastest/slowest highlights
     val timeColor by animateColorAsState(
         targetValue = targetTimeColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "timeColor"
     )
 
@@ -348,30 +462,43 @@ private fun LapRow(
                 scaleY = scale
             },
     ) {
+
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(color = badgeBg, shape = CircleShape, modifier = Modifier.size(32.dp)) {
-                Box(contentAlignment = Alignment.Center) {
+
+            Surface(
+                color = badgeBg,
+                shape = CircleShape,
+                modifier = Modifier.size(32.dp)
+            ) {
+
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        lap.index.toString(),
+                        text = lap.index.toString(),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = badgeFg,
                     )
                 }
             }
+
             Text(
-                "$m:$s.$cs",
+                text = "$m:$s.$cs",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = timeColor,
                 modifier = Modifier.weight(1f),
             )
+
             Text(
-                "$tm:$ts.$tcs",
+                text = "$tm:$ts.$tcs",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
