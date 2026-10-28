@@ -294,7 +294,7 @@ private fun StopwatchControls(
         modifier = Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 28.dp), // Butons width controlled via side padding
     ) { constraints ->
 
         val full = constraints.maxWidth
@@ -411,10 +411,6 @@ private fun StopwatchControls(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
 
-                        // FIXED:
-                        // Modifier.weight() is used inside RowScope.
-                        // No separate weight import is required.
-
                         Box(
                             modifier = Modifier.weight(1f)
                         ) {
@@ -473,8 +469,8 @@ private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
 private val IDLE_PADDING_H = 48.dp
-private val STACK_GAP = 35.dp
-private val READOUT_CAP = 66.dp
+private val STACK_GAP = 20.dp       // Reduced gap between readout and controls
+private val READOUT_CAP = 56.dp     // Slightly smaller readout size (digits, icon, colons)
 private val GAP = 6.dp
 private val ROW_HEIGHT = 76.dp
 private val LAP_ROW_HEIGHT = 56.dp
