@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,7 +51,6 @@ fun PresetEditSheet(
     var name by remember(initial.name) { mutableStateOf(initial.name) }
     var mins by remember(initial.totalSeconds) { mutableIntStateOf(initial.totalSeconds / 60) }
 
-    // Functional Reset Logic
     val resetToInitial = {
         name = initial.name
         mins = initial.totalSeconds / 60
@@ -63,79 +65,86 @@ fun PresetEditSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+                .padding(bottom = 36.dp),
         ) {
             Text(
                 text = "Edit Preset",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 20.dp)
             )
 
-            // Modern Pill-shaped Container
-            Surface(
-                shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            // Rounded corner input field matching your reference image
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true,
+                shape = RoundedCornerShape(24.dp),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Time Adjuster Row (- min +)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Name") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                IconButton(onClick = { if (mins > 1) mins-- }) {
+                    Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
+                }
 
-                    Spacer(Modifier.height(24.dp))
+                Text(
+                    text = "$mins min",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        IconButton(onClick = { if (mins > 1) mins-- }) {
-                            Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
-                        }
-
-                        Text(
-                            text = "$mins min",
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-
-                        IconButton(onClick = { if (mins < 999) mins++ }) {
-                            Icon(Icons.Rounded.Add, contentDescription = "Increase")
-                        }
-                    }
+                IconButton(onClick = { if (mins < 999) mins++ }) {
+                    Icon(Icons.Rounded.Add, contentDescription = "Increase")
                 }
             }
 
             Spacer(Modifier.height(32.dp))
 
-            // Three Buttons Row: Reset, Cancel, Save
+            // Reset, Cancel, and Save buttons all styled cleanly as pill/rounded buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
+                Surface(
                     onClick = resetToInitial,
-                    // Disabled if values are already equal to initial
-                    enabled = name != initial.name || mins != (initial.totalSeconds / 60)
+                    enabled = name != initial.name || mins != (initial.totalSeconds / 60),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
-                    Text("Reset")
+                    Text(
+                        text = "Reset",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                    )
                 }
                 
-                Row {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        onClick = onDismiss,
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        )
                     }
-                    Button(
+
+                    Surface(
                         onClick = {
                             if (name.isNotBlank() && mins > 0) {
                                 onSave(initial.copy(name = name.trim(), totalSeconds = mins * 60))
@@ -143,9 +152,15 @@ fun PresetEditSheet(
                             }
                         },
                         enabled = name.isNotBlank() && mins > 0,
-                        modifier = Modifier.padding(start = 8.dp)
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
-                        Text("Save")
+                        Text(
+                            text = "Save",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                        )
                     }
                 }
             }
