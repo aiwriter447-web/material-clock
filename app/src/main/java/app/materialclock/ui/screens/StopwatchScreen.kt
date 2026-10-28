@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,19 +49,29 @@ import app.materialclock.core.stopwatchParts
 import java.time.Duration
 
 /**
- * Logic for generating 44 different vibrant colors
+ * Generate 44 different vibrant lap colors.
  */
 @Composable
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
+
     val hue = ((index - 1) * (360f / 44f)) % 360f
 
     val saturation = if (isDark) 0.75f else 0.7f
     val lightnessBadge = if (isDark) 0.45f else 0.85f
     val lightnessText = if (isDark) 0.95f else 0.2f
 
-    val badgeBg = Color.hsl(hue, saturation, lightnessBadge)
-    val badgeFg = Color.hsl(hue, saturation, lightnessText)
+    val badgeBg = Color.hsl(
+        hue,
+        saturation,
+        lightnessBadge
+    )
+
+    val badgeFg = Color.hsl(
+        hue,
+        saturation,
+        lightnessText
+    )
 
     return Pair(badgeBg, badgeFg)
 }
@@ -78,7 +87,9 @@ fun StopwatchScreen(
     modifier: Modifier = Modifier,
 ) {
     val elapsed = stopwatch.elapsed(nowElapsedMillis)
+
     val (a, b, c) = elapsed.stopwatchParts()
+
     val fastest = stopwatch.fastest
     val slowest = stopwatch.slowest
 
@@ -90,9 +101,8 @@ fun StopwatchScreen(
         }
     }
 
-    // CHANGE 1:
-    // Only apply Scaffold top padding.
-    // Bottom padding is intentionally removed.
+    // Apply only Scaffold top padding.
+    // Bottom padding is handled by LazyColumn.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -101,7 +111,9 @@ fun StopwatchScreen(
             )
     ) {
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(
+            modifier = Modifier.height(12.dp)
+        )
 
         StackedDigits(
             parts = listOf(a, b, c),
@@ -109,11 +121,19 @@ fun StopwatchScreen(
             color = MaterialTheme.colorScheme.primary,
             leading = Icons.Rounded.Timer,
             label = "Stopwatch, $b seconds $c hundredths" +
-                if (stopwatch.running) ", running" else ", stopped",
-            modifier = Modifier.padding(horizontal = 20.dp),
+                if (stopwatch.running) {
+                    ", running"
+                } else {
+                    ", stopped"
+                },
+            modifier = Modifier.padding(
+                horizontal = 20.dp
+            ),
         )
 
-        Spacer(Modifier.height(STACK_GAP))
+        Spacer(
+            modifier = Modifier.height(STACK_GAP)
+        )
 
         Column(
             modifier = Modifier
@@ -129,11 +149,11 @@ fun StopwatchScreen(
                 onReset = onReset,
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(
+                modifier = Modifier.height(14.dp)
+            )
 
-            // CHANGE 2:
-            // LazyColumn extends behind Bottom Navigation.
-            // Extra bottom content padding keeps last lap accessible.
+            // Lap list extends behind bottom navigation.
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -144,12 +164,15 @@ fun StopwatchScreen(
                     end = 20.dp,
                     bottom = contentPadding.calculateBottomPadding() + 16.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(LAP_GAP),
+                verticalArrangement = Arrangement.spacedBy(
+                    LAP_GAP
+                ),
             ) {
 
                 val isIdle = !stopwatch.running && elapsed.isZero
 
                 if (!isIdle) {
+
                     item(key = "current_lap") {
 
                         val currentSplit = elapsed.minus(
@@ -188,12 +211,18 @@ fun StopwatchScreen(
                 }
             }
         }
-
-        // CHANGE 3:
-        // Removed bottom Spacer(Modifier.height(10.dp))
     }
 }
 
+/**
+ * Animated stopwatch controls.
+ *
+ * Idle:
+ * Single Start button.
+ *
+ * Active:
+ * Lap, Reset and Start/Stop buttons.
+ */
 @Composable
 private fun StopwatchControls(
     idle: Boolean,
@@ -204,7 +233,7 @@ private fun StopwatchControls(
 ) {
     val expanded = !idle
 
-    // Fluid spring physics for expanding / collapsing controls
+    // Spring animation for expanding controls.
     val expand by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -214,6 +243,7 @@ private fun StopwatchControls(
         label = "expand",
     )
 
+    // Label fade animation.
     val label by animateFloatAsState(
         targetValue = if (expanded) 0f else 1f,
         animationSpec = spring(
@@ -223,6 +253,7 @@ private fun StopwatchControls(
         label = "label",
     )
 
+    // Split animation for three buttons.
     val split by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -260,27 +291,35 @@ private fun StopwatchControls(
     }
 
     SubcomposeLayout(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
             .padding(horizontal = 20.dp),
     ) { constraints ->
 
         val full = constraints.maxWidth
+
         val h = ROW_HEIGHT.roundToPx()
 
         val inset = ROW_INK_INSET.roundToPx()
 
+        // Measure digit row width.
         val rowWidth = subcompose("rowProbe") {
+
             DigitRow(
                 part = "00",
                 capHeight = READOUT_CAP,
                 color = MaterialTheme.colorScheme.primary,
                 separator = true,
             )
-        }.first().measure(Constraints()).width
 
+        }.first().measure(
+            Constraints()
+        ).width
+
+        // Measure natural Start button width.
         val natural = subcompose("probe") {
+
             WidePill(
                 text = "Start",
                 icon = Icons.Rounded.PlayArrow,
@@ -290,6 +329,7 @@ private fun StopwatchControls(
                 fillWidth = false,
                 contentPaddingH = IDLE_PADDING_H,
             )
+
         }.first().measure(
             Constraints(
                 minHeight = h,
@@ -304,20 +344,31 @@ private fun StopwatchControls(
 
         val collapsedX = (
             (full - rowWidth) / 2 + rowWidth - collapsedW
-        ).coerceAtLeast(0)
+        ).coerceIn(0, full - collapsedW)
 
-        val w = lerp(collapsedW, full, e)
-        val x = lerp(collapsedX, 0, e)
+        val w = lerp(
+            collapsedW,
+            full,
+            e
+        )
 
+        val x = lerp(
+            collapsedX,
+            0,
+            e
+        )
+
+        // Single Start button.
         val single = if (split < 1f) {
 
             subcompose("single") {
 
                 Box(
-                    Modifier.graphicsLayer {
+                    modifier = Modifier.graphicsLayer {
                         alpha = 1f - split
                     }
                 ) {
+
                     WidePill(
                         text = "Start",
                         icon = Icons.Rounded.PlayArrow,
@@ -339,23 +390,35 @@ private fun StopwatchControls(
             null
         }
 
+        // Expanded Lap, Reset and Start/Stop controls.
         val trio = if (split > 0f) {
 
             subcompose("trio") {
 
                 Box(
-                    Modifier.graphicsLayer {
-                        alpha = split
-                    }
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = split
+                        }
                 ) {
 
                     Row(
+                        modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(
                             GAP * split
-                        )
+                        ),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
 
-                        Box(Modifier.weight(1f)) {
+                        // FIXED:
+                        // Modifier.weight() is used inside RowScope.
+                        // No separate weight import is required.
+
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+
                             WidePill(
                                 text = "Lap",
                                 onClick = onLap,
@@ -364,7 +427,10 @@ private fun StopwatchControls(
                             )
                         }
 
-                        Box(Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+
                             WidePill(
                                 text = "Reset",
                                 onClick = onReset,
@@ -375,7 +441,10 @@ private fun StopwatchControls(
                             )
                         }
 
-                        Box(Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+
                             startStop(true)
                         }
                     }
@@ -390,12 +459,15 @@ private fun StopwatchControls(
         }
 
         layout(full, h) {
+
             single?.place(x, 0)
+
             trio?.place(0, 0)
         }
     }
 }
 
+// Layout constants.
 private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
@@ -408,6 +480,10 @@ private val ROW_HEIGHT = 76.dp
 private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
 
+/**
+ * Individual lap row with animated colors
+ * and press feedback.
+ */
 @Composable
 private fun LapRow(
     lap: Lap,
@@ -415,7 +491,9 @@ private fun LapRow(
     isSlowest: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val (badgeBg, badgeFg) = getLapColors(lap.index)
+    val (badgeBg, badgeFg) = getLapColors(
+        lap.index
+    )
 
     val interactionSource = remember {
         MutableInteractionSource()
@@ -423,7 +501,7 @@ private fun LapRow(
 
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Tactile press response
+    // Tactile press animation.
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(
@@ -439,7 +517,7 @@ private fun LapRow(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    // Smooth color morphing for fastest/slowest highlights
+    // Smooth color transition.
     val timeColor by animateColorAsState(
         targetValue = targetTimeColor,
         animationSpec = spring(
@@ -449,6 +527,7 @@ private fun LapRow(
     )
 
     val (m, s, cs) = lap.split.stopwatchParts()
+
     val (tm, ts, tcs) = lap.total.stopwatchParts()
 
     Surface(
@@ -471,6 +550,7 @@ private fun LapRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
 
+            // Lap number badge.
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
@@ -480,6 +560,7 @@ private fun LapRow(
                 Box(
                     contentAlignment = Alignment.Center
                 ) {
+
                     Text(
                         text = lap.index.toString(),
                         style = MaterialTheme.typography.labelLarge,
@@ -489,6 +570,7 @@ private fun LapRow(
                 }
             }
 
+            // Lap split time.
             Text(
                 text = "$m:$s.$cs",
                 style = MaterialTheme.typography.titleMedium,
@@ -497,6 +579,7 @@ private fun LapRow(
                 modifier = Modifier.weight(1f),
             )
 
+            // Total elapsed time.
             Text(
                 text = "$tm:$ts.$tcs",
                 style = MaterialTheme.typography.bodyMedium,
