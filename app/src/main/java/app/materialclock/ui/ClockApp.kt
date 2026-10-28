@@ -1,4 +1,4 @@
-package app.materialclock.ui
+Package app.materialclock.ui
 
 import android.Manifest
 import android.app.NotificationManager
@@ -202,9 +202,6 @@ fun ClockApp(
             }
         }
 
-        // First-run setup: three things the app cannot do its job without, asked one at a time
-        // before it opens (see SetupScreens.kt). An existing install that already has an alarm sound
-        // picked is not asked again.
         val soundChosen = settings.alarms.soundChosen || settings.alarms.defaultSoundUri != null
         val setupStep = when {
             !hasFullScreenPermission -> SetupStep.FULL_SCREEN
@@ -243,7 +240,6 @@ fun ClockApp(
         var showSettings by remember { mutableStateOf(false) }
         
         var showScreensaverSettingsSheet by remember(startWithScreensaver) { mutableStateOf(startWithScreensaver) }
-        // Memory flag for ideal navigation back-stack (Screensaver -> WorldClock)
         var returnToWorldClock by remember { mutableStateOf(false) }
 
         var showGroupsManager by remember { mutableStateOf(false) }
@@ -275,16 +271,7 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        // ---- One-hand mode: swipe down to bring the top of the screen into thumb reach ----
-        //
-        // `reachFraction` is how far the top has been pulled down, from 0 (normal) to 1 (all the
-        // way). It is a plain state that only layout and drawing read, never composition, so
-        // dragging it moves things without rebuilding the whole screen on every frame.
         val oneHandOn = settings.theme.oneHandMode
-        // How far the top comes down depends on the tab, taken from the reference screenshots: the
-        // Alarms tab has a short list and a summary above it, so it moves about 15% of the screen;
-        // the others move about 6 to 7%, because their content (the keypad, the large clock) must
-        // still fit above the dock when it is pushed down.
         val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
         val reachMaxPx = screenHeightPx * when (targetTab) {
             Tab.ALARMS -> 0.15f
@@ -303,8 +290,6 @@ fun ClockApp(
         }
 
         fun reachSettle() {
-            // Let go past a quarter of the way down and it opens fully; past a quarter of the way
-            // back up and it closes. The gesture starts easily and finishes by itself.
             val target = if (reachResting < 0.5f) {
                 if (reachFraction > 0.30f) 1f else 0f
             } else {
@@ -321,8 +306,6 @@ fun ClockApp(
             }
         }
 
-        // Closes itself when it stops applying: the setting is turned off, a selection starts, or
-        // the World Clock tab (which has its own large clock) is on its way in.
         LaunchedEffect(reachActive) {
             if (!reachActive && reachFraction > 0f) {
                 reachResting = 0f
@@ -333,8 +316,6 @@ fun ClockApp(
             }
         }
 
-        // Every tab starts closed. The amount differs from tab to tab, so carrying a half-open top
-        // from one to another would leave it at the wrong height.
         LaunchedEffect(targetTab) {
             if (reachFraction > 0f) {
                 reachResting = 0f
@@ -345,8 +326,6 @@ fun ClockApp(
             }
         }
 
-        // For the screens that scroll: a drag down that the list cannot use (it is already at the
-        // top) opens the gap, and a drag up closes the gap before the list is allowed to scroll.
         val reachConnection = remember(reachActive, reachMaxPx) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -466,8 +445,6 @@ fun ClockApp(
                 Modifier
                     .fillMaxSize()
                     .nestedScroll(reachConnection)
-                    // For screens with nothing to scroll (a short list, the timer keypad): a plain
-                    // vertical drag that nothing else used.
                     .pointerInput(reachActive) {
                         if (!reachActive) return@pointerInput
                         detectVerticalDragGestures(
@@ -489,8 +466,6 @@ fun ClockApp(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            // Only drawing moves, never layout: the page is slid down as a picture, so the
-                            // pull-down costs nothing per frame however long the list is.
                             .graphicsLayer { translationY = reachFraction * reachMaxPx }
                             .graphicsLayer {
                                 val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
@@ -581,7 +556,6 @@ fun ClockApp(
                     }
                 }
 
-                // Only the Alarms tab has room for the summary: the others move too little.
                 if (oneHandOn && targetTab == Tab.ALARMS) {
                     ReachSummary(
                         summary = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, is24Hour, minuteTick),
@@ -626,18 +600,16 @@ fun ClockApp(
                     )
                 }
 
+                // Timers स्क्रीन से FAB को हटा दिया गया है (अब यह केवल Alarms और World पर दिखेगा)
                 FloatingAddButton(
-                    visible = !selectionActive &&
-                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
+                    visible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
                     label = when (targetTab) {
                         Tab.WORLD -> "Add city"
-                        Tab.TIMERS -> "Add preset"
                         else -> "Add alarm"
                     },
                     onClick = {
                         when (targetTab) {
                             Tab.WORLD -> addingCity = true
-                            Tab.TIMERS -> editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60)
                             else -> editing = vm.blankAlarm()
                         }
                     },
@@ -710,7 +682,7 @@ fun ClockApp(
                     onChange = vm::updateSettings,
                     onOpenScreensaverSettings = {
                         showSettings = false
-                        returnToWorldClock = true // Sets the flag to remember where we came from
+                        returnToWorldClock = true
                         showScreensaverSettingsSheet = true
                     },
                     onDismiss = { showSettings = false },
@@ -729,8 +701,8 @@ fun ClockApp(
                 onDismiss = {
                     showScreensaverSettingsSheet = false
                     if (returnToWorldClock) {
-                        showSettings = true // Returns directly to WorldSettingsSheet
-                        returnToWorldClock = false // Resets the flag
+                        showSettings = true
+                        returnToWorldClock = false
                     }
                 }
             )
