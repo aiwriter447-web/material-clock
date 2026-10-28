@@ -94,7 +94,7 @@ fun TimersScreen(
     onCancel: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
-    onAddPreset: () -> Unit, // FAB removed, but signature kept intact
+    onAddPreset: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -148,7 +148,6 @@ private fun SetTimer(
         digits.forEach { onDigit(it, TimerField.SECONDS) }
     }
 
-    // Default Hardcoded Presets, sorted from smallest to largest time
     val defaultPresets = remember {
         listOf(
             TimerPreset(1L, "Short Break", 5 * 60),
@@ -178,14 +177,15 @@ private fun SetTimer(
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
+            // Shifted labels more upper side and made size bigger/bolder
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                val labelStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 val color = MaterialTheme.colorScheme.onSurfaceVariant
                 Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
                 Spacer(Modifier.width(16.dp))
@@ -194,7 +194,7 @@ private fun SetTimer(
                 Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(88.dp), textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -209,9 +209,9 @@ private fun SetTimer(
                 
                 Text(
                     text = ":", 
-                    style = MaterialTheme.typography.displayMedium, 
+                    style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-2).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -222,9 +222,9 @@ private fun SetTimer(
                 
                 Text(
                     text = ":", 
-                    style = MaterialTheme.typography.displayMedium, 
+                    style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 4.dp)
+                    modifier = Modifier.offset(y = (-2).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -234,11 +234,11 @@ private fun SetTimer(
                 )
             }
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(36.dp))
 
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 text = "Long press a preset to edit it",
@@ -267,13 +267,10 @@ private fun InfiniteWheelPicker(
     modifier: Modifier = Modifier
 ) {
     val count = range.last - range.first + 1
-    // Calculate a safe middle point for infinite scrolling
     val middlePoint = (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % count)
     val initialIndex = middlePoint + (initialValue - range.first)
 
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-    
-    // Smooth snapping behavior
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
     LaunchedEffect(initialValue) {
@@ -295,7 +292,7 @@ private fun InfiniteWheelPicker(
         modifier = modifier
             .height(180.dp)
             .width(88.dp),
-        contentPadding = PaddingValues(vertical = 60.dp), // Centering the active item perfectly
+        contentPadding = PaddingValues(vertical = 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(Int.MAX_VALUE) { index ->
@@ -310,7 +307,7 @@ private fun InfiniteWheelPicker(
             ) {
                 Numerals(
                     text = "%02d".format(actualValue),
-                    capHeight = if (isSelected) 52.dp else 30.dp, // Reduced font sizes for perfect 3-row fit
+                    capHeight = if (isSelected) 46.dp else 28.dp, // Perfect proportion matching reference pics
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                     width = ClockFace.TIMER_WIDTH,
                     weight = ClockFace.TIMER_WEIGHT,
