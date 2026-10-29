@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      The app's window theme on Android 12 and later (dark), with the start-up screen set up: our
+      The app's window theme on Android 12 and later (light), with the start-up screen set up: our
       animated clock on the app's own background colour. Before Android 12 the plain themes in
       values and values-night are used.
     -->
-    <style name="Theme.MaterialClock" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.MaterialClock" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_animated</item>
-        <item name="android:windowSplashScreenBackground">?android:attr/colorBackground</item>
+        <!-- Hardcoded link to our new light mode color -->
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
         <item name="android:windowSplashScreenAnimationDuration">900</item>
     </style>
 </resources>
