@@ -24,8 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.HourglassBottom
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +41,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -62,29 +61,35 @@ private val AlarmFilledIcon: ImageVector
             defaultHeight = 24.dp,
             viewportWidth = 24f,
             viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(22f, 5.72f)
-            lineTo(17.4f, 1.86f)
-            lineTo(16.11f, 3.39f)
-            lineTo(20.71f, 7.25f)
+        ).path(
+            fill = SolidColor(Color.Black),
+            pathFillType = PathFillType.EvenOdd
+        ) {
+            moveTo(12f, 22f)
+            curveTo(6.48f, 22f, 2f, 17.52f, 2f, 12f)
+            curveTo(2f, 6.48f, 6.48f, 2f, 12f, 2f)
+            curveTo(17.52f, 2f, 22f, 6.48f, 22f, 12f)
+            curveTo(22f, 17.52f, 17.52f, 22f, 12f, 22f)
             close()
-            moveTo(7.88f, 3.39f)
-            lineTo(6.6f, 1.86f)
-            lineTo(2f, 5.71f)
-            lineTo(3.29f, 7.25f)
+            moveTo(12.5f, 12.8f)
+            lineTo(16.5f, 16.8f)
+            lineTo(15.1f, 18.2f)
+            lineTo(10.5f, 13.6f)
+            verticalLineTo(7f)
+            horizontalLineTo(12.5f)
+            verticalLineTo(12.8f)
             close()
-            moveTo(12.5f, 8f)
-            horizontalLineTo(11f)
-            verticalLineTo(14f)
-            lineTo(15.25f, 16.55f)
-            lineTo(16f, 15.32f)
-            lineTo(12.5f, 13.25f)
+            moveTo(4.6f, 5.8f)
+            lineTo(1.8f, 2.9f)
+            lineTo(3.2f, 1.5f)
+            lineTo(6f, 4.4f)
+            lineTo(4.6f, 5.8f)
             close()
-            moveTo(12f, 4f)
-            curveTo(7.03f, 4f, 3f, 8.03f, 3f, 13f)
-            curveTo(3f, 17.97f, 7.03f, 22f, 12f, 22f)
-            curveTo(16.97f, 22f, 21f, 17.97f, 21f, 13f)
-            curveTo(21f, 8.03f, 16.97f, 4f, 12f, 4f)
+            moveTo(19.4f, 5.8f)
+            lineTo(18f, 4.4f)
+            lineTo(20.8f, 1.5f)
+            lineTo(22.2f, 2.9f)
+            lineTo(19.4f, 5.8f)
             close()
         }.build()
         return _alarmFilledIcon!!
@@ -135,6 +140,75 @@ private val WorldFilledIcon: ImageVector
         return _worldFilledIcon!!
     }
 private var _worldFilledIcon: ImageVector? = null
+
+private val TimerFilledIcon: ImageVector
+    get() {
+        if (_timerFilledIcon != null) return _timerFilledIcon!!
+        _timerFilledIcon = ImageVector.Builder(
+            name = "TimerFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(8f, 22f)
+            curveToRelative(-1.1f, 0f, -2f, -0.9f, -2f, -2f)
+            verticalLineToRelative(-3.5f)
+            curveToRelative(0f, -0.53f, 0.21f, -1.04f, 0.59f, -1.41f)
+            lineTo(10.17f, 11.5f)
+            lineTo(6.59f, 7.91f)
+            curveTo(6.21f, 7.54f, 6f, 7.03f, 6f, 6.5f)
+            verticalLineTo(3f)
+            curveToRelative(0f, -1.1f, 0.9f, -2f, 2f, -2f)
+            horizontalLineToRelative(8f)
+            curveToRelative(1.1f, 0f, 2f, 0.9f, 2f, 2f)
+            verticalLineToRelative(3.5f)
+            curveToRelative(0f, 0.53f, -0.21f, 1.04f, -0.59f, 1.41f)
+            lineTo(13.83f, 11.5f)
+            lineToRelative(3.58f, 3.59f)
+            curveToRelative(0.38f, 0.37f, 0.59f, 0.88f, 0.59f, 1.41f)
+            verticalLineTo(20f)
+            curveToRelative(0f, 1.1f, -0.9f, 2f, -2f, 2f)
+            horizontalLineTo(8f)
+            close()
+        }.build()
+        return _timerFilledIcon!!
+    }
+private var _timerFilledIcon: ImageVector? = null
+
+private val StopwatchFilledIcon: ImageVector
+    get() {
+        if (_stopwatchFilledIcon != null) return _stopwatchFilledIcon!!
+        _stopwatchFilledIcon = ImageVector.Builder(
+            name = "StopwatchFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(
+            fill = SolidColor(Color.Black),
+            pathFillType = PathFillType.EvenOdd
+        ) {
+            moveTo(12f, 22f)
+            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
+            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
+            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
+            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
+            close()
+            moveTo(9f, 1f)
+            horizontalLineToRelative(6f)
+            verticalLineToRelative(2f)
+            horizontalLineTo(9f)
+            close()
+            moveTo(11f, 13f)
+            verticalLineTo(8f)
+            horizontalLineToRelative(2f)
+            verticalLineToRelative(5f)
+            close()
+        }.build()
+        return _stopwatchFilledIcon!!
+    }
+private var _stopwatchFilledIcon: ImageVector? = null
 
 @Composable
 fun ClockDock(
@@ -226,8 +300,8 @@ fun ClockDock(
                                 when (destination) {
                                     Tab.ALARMS -> AlarmFilledIcon
                                     Tab.WORLD -> WorldFilledIcon
-                                    Tab.TIMERS -> Icons.Rounded.HourglassBottom
-                                    Tab.STOPWATCH -> Icons.Rounded.Timer
+                                    Tab.TIMERS -> TimerFilledIcon
+                                    Tab.STOPWATCH -> StopwatchFilledIcon
                                 }
                             }
                             val icon = if (isSelected) activeIcon else destination.icon
