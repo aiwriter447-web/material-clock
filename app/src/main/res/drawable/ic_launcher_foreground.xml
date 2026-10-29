@@ -4,23 +4,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- White Circular Dial (Radius: 25.5, Inside Safe Zone) -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 54,28.5 A 25.5,25.5 0 1,1 53.9,28.5 Z" />
+  <!-- White Dial inside Safe Zone (Radius: 25.4) -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M 54,28.6 A 25.4,25.4 0 1,1 53.9,28.6 Z" />
 
-    <!-- Hour Hand (Dark Blue, Stroke Width: 12) -->
-    <path
-        android:strokeColor="#191F4F"
-        android:strokeWidth="14"
-        android:strokeLineCap="round"
-        android:pathData="M 54,54 L 41,44" />
+  <!-- Hour Hand (Length swapped with minute, pointing to ~10 AM) -->
+  <path
+      android:strokeColor="#191F4F"
+      android:strokeWidth="11.5"
+      android:strokeLineCap="round"
+      android:pathData="M 54,54 L 41,46" />
 
-    <!-- Minute Hand (Pink, Stroke Width: 7) -->
-    <path
-        android:strokeColor="#FFADEA"
-        android:strokeWidth="8"
-        android:strokeLineCap="round"
-        android:pathData="M 54,54 L 67,46" />
-
+  <!-- Minute Hand (Length swapped with hour, pointing to ~10 past / 2 PM) -->
+  <path
+      android:strokeColor="#FFADEA"
+      android:strokeWidth="6.5"
+      android:strokeLineCap="round"
+      android:pathData="M 54,54 L 67,44" />
 </vector>
