@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="notification_accent">#60A5FA</color> <!-- High Contrast Light Blue for Dark Mode -->
+    
+    <!-- Explicit Splash Screen Background for Dark Mode -->
+    <color name="splash_background">#000000</color> 
 </resources>
