@@ -10,32 +10,32 @@
         android:fillColor="#081026"
         android:pathData="M 54,4 C 88,4 104,20 104,54 C 104,88 88,104 54,104 C 20,104 4,88 4,54 C 4,20 20,4 54,4 Z" />
 
-    <!-- White Dial (Radius 25.5) -->
+    <!-- White Circular Dial (Radius: 25.4) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 54,28.5 A 25.5,25.5 0 1,1 53.9,28.5 Z" />
+        android:pathData="M 54,28.6 A 25.4,25.4 0 1,1 53.9,28.6 Z" />
 
-    <!-- Hour Hand Group (Pivot exactly at center 54,54) -->
+    <!-- Hour Hand Group (Swapped Length and Thickness: 11.5) -->
     <group
         android:name="hour"
         android:pivotX="54"
         android:pivotY="54">
         <path
             android:strokeColor="#191F4F"
-            android:strokeWidth="12"
+            android:strokeWidth="11.5"
             android:strokeLineCap="round"
-            android:pathData="M 54,54 L 41,44" />
+            android:pathData="M 54,54 L 41,46" />
     </group>
 
-    <!-- Minute Hand Group (Pivot exactly at center 54,54) -->
+    <!-- Minute Hand Group (Swapped Length and Thickness: 6.5) -->
     <group
         android:name="minute"
         android:pivotX="54"
         android:pivotY="54">
         <path
             android:strokeColor="#FFADEA"
-            android:strokeWidth="7"
+            android:strokeWidth="6.5"
             android:strokeLineCap="round"
-            android:pathData="M 54,54 L 67,46" />
+            android:pathData="M 54,54 L 67,44" />
     </group>
 </vector>
