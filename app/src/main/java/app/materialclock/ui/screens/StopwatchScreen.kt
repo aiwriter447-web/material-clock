@@ -101,20 +101,21 @@ fun StopwatchScreen(
         }
     }
 
-    // Apply only Scaffold top padding.
-    // Bottom padding is handled by LazyColumn.
+    // Main Layout Column centered horizontally
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(
                 top = contentPadding.calculateTopPadding()
-            )
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         Spacer(
             modifier = Modifier.height(12.dp)
         )
 
+        // Centered StackedDigits (digits, colons, icon)
         StackedDigits(
             parts = listOf(a, b, c),
             capHeight = READOUT_CAP,
@@ -126,40 +127,28 @@ fun StopwatchScreen(
                 } else {
                     ", stopped"
                 },
-            modifier = Modifier.padding(
-                horizontal = 20.dp
-            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
         )
 
         Spacer(
             modifier = Modifier.height(STACK_GAP)
         )
 
-        Column(
+        // Box layer allowing laps list to slide UNDER controls, but stopping below numbers
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
 
-            StopwatchControls(
-                idle = !stopwatch.running && elapsed.isZero,
-                running = stopwatch.running,
-                onToggle = onToggle,
-                onLap = onLap,
-                onReset = onReset,
-            )
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
-
-            // Lap list extends behind bottom navigation.
+            // Lap list extending behind the control buttons
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
+                    top = ROW_HEIGHT + 12.dp, // Ensures top lap item starts below controls initially
                     start = 20.dp,
                     end = 20.dp,
                     bottom = contentPadding.calculateBottomPadding() + 16.dp
@@ -209,6 +198,21 @@ fun StopwatchScreen(
                         modifier = Modifier.animateItem()
                     )
                 }
+            }
+
+            // Controls anchored at the top of this Box, floating over the laps list
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            ) {
+                StopwatchControls(
+                    idle = !stopwatch.running && elapsed.isZero,
+                    running = stopwatch.running,
+                    onToggle = onToggle,
+                    onLap = onLap,
+                    onReset = onReset,
+                )
             }
         }
     }
@@ -294,7 +298,7 @@ private fun StopwatchControls(
         modifier = Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .padding(horizontal = 28.dp), // Butons width controlled via side padding
+            .padding(horizontal = 32.dp), // Balanced button width
     ) { constraints ->
 
         val full = constraints.maxWidth
@@ -469,8 +473,8 @@ private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
 private val IDLE_PADDING_H = 48.dp
-private val STACK_GAP = 20.dp       // Reduced gap between readout and controls
-private val READOUT_CAP = 56.dp     // Slightly smaller readout size (digits, icon, colons)
+private val STACK_GAP = 16.dp       // Compact gap between readout and controls
+private val READOUT_CAP = 50.dp     // Proportionally scaled digits, icon, colons
 private val GAP = 6.dp
 private val ROW_HEIGHT = 76.dp
 private val LAP_ROW_HEIGHT = 56.dp
