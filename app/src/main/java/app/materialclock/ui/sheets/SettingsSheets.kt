@@ -833,4 +833,3 @@ private fun minutesLabel(minutes: Int): String = when (minutes) {
     1 -> "1 minute"
     else -> "$minutes minutes"
 }
-�a
