@@ -2,6 +2,9 @@
 <resources>
     <color name="ic_launcher_background">#1B1D45</color>
     <color name="notification_accent">#2563EB</color> <!-- Vibrant Accent Blue -->
+    
+    <!-- Explicit Splash Screen Background for Light Mode -->
+    <color name="splash_background">#FFFFFF</color> 
 
     <!-- Only used by the static picture in the widget picker (widget_world_preview.xml). -->
     <color name="widget_preview_light">#CFE5FF</color>
