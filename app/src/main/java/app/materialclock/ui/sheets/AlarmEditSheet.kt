@@ -241,9 +241,9 @@ fun AlarmEditSheet(
             item {
                 Spacer(Modifier.height(8.dp)) 
                 
-                SwipeTimeEntry(state = timeState) // Taller, spacious time picker
+                SwipeTimeEntry(state = timeState)
                 
-                Spacer(Modifier.height(24.dp)) // Natural space created above container
+                Spacer(Modifier.height(24.dp)) 
             }
 
             item {
@@ -256,7 +256,6 @@ fun AlarmEditSheet(
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
-                        // FIX: Reduced spacing from 20.dp to 14.dp to remove empty congested gaps
                         verticalArrangement = Arrangement.spacedBy(14.dp) 
                     ) {
                         
@@ -359,8 +358,6 @@ fun AlarmEditSheet(
                             }
                         }
                         
-                        // Spacers removed to tighten the layout
-
                         OutlinedTextField(
                             value = label,
                             onValueChange = { label = it },
@@ -454,7 +451,7 @@ fun AlarmEditSheet(
                             }
                         }
 
-                        // Bottom Action Buttons nicely integrated
+                        // Action Buttons: Delete, Cancel, Save
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -468,13 +465,11 @@ fun AlarmEditSheet(
                                     label = "deleteScale"
                                 )
 
+                                // FIX 2: Removed hardcoded errorContainer colors.
+                                // Now Delete Button perfectly follows your dynamic theme.
                                 FilledTonalButton(
                                     onClick = { showDeleteConfirm = true },
                                     interactionSource = deleteInteraction,
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                    ),
                                     contentPadding = PaddingValues(horizontal = 12.dp),
                                     modifier = Modifier
                                         .weight(1f)
@@ -496,7 +491,9 @@ fun AlarmEditSheet(
                                 label = "cancelScale"
                             )
 
-                            OutlinedButton(
+                            // FIX 1: Changed OutlinedButton to FilledTonalButton. 
+                            // Now Cancel Button is filled with a soft color, matching your reference image.
+                            FilledTonalButton(
                                 onClick = { scope.launch { sheetState.hide(); onDismiss() } },
                                 interactionSource = cancelInteraction,
                                 contentPadding = PaddingValues(horizontal = 12.dp),
@@ -648,8 +645,6 @@ private fun WheelPicker(
     
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
 
-    // FIX: One-Way Sync. Updates external state ONLY based on what is naturally in the center.
-    // Removes the "Tug-of-War" that caused jumping and lag.
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
             val realIndex = index % items.size
@@ -659,7 +654,6 @@ private fun WheelPicker(
         }
     }
 
-    // FIX: Only force the wheel to scroll if the state change came from OUTSIDE (like changing AM to PM)
     LaunchedEffect(selectedIndex) {
         val currentlyShowing = listState.firstVisibleItemIndex % items.size
         if (currentlyShowing != selectedIndex) {
@@ -673,9 +667,8 @@ private fun WheelPicker(
 
     val firstVisible by remember { derivedStateOf { listState.firstVisibleItemIndex } }
     
-    // FIX: Increased Item Height for wider gaps between rows
     val itemHeight = 64.dp 
-    val pickerHeight = 192.dp // 64 * 3
+    val pickerHeight = 192.dp 
 
     LazyColumn(
         state = listState,
@@ -683,7 +676,7 @@ private fun WheelPicker(
         modifier = modifier
             .height(pickerHeight) 
             .width(100.dp),
-        contentPadding = PaddingValues(vertical = itemHeight), // Ensures perfectly centered 3 items
+        contentPadding = PaddingValues(vertical = itemHeight), 
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
@@ -706,7 +699,7 @@ private fun WheelPicker(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(itemHeight) // Exact height match prevents visual clipping
+                    .height(itemHeight) 
                     .fillMaxWidth()
             ) {
                 Text(
