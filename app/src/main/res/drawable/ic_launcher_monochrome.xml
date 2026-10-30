@@ -4,24 +4,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-  <!-- Dial Outline (Radius: 25.4) -->
+  <!-- Dial Outline (Radius: 25.2) -->
   <path
       android:strokeColor="#FF000000"
       android:strokeWidth="5"
       android:fillColor="#00000000"
-      android:pathData="M 54,28.6 A 25.4,25.4 0 1,1 53.9,28.6 Z" />
+      android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Hour Hand (Length swapped) -->
+  <!-- Hour Hand -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="11.5"
+      android:strokeWidth="11.1"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 41,46" />
+      android:pathData="M 54,54 L 44,48" />
 
-  <!-- Minute Hand (Length swapped) -->
+  <!-- Minute Hand -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="6.5"
+      android:strokeWidth="6.2"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 67,44" />
+      android:pathData="M 54,54 L 70,42" />
 </vector>
