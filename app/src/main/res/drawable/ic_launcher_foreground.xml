@@ -9,17 +9,17 @@
       android:fillColor="#FFFFFF"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Hour Hand (Custom Length: 44,48 | Width: 11.1) -->
+  <!-- Hour Hand (Length decreased by 22%, pointing to ~10 AM) -->
   <path
       android:strokeColor="#191F4F"
-      android:strokeWidth="11.1"
+      android:strokeWidth="10"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 44,48" />
+      android:pathData="M 54,54 L 43.9,47.8" />
 
-  <!-- Minute Hand (Custom Length: 70,42 | Width: 6.2) -->
+  <!-- Minute Hand (Length increased by 17%, pointing to ~2 PM) -->
   <path
       android:strokeColor="#FFADEA"
-      android:strokeWidth="6.2"
+      android:strokeWidth="6"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 70,42" />
+      android:pathData="M 54,54 L 69.2,42.3" />
 </vector>
