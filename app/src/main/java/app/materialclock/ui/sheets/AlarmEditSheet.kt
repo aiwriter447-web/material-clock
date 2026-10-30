@@ -239,17 +239,19 @@ fun AlarmEditSheet(
             )
         ) {
             item {
-                Spacer(Modifier.height(8.dp)) 
+                Spacer(Modifier.height(16.dp)) 
                 
                 SwipeTimeEntry(state = timeState)
                 
-                Spacer(Modifier.height(24.dp)) 
+                // 4. Container bottom tak lane ke liye spacer ko 24dp se badha kar 48dp kiya gaya
+                Spacer(Modifier.height(48.dp)) 
             }
 
             item {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 8.dp, bottomEnd = 8.dp),
+                    // 3. Container bottom corner should round like upper side corner (Fully Rounded)
+                    shape = RoundedCornerShape(36.dp), 
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp) 
@@ -451,7 +453,6 @@ fun AlarmEditSheet(
                             }
                         }
 
-                        // Action Buttons: Delete, Cancel, Save
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -465,11 +466,14 @@ fun AlarmEditSheet(
                                     label = "deleteScale"
                                 )
 
-                                // FIX 2: Removed hardcoded errorContainer colors.
-                                // Now Delete Button perfectly follows your dynamic theme.
                                 FilledTonalButton(
                                     onClick = { showDeleteConfirm = true },
                                     interactionSource = deleteInteraction,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        // 2. Delete button container follows the phone's dynamic theme, but icon is strictly RED
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.error 
+                                    ),
                                     contentPadding = PaddingValues(horizontal = 12.dp),
                                     modifier = Modifier
                                         .weight(1f)
@@ -491,11 +495,14 @@ fun AlarmEditSheet(
                                 label = "cancelScale"
                             )
 
-                            // FIX 1: Changed OutlinedButton to FilledTonalButton. 
-                            // Now Cancel Button is filled with a soft color, matching your reference image.
+                            // 1. Cancel button is now filled (FilledTonalButton) matching typical secondary actions
                             FilledTonalButton(
                                 onClick = { scope.launch { sheetState.hide(); onDismiss() } },
                                 interactionSource = cancelInteraction,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
                                 contentPadding = PaddingValues(horizontal = 12.dp),
                                 modifier = Modifier
                                     .weight(1.2f)
@@ -540,10 +547,7 @@ fun AlarmEditSheet(
     }
 }
 
-// ---------------------------------------------------------
-// TALLER, SPACIOUS 3-ROW TIME ENTRY
-// ---------------------------------------------------------
-
+// 4. Layout Spacing Fix: Expanded space between the columns to cover the empty width
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
@@ -562,7 +566,7 @@ private fun SwipeTimeEntry(state: TimePickerState) {
     val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = EDGE),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -585,12 +589,16 @@ private fun SwipeTimeEntry(state: TimePickerState) {
             )
         }
 
+        Spacer(Modifier.width(16.dp)) // Added proper spacer to widen the layout
+
         Text(
             text = ":",
             style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onSurface, 
-            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 20.dp) 
+            modifier = Modifier.padding(top = 20.dp) 
         )
+
+        Spacer(Modifier.width(16.dp)) // Added proper spacer to widen the layout
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -604,7 +612,7 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         }
 
         if (!is24Hour) {
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(28.dp)) // Increased spacer for AM/PM to cover wide space
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = " ", style = titleStyle) 
                 Spacer(Modifier.height(16.dp))
@@ -627,9 +635,6 @@ private fun SwipeTimeEntry(state: TimePickerState) {
     }
 }
 
-// ---------------------------------------------------------
-// BUG FIXED: ULTRA-SMOOTH, NO JUMPING, EXACT 3-ROW WHEEL
-// ---------------------------------------------------------
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WheelPicker(
@@ -675,7 +680,7 @@ private fun WheelPicker(
         flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
         modifier = modifier
             .height(pickerHeight) 
-            .width(100.dp),
+            .width(80.dp), // Controlled width to avoid squishing
         contentPadding = PaddingValues(vertical = itemHeight), 
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
