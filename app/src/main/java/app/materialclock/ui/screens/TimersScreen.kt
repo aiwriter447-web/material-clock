@@ -131,8 +131,8 @@ private fun SetTimer(
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // Fixes the reset to 00:00:00 bug efficiently
-    LaunchedEffect(draft) {
+    // Completely fixed reset bug to instantly reflect 00:00:00
+    LaunchedEffect(draft.seconds) {
         hours = (draft.seconds / 3600).toInt()
         mins = ((draft.seconds % 3600) / 60).toInt()
         secs = (draft.seconds % 60).toInt()
@@ -151,11 +151,11 @@ private fun SetTimer(
             TimerPreset(1L, "Short Break", 5 * 60),
             TimerPreset(2L, "Long Break", 15 * 60),
             TimerPreset(3L, "Focus", 25 * 60),
-            TimerPreset(4L, "Nap", 30 * 60),         // NEW PRESET
-            TimerPreset(5L, "Workout", 45 * 60),     // NEW PRESET
+            TimerPreset(4L, "Nap", 30 * 60),
+            TimerPreset(5L, "Workout", 45 * 60),
             TimerPreset(6L, "Deep Work", 50 * 60),
             TimerPreset(7L, "Study", 60 * 60),
-            TimerPreset(8L, "Sports", 2 * 60 * 60),  // NEW PRESET
+            TimerPreset(8L, "Sports", 2 * 60 * 60),
             TimerPreset(9L, "Sleep", 6 * 60 * 60)
         ).sortedBy { it.totalSeconds }
     }
@@ -172,12 +172,12 @@ private fun SetTimer(
                 .fillMaxSize()
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 20.dp
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Shifted top layout slightly upward by reducing initial spacer 
-            Spacer(Modifier.height(36.dp)) 
+            // Shifted Titles & Numbers slightly upper side for ideal visual weight
+            Spacer(Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -193,7 +193,7 @@ private fun SetTimer(
                 Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -233,20 +233,8 @@ private fun SetTimer(
                 )
             }
 
-            // Ideal space that connects picker and presets perfectly without weird huge gaps
-            Spacer(Modifier.height(44.dp)) 
-
-            PresetGrid(defaultPresets, onStartPreset, onEditPreset)
-            
-            Spacer(Modifier.height(20.dp))
-
-            Text(
-                text = "Long press a preset to edit it",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-
-            Spacer(Modifier.height(28.dp))
+            // Balanced spacing between numbers and start button
+            Spacer(Modifier.height(24.dp))
 
             Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
@@ -254,6 +242,19 @@ private fun SetTimer(
                     onStart()
                 })
             }
+
+            // Presets shifted downward to fill the lower section cleanly
+            Spacer(Modifier.height(24.dp))
+
+            PresetGrid(defaultPresets, onStartPreset, onEditPreset)
+            
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = "Long press a preset to edit it",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
         }
     }
 }
@@ -273,7 +274,6 @@ private fun InfiniteWheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Perfectly scrolls back to exact initialValue (like 00:00:00) smoothly when timer resets
     LaunchedEffect(initialValue) {
         val currentIndex = listState.firstVisibleItemIndex
         val currentValue = (currentIndex % count) + range.first
@@ -288,7 +288,7 @@ private fun InfiniteWheelPicker(
         onValueChange(actualValue)
     }
 
-    val itemHeight = 64.dp 
+    val itemHeight = 56.dp // Adjusted slightly for compact, clean alignment
 
     LazyColumn(
         state = listState,
@@ -303,7 +303,7 @@ private fun InfiniteWheelPicker(
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
-            val targetCap = if (isSelected) 40.dp else 28.dp
+            val targetCap = if (isSelected) 38.dp else 26.dp
             val animatedCap by animateDpAsState(
                 targetValue = targetCap,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -345,7 +345,7 @@ private fun PresetGrid(
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
@@ -385,6 +385,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .width(100.dp)
+            .height(52.dp) // Maintained compact height to fit nicely
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -397,8 +398,9 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = preset.name,
@@ -407,7 +409,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(1.dp))
             Text(
                 text = timeLabel,
                 style = MaterialTheme.typography.labelSmall,
@@ -448,7 +450,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(64.dp) // Optimized height so it never hides behind dock
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -458,9 +460,9 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Start", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+            Text("Start", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }
     }
 }
@@ -637,7 +639,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(64.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -698,7 +700,7 @@ private fun AnimatedPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(64.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
