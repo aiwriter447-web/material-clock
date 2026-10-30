@@ -14,14 +14,14 @@
   <!-- Hour Hand -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="11.1"
+      android:strokeWidth="10"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 44,48" />
+      android:pathData="M 54,54 L 43.9,47.8" />
 
   <!-- Minute Hand -->
   <path
       android:strokeColor="#FF000000"
-      android:strokeWidth="6.2"
+      android:strokeWidth="6"
       android:strokeLineCap="round"
-      android:pathData="M 54,54 L 70,42" />
+      android:pathData="M 54,54 L 69.2,42.3" />
 </vector>
