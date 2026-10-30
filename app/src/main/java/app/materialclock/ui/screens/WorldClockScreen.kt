@@ -14,7 +14,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -150,7 +149,6 @@ fun WorldClockScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-            // Gap increased to 16.dp for an open, uncrowded layout matching the Alarms screen
             verticalArrangement = Arrangement.spacedBy(16.dp), 
         ) {
             item(key = "main-clock", contentType = "header") {
@@ -444,17 +442,13 @@ private fun CityRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Animation made super-fast for instant physical feedback on touch
+    // Bouncy Spring Animation: Dips instantly on press, jumps back up playfully on release
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f, 
-        animationSpec = if (isPressed) {
-            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 3000f) // INSTANT shrink
-        } else {
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy, 
-                stiffness = Spring.StiffnessMediumLow
-            ) // Bounce back smoothly
-        },
+        targetValue = if (isPressed) 0.90f else 1f, 
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioHighBouncy, 
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "cityRowScale"
     )
 
@@ -514,7 +508,7 @@ private fun CityRow(
             }
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = LocalIndication.current, // LocalIndication explicitly restored for instant ripple feedback
+                indication = null, // Removed ripple effect entirely as requested
                 onClick = { 
                     if (inSelectionMode) onToggleSelect() 
                 },
