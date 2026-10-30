@@ -131,12 +131,11 @@ private fun SetTimer(
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    LaunchedEffect(draft.seconds) {
-        if (draft.seconds == 0L) {
-            hours = 0
-            mins = 0
-            secs = 0
-        }
+    // Fixes the reset to 00:00:00 bug efficiently
+    LaunchedEffect(draft) {
+        hours = (draft.seconds / 3600).toInt()
+        mins = ((draft.seconds % 3600) / 60).toInt()
+        secs = (draft.seconds % 60).toInt()
     }
 
     val armed = hours > 0 || mins > 0 || secs > 0
@@ -152,9 +151,12 @@ private fun SetTimer(
             TimerPreset(1L, "Short Break", 5 * 60),
             TimerPreset(2L, "Long Break", 15 * 60),
             TimerPreset(3L, "Focus", 25 * 60),
-            TimerPreset(4L, "Deep Work", 50 * 60),
-            TimerPreset(5L, "Study", 60 * 60),
-            TimerPreset(6L, "Sleep", 6 * 60 * 60)
+            TimerPreset(4L, "Nap", 30 * 60),         // NEW PRESET
+            TimerPreset(5L, "Workout", 45 * 60),     // NEW PRESET
+            TimerPreset(6L, "Deep Work", 50 * 60),
+            TimerPreset(7L, "Study", 60 * 60),
+            TimerPreset(8L, "Sports", 2 * 60 * 60),  // NEW PRESET
+            TimerPreset(9L, "Sleep", 6 * 60 * 60)
         ).sortedBy { it.totalSeconds }
     }
 
@@ -173,92 +175,84 @@ private fun SetTimer(
                     bottom = contentPadding.calculateBottomPadding() + 20.dp
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Section (Titles + Pickers) grouped together with balanced downward shift
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Shifted top layout slightly upward by reducing initial spacer 
+            Spacer(Modifier.height(36.dp)) 
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
             ) {
-                Spacer(Modifier.height(28.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    val labelStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    val color = MaterialTheme.colorScheme.onSurfaceVariant
-                    Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Minutes", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
-                }
-
-                Spacer(Modifier.height(18.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-                ) {
-                    InfiniteWheelPicker(
-                        range = 0..99,
-                        initialValue = hours,
-                        onValueChange = { hours = it; syncToViewModel() }
-                    )
-                    
-                    Text(
-                        text = ":", 
-                        style = MaterialTheme.typography.displayLarge, 
-                        color = colonColor, 
-                        modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
-                    )
-                    
-                    InfiniteWheelPicker(
-                        range = 0..59,
-                        initialValue = mins,
-                        onValueChange = { mins = it; syncToViewModel() }
-                    )
-                    
-                    Text(
-                        text = ":", 
-                        style = MaterialTheme.typography.displayLarge, 
-                        color = colonColor, 
-                        modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
-                    )
-                    
-                    InfiniteWheelPicker(
-                        range = 0..59,
-                        initialValue = secs,
-                        onValueChange = { secs = it; syncToViewModel() }
-                    )
-                }
+                val labelStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                val color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
+                Spacer(Modifier.width(12.dp))
+                Text("Minutes", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
+                Spacer(Modifier.width(12.dp))
+                Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
             }
 
-            // Bottom Section (Presets, Instruction, Start Button) shifted slightly upward for perfect harmony
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 16.dp)
+            Spacer(Modifier.height(18.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
-                PresetGrid(defaultPresets, onStartPreset, onEditPreset)
-                
-                Spacer(Modifier.height(14.dp))
-
-                Text(
-                    text = "Long press a preset to edit it",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                InfiniteWheelPicker(
+                    range = 0..99,
+                    initialValue = hours,
+                    onValueChange = { hours = it; syncToViewModel() }
                 )
+                
+                Text(
+                    text = ":", 
+                    style = MaterialTheme.typography.displayLarge, 
+                    color = colonColor, 
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
+                )
+                
+                InfiniteWheelPicker(
+                    range = 0..59,
+                    initialValue = mins,
+                    onValueChange = { mins = it; syncToViewModel() }
+                )
+                
+                Text(
+                    text = ":", 
+                    style = MaterialTheme.typography.displayLarge, 
+                    color = colonColor, 
+                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
+                )
+                
+                InfiniteWheelPicker(
+                    range = 0..59,
+                    initialValue = secs,
+                    onValueChange = { secs = it; syncToViewModel() }
+                )
+            }
 
-                Spacer(Modifier.height(20.dp))
+            // Ideal space that connects picker and presets perfectly without weird huge gaps
+            Spacer(Modifier.height(44.dp)) 
 
-                Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
-                    AnimatedStartButton(armed = armed, onClick = {
-                        syncToViewModel()
-                        onStart()
-                    })
-                }
+            PresetGrid(defaultPresets, onStartPreset, onEditPreset)
+            
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                text = "Long press a preset to edit it",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
+                AnimatedStartButton(armed = armed, onClick = {
+                    syncToViewModel()
+                    onStart()
+                })
             }
         }
     }
@@ -279,11 +273,13 @@ private fun InfiniteWheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
+    // Perfectly scrolls back to exact initialValue (like 00:00:00) smoothly when timer resets
     LaunchedEffect(initialValue) {
         val currentIndex = listState.firstVisibleItemIndex
         val currentValue = (currentIndex % count) + range.first
-        if (initialValue == 0 && currentValue != 0) {
-            listState.animateScrollToItem(middlePoint)
+        if (initialValue != currentValue) {
+            val diff = initialValue - currentValue
+            listState.animateScrollToItem(currentIndex + diff)
         }
     }
 
@@ -348,11 +344,11 @@ private fun PresetGrid(
     onEdit: (TimerPreset) -> Unit
 ) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 16.dp)
     ) {
         presets.forEach { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
