@@ -319,7 +319,7 @@ NUCLEUS(
         onPrimaryContainer = Color(0xFFFFFFFF),
         secondary = Color(0xFFD71918),
         onSecondary = Color(0xFFFFFFFF),
-        secondaryContainer = Color(0xFFBFC0C1),
+        secondaryContainer = Color(0xFFDADADD),
         onSecondaryContainer = Color(0xFF1B1C1E),
         tertiary = Color(0xFFD71918),
         onTertiary = Color(0xFFFFFFFF),
@@ -332,8 +332,8 @@ NUCLEUS(
         surfaceVariant = Color(0xFFE5E4E7),
         onSurfaceVariant = Color(0xFF1B1C1E),
         outline = Color(0xFF747478),
-        surfaceContainer = Color(0xFFE4E2E5),
-        surfaceContainerHighest = Color(0xFFE4E2E5)
+        surfaceContainer = Color(0xFFE4E3E6),
+        surfaceContainerHighest = Color(0xFFE4E3E6)
     ),
     dark = darkColorScheme(
         primary = Color(0xFFF4F2F4),
@@ -342,8 +342,8 @@ NUCLEUS(
         onPrimaryContainer = Color(0xFFFFFFFF),
         secondary = Color(0xFFFFB4A9),
         onSecondary = Color(0xFF690003),
-        secondaryContainer = Color(0xFFBFC0C1),
-        onSecondaryContainer = Color(0xFF1B1C1E),
+        secondaryContainer = Color(0xFF343436),
+        onSecondaryContainer = Color(0xFFF4F2F4),
         tertiary = Color(0xFFFFB4A9),
         onTertiary = Color(0xFF690003),
         tertiaryContainer = Color(0xFF48282B),
@@ -359,7 +359,6 @@ NUCLEUS(
         surfaceContainerHighest = Color(0xFF1C1C1D)
     )
 ),
-
     OCEAN(
         displayName = "Ocean",
         light = lightColorScheme(
