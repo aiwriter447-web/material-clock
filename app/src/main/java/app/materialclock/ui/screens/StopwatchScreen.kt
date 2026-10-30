@@ -107,7 +107,7 @@ fun StopwatchScreen(
             .fillMaxSize()
             .padding(top = contentPadding.calculateTopPadding())
     ) {
-        // Protective Pad & Top Header (Z-Index 1f keeps it above scrolling list)
+        // Protective Header & Control Pad (Strictly Centered)
         Surface(
             color = MaterialTheme.colorScheme.background,
             modifier = Modifier
@@ -122,7 +122,7 @@ fun StopwatchScreen(
             ) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Centered Readout (Numbers, Icon, and Colon)
+                // Perfect Screen-Centered Digits Readout
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -140,7 +140,7 @@ fun StopwatchScreen(
 
                 Spacer(modifier = Modifier.height(STACK_GAP))
 
-                // Stopwatch Controls (Start, Lap, Reset, Stop)
+                // Stopwatch Controls (Start Button Perfectly Centered Below Readout)
                 StopwatchControls(
                     idle = !stopwatch.running && elapsed.isZero,
                     running = stopwatch.running,
@@ -151,14 +151,14 @@ fun StopwatchScreen(
             }
         }
 
-        // Lap list scrolling underneath the controls/pad layer
+        // Lap List
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 20.dp,
                 end = 20.dp,
-                top = 260.dp, // Ensures top items start right below the controls pad
+                top = 250.dp,
                 bottom = contentPadding.calculateBottomPadding() + 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(LAP_GAP),
@@ -267,22 +267,13 @@ private fun StopwatchControls(
         modifier = Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .padding(horizontal = 38.dp), // Increased padding for narrower pills & better side spacing
+            .padding(horizontal = 36.dp),
     ) { constraints ->
 
         val full = constraints.maxWidth
         val h = ROW_HEIGHT.roundToPx()
-        val inset = ROW_INK_INSET.roundToPx()
 
-        val rowWidth = subcompose("rowProbe") {
-            DigitRow(
-                part = "00",
-                capHeight = READOUT_CAP,
-                color = MaterialTheme.colorScheme.primary,
-                separator = true,
-            )
-        }.first().measure(Constraints()).width
-
+        // Measure Start Button natural width
         val natural = subcompose("probe") {
             WidePill(
                 text = "Start",
@@ -295,8 +286,10 @@ private fun StopwatchControls(
             )
         }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
 
-        val collapsedW = maxOf(rowWidth - inset, natural).coerceAtMost(full)
-        val collapsedX = ((full - collapsedW) / 2).coerceIn(0, full - collapsedW) // Exact horizontal center
+        val collapsedW = natural.coerceAtMost(full)
+        
+        // Exact Horizontal Center for Start Button Alignment
+        val collapsedX = (full - collapsedW) / 2
 
         val w = lerp(collapsedW, full, e)
         val x = lerp(collapsedX, 0, e)
@@ -345,7 +338,6 @@ private fun StopwatchControls(
                         }
 
                         Box(modifier = Modifier.weight(1f)) {
-                            // Material You Filled Reset Pill
                             WidePill(
                                 text = "Reset",
                                 onClick = onReset,
@@ -380,7 +372,7 @@ private const val LABEL_FADE_MS = 70
 
 private val IDLE_PADDING_H = 48.dp
 private val STACK_GAP = 18.dp
-private val READOUT_CAP = 54.dp // Proportionally balances digits, icon, and colons
+private val READOUT_CAP = 50.dp // Perfectly scaled height for digits, colon, and icon
 private val GAP = 8.dp
 private val ROW_HEIGHT = 70.dp
 private val LAP_ROW_HEIGHT = 56.dp
