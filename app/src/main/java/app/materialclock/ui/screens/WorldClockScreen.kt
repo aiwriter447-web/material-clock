@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -89,7 +90,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Height reduced by ~5% to maintain shape and data fit
 private const val ROW_HEIGHT_DP = 98 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,7 +150,8 @@ fun WorldClockScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(8.dp), 
+            // Gap increased to 16.dp for an open, uncrowded layout matching the Alarms screen
+            verticalArrangement = Arrangement.spacedBy(16.dp), 
         ) {
             item(key = "main-clock", contentType = "header") {
                 Crossfade(
@@ -166,7 +167,6 @@ fun WorldClockScreen(
                             showSeconds = settings.showSeconds,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // Increased bottom padding to 12.dp for extra gap
                                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                         )
                     } else {
@@ -176,7 +176,6 @@ fun WorldClockScreen(
                             measurer = measurer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // Increased bottom padding to 12.dp for extra gap
                                 .padding(start = 54.dp, end = 54.dp, top = 4.dp, bottom = 12.dp)
                                 .aspectRatio(1f),
                         )
@@ -445,16 +444,16 @@ private fun CityRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Bouncy scale animation for a "living" reactive feel - Updated for fast taps
+    // Animation made super-fast for instant physical feedback on touch
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f, 
+        targetValue = if (isPressed) 0.94f else 1f, 
         animationSpec = if (isPressed) {
-            spring(stiffness = Spring.StiffnessHigh) // Instantly shrink on touch
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 3000f) // INSTANT shrink
         } else {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy, 
                 stiffness = Spring.StiffnessMediumLow
-            ) // Bounce back smoothly on release
+            ) // Bounce back smoothly
         },
         label = "cityRowScale"
     )
@@ -515,7 +514,7 @@ private fun CityRow(
             }
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = null, 
+                indication = LocalIndication.current, // LocalIndication explicitly restored for instant ripple feedback
                 onClick = { 
                     if (inSelectionMode) onToggleSelect() 
                 },
