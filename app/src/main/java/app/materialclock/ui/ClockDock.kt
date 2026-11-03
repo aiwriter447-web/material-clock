@@ -23,14 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.HourglassFull
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,12 +40,181 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+
+private val AlarmFilledCustom: ImageVector
+    get() {
+        if (_alarmFilledCustom != null) return _alarmFilledCustom!!
+        _alarmFilledCustom = ImageVector.Builder(
+            name = "AlarmFilledCustom",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            // Outer Clock Body (Drawn Clockwise for Non-Zero Winding Rule)
+            moveTo(12f, 2f)
+            curveTo(17.52f, 2f, 22f, 6.48f, 22f, 12f)
+            curveTo(22f, 17.52f, 17.52f, 22f, 12f, 22f)
+            curveTo(6.48f, 22f, 2f, 17.52f, 2f, 12f)
+            curveTo(2f, 6.48f, 6.48f, 2f, 12f, 2f)
+            close()
+            
+            // Inner Hands Cutout (Drawn Counter-Clockwise to guarantee transparent hole)
+            moveTo(11f, 7f)
+            lineTo(11f, 13f)
+            lineTo(15.5f, 17.5f)
+            lineTo(16.9f, 16.1f)
+            lineTo(12.5f, 11.7f)
+            lineTo(12.5f, 7f)
+            close()
+
+            // Left Bell (Drawn Clockwise)
+            moveTo(3.2f, 1.5f)
+            lineTo(6f, 4.4f)
+            lineTo(4.6f, 5.8f)
+            lineTo(1.8f, 2.9f)
+            close()
+
+            // Right Bell (Drawn Clockwise)
+            moveTo(20.8f, 1.5f)
+            lineTo(22.2f, 2.9f)
+            lineTo(19.4f, 5.8f)
+            lineTo(18f, 4.4f)
+            close()
+        }.build()
+        return _alarmFilledCustom!!
+    }
+private var _alarmFilledCustom: ImageVector? = null
+
+private val TimerFilledCustom: ImageVector
+    get() {
+        if (_timerFilledCustom != null) return _timerFilledCustom!!
+        _timerFilledCustom = ImageVector.Builder(
+            name = "TimerFilledCustom",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            // Perfect Geometric Hourglass Shape
+            moveTo(8f, 22f)
+            curveTo(6.9f, 22f, 6f, 21.1f, 6f, 20f)
+            verticalLineTo(16.5f)
+            curveTo(6f, 15.97f, 6.21f, 15.46f, 6.59f, 15.09f)
+            lineTo(10.17f, 11.5f)
+            lineTo(6.59f, 7.91f)
+            curveTo(6.21f, 7.54f, 6f, 7.03f, 6f, 6.5f)
+            verticalLineTo(4f)
+            curveTo(6f, 2.9f, 6.9f, 2f, 8f, 2f)
+            horizontalLineTo(16f)
+            curveTo(17.1f, 2f, 18f, 2.9f, 18f, 4f)
+            verticalLineTo(6.5f)
+            curveTo(18f, 7.03f, 17.79f, 7.54f, 17.41f, 7.91f)
+            lineTo(13.83f, 11.5f)
+            lineTo(17.41f, 15.09f)
+            curveTo(17.79f, 15.46f, 18f, 15.97f, 18f, 16.5f)
+            verticalLineTo(20f)
+            curveTo(18f, 21.1f, 17.1f, 22f, 16f, 22f)
+            horizontalLineTo(8f)
+            close()
+        }.build()
+        return _timerFilledCustom!!
+    }
+private var _timerFilledCustom: ImageVector? = null
+
+private val WorldFilledCustom: ImageVector
+    get() {
+        if (_worldFilledCustom != null) return _worldFilledCustom!!
+        _worldFilledCustom = ImageVector.Builder(
+            name = "WorldFilledCustom",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
+            close()
+            moveTo(11f, 19.93f)
+            curveTo(7.05f, 19.44f, 4f, 16.08f, 4f, 12f)
+            curveTo(4f, 11.38f, 4.08f, 10.79f, 4.21f, 10.21f)
+            lineTo(9f, 15f)
+            verticalLineTo(16f)
+            curveTo(9f, 17.1f, 9.9f, 18f, 11f, 18f)
+            verticalLineTo(19.93f)
+            close()
+            moveTo(17.9f, 17.39f)
+            curveTo(17.64f, 16.58f, 16.9f, 16f, 16f, 16f)
+            horizontalLineTo(15f)
+            verticalLineTo(13f)
+            curveTo(15f, 12.45f, 14.55f, 12f, 14f, 12f)
+            horizontalLineTo(8f)
+            verticalLineTo(10f)
+            horizontalLineTo(10f)
+            curveTo(10.55f, 10f, 11f, 9.55f, 11f, 9f)
+            verticalLineTo(7f)
+            horizontalLineTo(13f)
+            curveTo(14.1f, 7f, 15f, 6.1f, 15f, 5f)
+            verticalLineTo(4.59f)
+            curveTo(17.93f, 5.77f, 20f, 8.65f, 20f, 12f)
+            curveTo(20f, 14.08f, 19.2f, 15.97f, 17.9f, 17.39f)
+            close()
+        }.build()
+        return _worldFilledCustom!!
+    }
+private var _worldFilledCustom: ImageVector? = null
+
+private val StopwatchFilledCustom: ImageVector
+    get() {
+        if (_stopwatchFilledCustom != null) return _stopwatchFilledCustom!!
+        _stopwatchFilledCustom = ImageVector.Builder(
+            name = "StopwatchFilledCustom",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 22f)
+            curveTo(9.23f, 22f, 6.88f, 21.02f, 4.93f, 19.07f)
+            curveTo(2.98f, 17.12f, 2f, 14.77f, 2f, 12f)
+            curveTo(2f, 9.23f, 2.98f, 6.88f, 4.93f, 4.93f)
+            curveTo(6.88f, 2.98f, 9.23f, 2f, 12f, 2f)
+            curveTo(14.77f, 2f, 17.12f, 2.98f, 19.07f, 4.93f)
+            curveTo(21.02f, 6.88f, 22f, 9.23f, 22f, 12f)
+            curveTo(22f, 14.77f, 21.02f, 17.12f, 19.07f, 19.07f)
+            curveTo(17.12f, 21.02f, 14.77f, 22f, 12f, 22f)
+            close()
+            moveTo(12.5f, 7f)
+            lineTo(11.5f, 7f)
+            lineTo(11.5f, 12.5f)
+            lineTo(15f, 16f)
+            lineTo(15.7f, 15.3f)
+            lineTo(12.5f, 12.1f)
+            lineTo(12.5f, 7f)
+            close()
+            moveTo(9f, 1f)
+            lineTo(15f, 1f)
+            lineTo(15f, 3f)
+            lineTo(9f, 3f)
+            lineTo(9f, 1f)
+            close()
+        }.build()
+        return _stopwatchFilledCustom!!
+    }
+private var _stopwatchFilledCustom: ImageVector? = null
 
 @Composable
 fun ClockDock(
@@ -141,27 +302,17 @@ fun ClockDock(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            
-                            // 100% Accurate Google Icons setup using Jetpack Compose built-in Icons
                             val activeIcon = remember(destination) {
                                 when (destination) {
-                                    Tab.ALARMS -> Icons.Filled.Alarm
-                                    Tab.WORLD -> Icons.Filled.Public
-                                    Tab.TIMERS -> Icons.Filled.HourglassFull // Perfect filled hourglass
-                                    Tab.STOPWATCH -> Icons.Filled.Timer // In Material, "Timer" is the stopwatch shape
+                                    Tab.ALARMS -> AlarmFilledCustom
+                                    Tab.WORLD -> WorldFilledCustom
+                                    Tab.TIMERS -> TimerFilledCustom
+                                    Tab.STOPWATCH -> StopwatchFilledCustom
                                 }
                             }
                             
-                            val inactiveIcon = remember(destination) {
-                                when (destination) {
-                                    Tab.ALARMS -> Icons.Outlined.Alarm
-                                    Tab.WORLD -> Icons.Outlined.Public
-                                    Tab.TIMERS -> Icons.Outlined.HourglassEmpty // Perfect outlined hourglass with frame
-                                    Tab.STOPWATCH -> Icons.Outlined.Timer
-                                }
-                            }
-                            
-                            val icon = if (isSelected) activeIcon else inactiveIcon
+                            // Safe fallback to your original unselected configuration
+                            val icon = if (isSelected) activeIcon else destination.icon
                             val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
 
                             Icon(
