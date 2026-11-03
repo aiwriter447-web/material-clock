@@ -131,8 +131,8 @@ private fun SetTimer(
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // Completely fixed reset bug to instantly reflect 00:00:00
-    LaunchedEffect(draft.seconds) {
+    // 00:00:00 रीसेट बग को पूरी तरह से ठीक करने के लिए सटीक सिंक
+    LaunchedEffect(draft) {
         hours = (draft.seconds / 3600).toInt()
         mins = ((draft.seconds % 3600) / 60).toInt()
         secs = (draft.seconds % 60).toInt()
@@ -161,7 +161,7 @@ private fun SetTimer(
     }
 
     val colonColor by animateColorAsState(
-        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "colonBulbColor"
     )
@@ -176,16 +176,16 @@ private fun SetTimer(
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Shifted Titles & Numbers slightly upper side for ideal visual weight
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
+            // स्लीक और छोटे लेबल्स (Hours, Minutes, Seconds) जो मुख्य नंबरों से ध्यान न भटकाएं
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val labelStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                val color = MaterialTheme.colorScheme.onSurfaceVariant
+                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
                 Spacer(Modifier.width(12.dp))
                 Text("Minutes", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
@@ -193,8 +193,9 @@ private fun SetTimer(
                 Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
+            // सख्त ग्रिड अलाइनमेंट के साथ नंबर पिकर और परफेक्ट सेंटर्ड कोलन
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -210,7 +211,7 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
+                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -223,7 +224,7 @@ private fun SetTimer(
                     text = ":", 
                     style = MaterialTheme.typography.displayLarge, 
                     color = colonColor, 
-                    modifier = Modifier.offset(y = (-4).dp).padding(horizontal = 6.dp)
+                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
                 )
                 
                 InfiniteWheelPicker(
@@ -233,8 +234,8 @@ private fun SetTimer(
                 )
             }
 
-            // Balanced spacing between numbers and start button
-            Spacer(Modifier.height(24.dp))
+            // संतुलित स्पेसिंग के बाद स्टार्ट बटन
+            Spacer(Modifier.height(20.dp))
 
             Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
@@ -243,17 +244,17 @@ private fun SetTimer(
                 })
             }
 
-            // Presets shifted downward to fill the lower section cleanly
-            Spacer(Modifier.height(24.dp))
+            // नीचे व्यवस्थित 3x3 प्रीसेट्स ग्रिड
+            Spacer(Modifier.height(20.dp))
 
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             Text(
                 text = "Long press a preset to edit it",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     }
@@ -288,7 +289,7 @@ private fun InfiniteWheelPicker(
         onValueChange(actualValue)
     }
 
-    val itemHeight = 56.dp // Adjusted slightly for compact, clean alignment
+    val itemHeight = 56.dp 
 
     LazyColumn(
         state = listState,
@@ -310,7 +311,8 @@ private fun InfiniteWheelPicker(
                 label = "capHeightAnim"
             )
 
-            val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+            // इनएक्टिव नंबरों का सॉफ्ट फेड इफ़ेक्ट (कम अल्फा ताकि वे मुख्य नंबरों से न टकराएं)
+            val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             val animatedColor by animateColorAsState(
                 targetValue = targetColor,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -385,7 +387,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .width(100.dp)
-            .height(52.dp) // Maintained compact height to fit nicely
+            .height(50.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -398,7 +400,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -450,7 +452,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp) // Optimized height so it never hides behind dock
+            .height(60.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -639,7 +641,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(60.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -700,7 +702,7 @@ private fun AnimatedPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(60.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
