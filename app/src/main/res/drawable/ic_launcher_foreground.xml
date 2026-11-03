@@ -6,20 +6,20 @@
 
   <!-- White Solid Dial inside Safe Zone (Radius: 25.2) -->
   <path
-      android:fillColor="#FFFFFF"
+      android:fillColor="#F6F6F6"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
   <!-- Hour Hand (Length increased by 9.09%, Color updated to #FFADEA) -->
   <path
-      android:strokeColor="#FFADEA"
+      android:strokeColor="#031435"
       android:strokeWidth="10"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 43.0,47.2" />
 
   <!-- Minute Hand (Width decreased to 5.14, Color updated to #191F4F) -->
   <path
-      android:strokeColor="#191F4F"
-      android:strokeWidth="5.14"
+      android:strokeColor="#E34BAF"
+      android:strokeWidth="5.30"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 69.2,42.3" />
 </vector>
