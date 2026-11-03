@@ -6,11 +6,11 @@
     android:viewportHeight="108">
 
     <path
-        android:fillColor="#081026"
+        android:fillColor="#041330"
         android:pathData="M 54,4 C 88,4 104,20 104,54 C 104,88 88,104 54,104 C 20,104 4,88 4,54 C 4,20 20,4 54,4 Z" />
 
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#F6F6F6"
         android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
     <group
@@ -18,7 +18,7 @@
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#FFADEA"
+            android:strokeColor="#031435"
             android:strokeWidth="10"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 43.0,47.2" />
@@ -29,8 +29,8 @@
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#191F4F"
-            android:strokeWidth="5.14"
+            android:strokeColor="#E34BAF"
+            android:strokeWidth="5.30"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 69.2,42.3" />
     </group>
