@@ -131,8 +131,7 @@ private fun SetTimer(
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // 00:00:00 रीसेट बग को पूरी तरह से ठीक करने के लिए सटीक सिंक
-    LaunchedEffect(draft) {
+    LaunchedEffect(draft.seconds) {
         hours = (draft.seconds / 3600).toInt()
         mins = ((draft.seconds % 3600) / 60).toInt()
         secs = (draft.seconds % 60).toInt()
@@ -161,7 +160,7 @@ private fun SetTimer(
     }
 
     val colonColor by animateColorAsState(
-        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "colonBulbColor"
     )
@@ -176,86 +175,106 @@ private fun SetTimer(
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(12.dp))
+            
+            Spacer(Modifier.height(24.dp))
 
-            // स्लीक और छोटे लेबल्स (Hours, Minutes, Seconds) जो मुख्य नंबरों से ध्यान न भटकाएं
+            // REFINED LABELS: Smaller font size, medium weight, perfect horizontal alignment
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                val labelStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp)
                 val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                Text("Hours", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
-                Spacer(Modifier.width(12.dp))
-                Text("Minutes", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
-                Spacer(Modifier.width(12.dp))
-                Text("Seconds", style = labelStyle, color = color, modifier = Modifier.width(96.dp), textAlign = TextAlign.Center)
+                
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text("Hours", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                }
+                Spacer(Modifier.width(16.dp))
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text("Minutes", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                }
+                Spacer(Modifier.width(16.dp))
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text("Seconds", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // सख्त ग्रिड अलाइनमेंट के साथ नंबर पिकर और परफेक्ट सेंटर्ड कोलन
+            // LOCKED GRID PICKER: Perfect baseline alignment, no zigzagging
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
             ) {
-                InfiniteWheelPicker(
-                    range = 0..99,
-                    initialValue = hours,
-                    onValueChange = { hours = it; syncToViewModel() }
-                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    InfiniteWheelPicker(
+                        range = 0..99,
+                        initialValue = hours,
+                        onValueChange = { hours = it; syncToViewModel() }
+                    )
+                }
                 
-                Text(
-                    text = ":", 
-                    style = MaterialTheme.typography.displayLarge, 
-                    color = colonColor, 
-                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
-                )
+                // PERFECT COLON ALIGNMENT
+                Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = ":", 
+                        style = MaterialTheme.typography.displayLarge, 
+                        color = colonColor, 
+                        modifier = Modifier.offset(y = (-4).dp)
+                    )
+                }
                 
-                InfiniteWheelPicker(
-                    range = 0..59,
-                    initialValue = mins,
-                    onValueChange = { mins = it; syncToViewModel() }
-                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    InfiniteWheelPicker(
+                        range = 0..59,
+                        initialValue = mins,
+                        onValueChange = { mins = it; syncToViewModel() }
+                    )
+                }
                 
-                Text(
-                    text = ":", 
-                    style = MaterialTheme.typography.displayLarge, 
-                    color = colonColor, 
-                    modifier = Modifier.offset(y = (-6).dp).padding(horizontal = 4.dp)
-                )
+                Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = ":", 
+                        style = MaterialTheme.typography.displayLarge, 
+                        color = colonColor, 
+                        modifier = Modifier.offset(y = (-4).dp)
+                    )
+                }
                 
-                InfiniteWheelPicker(
-                    range = 0..59,
-                    initialValue = secs,
-                    onValueChange = { secs = it; syncToViewModel() }
-                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    InfiniteWheelPicker(
+                        range = 0..59,
+                        initialValue = secs,
+                        onValueChange = { secs = it; syncToViewModel() }
+                    )
+                }
             }
 
-            // संतुलित स्पेसिंग के बाद स्टार्ट बटन
-            Spacer(Modifier.height(20.dp))
+            // BREATHING SPACE
+            Spacer(Modifier.height(48.dp))
 
-            Box(modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()) {
-                AnimatedStartButton(armed = armed, onClick = {
-                    syncToViewModel()
-                    onStart()
-                })
-            }
-
-            // नीचे व्यवस्थित 3x3 प्रीसेट्स ग्रिड
-            Spacer(Modifier.height(20.dp))
-
+            // NEW HIERARCHY: Presets come BEFORE the Start Button
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 text = "Long press a preset to edit it",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+
+            // MORE BREATHING SPACE BEFORE START BUTTON
+            Spacer(Modifier.height(32.dp))
+
+            Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
+                AnimatedStartButton(armed = armed, onClick = {
+                    syncToViewModel()
+                    onStart()
+                })
+            }
         }
     }
 }
@@ -289,14 +308,14 @@ private fun InfiniteWheelPicker(
         onValueChange(actualValue)
     }
 
-    val itemHeight = 56.dp 
+    val itemHeight = 64.dp 
 
     LazyColumn(
         state = listState,
         flingBehavior = flingBehavior,
         modifier = modifier
             .height(itemHeight * 3)
-            .width(96.dp),
+            .fillMaxWidth(), // Takes full width of its weight container
         contentPadding = PaddingValues(vertical = itemHeight),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -304,15 +323,15 @@ private fun InfiniteWheelPicker(
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
-            val targetCap = if (isSelected) 38.dp else 26.dp
+            val targetCap = if (isSelected) 42.dp else 26.dp
             val animatedCap by animateDpAsState(
                 targetValue = targetCap,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
                 label = "capHeightAnim"
             )
 
-            // इनएक्टिव नंबरों का सॉफ्ट फेड इफ़ेक्ट (कम अल्फा ताकि वे मुख्य नंबरों से न टकराएं)
-            val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            // FADE EFFECT: Inactive numbers are more faded out (alpha 0.25f)
+            val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
             val animatedColor by animateColorAsState(
                 targetValue = targetColor,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -346,11 +365,11 @@ private fun PresetGrid(
     onEdit: (TimerPreset) -> Unit
 ) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 24.dp)
     ) {
         presets.forEach { preset ->
             PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
@@ -386,8 +405,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = RoundedCornerShape(percent = 50), 
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(100.dp)
-            .height(50.dp)
+            .width(96.dp)
+            .height(56.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -400,7 +419,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -452,7 +471,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(72.dp) // Prominent circular-like pill shape
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -462,9 +481,9 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(26.dp))
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Start", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            Text("Start", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
         }
     }
 }
@@ -641,7 +660,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -702,7 +721,7 @@ private fun AnimatedPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
