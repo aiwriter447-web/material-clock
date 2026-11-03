@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -171,14 +172,14 @@ private fun SetTimer(
                 .fillMaxSize()
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 16.dp
+                    bottom = contentPadding.calculateBottomPadding()
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.weight(0.10f)) // Fluid layout gap
 
-            // REFINED LABELS: Smaller font size, medium weight, perfect horizontal alignment
+            // LABELS: Perfectly distributed
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -200,65 +201,57 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp)) // Fixed distance from labels to numbers
 
-            // LOCKED GRID PICKER: Perfect baseline alignment, no zigzagging
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            // STRICT ALIGNMENT CONTAINER: Prevents all zigzags and floating colons
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(192.dp), // Strictly 64.dp * 3
+                contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    InfiniteWheelPicker(
-                        range = 0..99,
-                        initialValue = hours,
-                        onValueChange = { hours = it; syncToViewModel() }
-                    )
+                // Wheels Layer
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        InfiniteWheelPicker(range = 0..99, initialValue = hours, onValueChange = { hours = it; syncToViewModel() })
+                    }
+                    Spacer(Modifier.width(16.dp)) // Ghost space for alignment calculation
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        InfiniteWheelPicker(range = 0..59, initialValue = mins, onValueChange = { mins = it; syncToViewModel() })
+                    }
+                    Spacer(Modifier.width(16.dp)) // Ghost space for alignment calculation
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        InfiniteWheelPicker(range = 0..59, initialValue = secs, onValueChange = { secs = it; syncToViewModel() })
+                    }
                 }
-                
-                // PERFECT COLON ALIGNMENT
-                Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = ":", 
-                        style = MaterialTheme.typography.displayLarge, 
-                        color = colonColor, 
-                        modifier = Modifier.offset(y = (-4).dp)
-                    )
-                }
-                
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    InfiniteWheelPicker(
-                        range = 0..59,
-                        initialValue = mins,
-                        onValueChange = { mins = it; syncToViewModel() }
-                    )
-                }
-                
-                Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = ":", 
-                        style = MaterialTheme.typography.displayLarge, 
-                        color = colonColor, 
-                        modifier = Modifier.offset(y = (-4).dp)
-                    )
-                }
-                
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    InfiniteWheelPicker(
-                        range = 0..59,
-                        initialValue = secs,
-                        onValueChange = { secs = it; syncToViewModel() }
-                    )
+
+                // Colons Overlay Layer (Absolutely centered, cannot float or misalign)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
+                        Text(":", style = MaterialTheme.typography.displayLarge, color = colonColor, modifier = Modifier.offset(y = (-4).dp))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
+                        Text(":", style = MaterialTheme.typography.displayLarge, color = colonColor, modifier = Modifier.offset(y = (-4).dp))
+                    }
+                    Spacer(Modifier.weight(1f))
                 }
             }
 
-            // BREATHING SPACE
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.weight(0.15f)) // Fluid layout gap
 
-            // NEW HIERARCHY: Presets come BEFORE the Start Button
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
                 text = "Long press a preset to edit it",
@@ -266,8 +259,7 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
 
-            // MORE BREATHING SPACE BEFORE START BUTTON
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.weight(0.20f)) // Fluid layout gap before button
 
             Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
@@ -275,6 +267,8 @@ private fun SetTimer(
                     onStart()
                 })
             }
+            
+            Spacer(Modifier.weight(0.10f)) // Fluid layout bottom padding
         }
     }
 }
@@ -315,7 +309,7 @@ private fun InfiniteWheelPicker(
         flingBehavior = flingBehavior,
         modifier = modifier
             .height(itemHeight * 3)
-            .fillMaxWidth(), // Takes full width of its weight container
+            .fillMaxWidth(),
         contentPadding = PaddingValues(vertical = itemHeight),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -330,7 +324,6 @@ private fun InfiniteWheelPicker(
                 label = "capHeightAnim"
             )
 
-            // FADE EFFECT: Inactive numbers are more faded out (alpha 0.25f)
             val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
             val animatedColor by animateColorAsState(
                 targetValue = targetColor,
@@ -338,9 +331,10 @@ private fun InfiniteWheelPicker(
                 label = "colorAnim"
             )
 
+            // STRICT BOX HEIGHT: This completely eliminates the zigzag shifting bug
             Box(
                 modifier = Modifier
-                    .height(itemHeight)
+                    .requiredHeight(itemHeight)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
@@ -471,7 +465,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp) // Prominent circular-like pill shape
+            .requiredHeight(72.dp) // STRICT HEIGHT LOCK: prevents squashing completely
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -660,7 +654,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -721,7 +715,7 @@ private fun AnimatedPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
