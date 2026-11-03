@@ -1,3 +1,4 @@
+
 package app.materialclock.ui.sheets
 
 import android.app.Activity
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -118,17 +120,17 @@ fun AlarmEditSheet(
     var vibrate by rememberSaveable(initial.id) { mutableStateOf(initial.vibrate) }
     var soundUri by rememberSaveable(initial.id) { mutableStateOf(initial.soundUri) }
     var groupId by rememberSaveable(initial.id) { mutableStateOf(initial.groupId) }
-    
+
     var showDatePicker by remember { mutableStateOf(false) }
     var specificDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
-    
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = specificDateMillis ?: System.currentTimeMillis()
     )
-    
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingNewGroupName by remember { mutableStateOf<String?>(null) }
-    
+
     LaunchedEffect(groups) {
         pendingNewGroupName?.let { pending ->
             groups.firstOrNull { it.name == pending }?.let {
@@ -169,10 +171,15 @@ fun AlarmEditSheet(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val picked: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+                result.data?.getParcelableExtra(
+                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                    Uri::class.java
+                )
             } else {
                 @Suppress("DEPRECATION")
-                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+                result.data?.getParcelableExtra(
+                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI
+                )
             }
             soundUri = picked?.toString() ?: SILENT
         }
@@ -186,12 +193,14 @@ fun AlarmEditSheet(
                     showDatePicker = false
                     specificDateMillis = datePickerState.selectedDateMillis
                     if (specificDateMillis != null) {
-                        days = emptySet() 
+                        days = emptySet()
                     }
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -202,7 +211,9 @@ fun AlarmEditSheet(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Alarm?") },
-            text = { Text("Are you sure you want to permanently delete this alarm?") },
+            text = {
+                Text("Are you sure you want to permanently delete this alarm?")
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -217,134 +228,198 @@ fun AlarmEditSheet(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
-                ) { Text("Delete") }
+                ) {
+                    Text("Delete")
+                }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                OutlinedButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
 
     ModalBottomSheet(
-        onDismissRequest = { scope.launch { sheetState.hide(); onDismiss() } },
+        onDismissRequest = {
+            scope.launch {
+                sheetState.hide()
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
     ) {
-        // FIX: Removed LazyColumn to entirely disable internal vertical scrolling
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                .padding(
+                    bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding() + 16.dp
+                )
         ) {
-            Spacer(Modifier.height(16.dp)) 
-            
+            Spacer(Modifier.height(16.dp))
+
             SwipeTimeEntry(state = timeState)
-            
-            // FIX: Reduced the unusual space between TimePicker and Container to just 24.dp
-            Spacer(Modifier.height(24.dp)) 
+
+            Spacer(Modifier.height(24.dp))
 
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = RoundedCornerShape(36.dp), 
+                shape = RoundedCornerShape(36.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp) 
+                    .padding(horizontal = 8.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp) 
+                    modifier = Modifier.padding(
+                        vertical = 24.dp,
+                        horizontal = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    
+
                     val dayText = remember(days, specificDateMillis) {
                         if (specificDateMillis != null && days.isEmpty()) {
                             val inst = Instant.ofEpochMilli(specificDateMillis!!)
                             val ld = inst.atZone(ZoneId.systemDefault()).toLocalDate()
-                            val formatter = java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM")
+                            val formatter =
+                                java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM")
                             ld.format(formatter)
                         } else {
                             when {
                                 days.size == 7 -> "Every day"
                                 days.isEmpty() -> "Tomorrow"
-                                days == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
-                                days == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
+                                days == setOf(
+                                    DayOfWeek.MONDAY,
+                                    DayOfWeek.TUESDAY,
+                                    DayOfWeek.WEDNESDAY,
+                                    DayOfWeek.THURSDAY,
+                                    DayOfWeek.FRIDAY
+                                ) -> "Weekdays"
+
+                                days == setOf(
+                                    DayOfWeek.SATURDAY,
+                                    DayOfWeek.SUNDAY
+                                ) -> "Weekends"
+
                                 else -> {
                                     val sortedDays = days.sortedBy { it.value }
-                                    "Every " + sortedDays.joinToString(", ") { it.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) }
+                                    "Every " + sortedDays.joinToString(", ") {
+                                        it.getDisplayName(
+                                            JavaTextStyle.SHORT,
+                                            Locale.getDefault()
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
 
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = dayText, 
-                            style = MaterialTheme.typography.titleMedium, 
+                            text = dayText,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
                         IconButton(
-                            onClick = { showDatePicker = true }, 
+                            onClick = { showDatePicker = true },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.CalendarMonth, 
+                                imageVector = Icons.Outlined.CalendarMonth,
                                 contentDescription = "Choose specific date",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
                     }
-                    
+
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween, 
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         weekStart.order(systemFirstDay()).forEach { day ->
-                            val interactionSource = remember { MutableInteractionSource() }
+                            val interactionSource = remember {
+                                MutableInteractionSource()
+                            }
                             val isPressed by interactionSource.collectIsPressedAsState()
                             val isChecked = day in days
 
                             val pressScale by animateFloatAsState(
                                 targetValue = if (isPressed) 0.85f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessHigh
+                                ),
                                 label = "dayTogglePressScale"
                             )
-                            
+
                             val selectionScale by animateFloatAsState(
                                 targetValue = if (isChecked) 1.05f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                ),
                                 label = "dayToggleSelectionScale"
                             )
 
-                            val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-                            val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            val targetContainer =
+                                if (isChecked) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHigh
 
-                            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
-                            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
+                            val targetContent =
+                                if (isChecked) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+
+                            val containerColor by animateColorAsState(
+                                targetContainer,
+                                spring(stiffness = Spring.StiffnessMediumLow),
+                                label = "dayBg"
+                            )
+
+                            val contentColor by animateColorAsState(
+                                targetContent,
+                                spring(stiffness = Spring.StiffnessMediumLow),
+                                label = "dayFg"
+                            )
 
                             Surface(
-                                onClick = { 
-                                    days = if (day in days) days - day else days + day 
-                                    specificDateMillis = null 
+                                onClick = {
+                                    days = if (day in days) days - day else days + day
+                                    specificDateMillis = null
                                 },
                                 interactionSource = interactionSource,
                                 shape = CircleShape,
                                 color = containerColor,
                                 contentColor = contentColor,
                                 modifier = Modifier
-                                    .size(44.dp) 
+                                    .size(44.dp)
                                     .graphicsLayer {
                                         scaleX = pressScale * selectionScale
                                         scaleY = pressScale * selectionScale
                                     }
                             ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
                                     Text(
-                                        day.getDisplayName(JavaTextStyle.NARROW, Locale.getDefault()),
+                                        day.getDisplayName(
+                                            JavaTextStyle.NARROW,
+                                            Locale.getDefault()
+                                        ),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         textAlign = TextAlign.Center,
@@ -353,11 +428,19 @@ fun AlarmEditSheet(
                             }
                         }
                     }
-                    
+
+                    // Added spacing below the week selector
+                    Spacer(Modifier.height(4.dp))
+
                     OutlinedTextField(
                         value = label,
                         onValueChange = { label = it },
-                        label = { Text("Alarm Name", style = MaterialTheme.typography.titleMedium) },
+                        label = {
+                            Text(
+                                "Alarm Name",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
                         textStyle = MaterialTheme.typography.titleMedium,
                         singleLine = true,
                         shape = RoundedCornerShape(20.dp),
@@ -368,7 +451,10 @@ fun AlarmEditSheet(
                         groups = groups,
                         selectedId = groupId,
                         onSelect = { groupId = it },
-                        onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
+                        onCreateGroup = { name ->
+                            onCreateGroup(name)
+                            pendingNewGroupName = name
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -377,11 +463,17 @@ fun AlarmEditSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val soundInteraction = remember { MutableInteractionSource() }
+                        val soundInteraction = remember {
+                            MutableInteractionSource()
+                        }
                         val isSoundPressed by soundInteraction.collectIsPressedAsState()
+
                         val soundScale by animateFloatAsState(
                             targetValue = if (isSoundPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessHigh
+                            ),
                             label = "soundScale"
                         )
 
@@ -389,15 +481,29 @@ fun AlarmEditSheet(
                             onClick = {
                                 ringtonePicker.launch(
                                     Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_TYPE,
+                                            RingtoneManager.TYPE_ALARM
+                                        )
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_TITLE,
+                                            "Alarm sound"
+                                        )
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT,
+                                            true
+                                        )
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT,
+                                            true
+                                        )
                                         .putExtra(
                                             RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                                            soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
+                                            soundUri
+                                                ?.takeIf { it != SILENT }
+                                                ?.let(Uri::parse),
                                         )
-                            )
+                                )
                             },
                             interactionSource = soundInteraction,
                             contentPadding = PaddingValues(horizontal = 18.dp),
@@ -409,22 +515,39 @@ fun AlarmEditSheet(
                                     scaleY = soundScale
                                 },
                         ) {
-                            Icon(Icons.Rounded.MusicNote, contentDescription = null, Modifier.size(20.dp))
+                            Icon(
+                                Icons.Rounded.MusicNote,
+                                contentDescription = null,
+                                Modifier.size(20.dp)
+                            )
                             Spacer(Modifier.width(10.dp))
                             Text(
                                 ringtoneName(soundUri),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.titleMedium, 
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
 
                         val vibrateAnim = remember { Animatable(0f) }
+
                         LaunchedEffect(vibrate) {
                             if (vibrate) {
-                                vibrateAnim.animateTo(15f, spring(dampingRatio = 0.2f, stiffness = Spring.StiffnessHigh))
-                                vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                                vibrateAnim.animateTo(
+                                    15f,
+                                    spring(
+                                        dampingRatio = 0.2f,
+                                        stiffness = Spring.StiffnessHigh
+                                    )
+                                )
+                                vibrateAnim.animateTo(
+                                    0f,
+                                    spring(
+                                        dampingRatio = 0.5f,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                )
                             }
                         }
 
@@ -440,9 +563,17 @@ fun AlarmEditSheet(
                             modifier = Modifier.size(ROW_H),
                         ) {
                             Icon(
-                                imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
-                                contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
-                                modifier = Modifier.graphicsLayer { rotationZ = vibrateAnim.value }
+                                imageVector = if (vibrate)
+                                    Icons.Rounded.Vibration
+                                else
+                                    Icons.Rounded.Smartphone,
+                                contentDescription = if (vibrate)
+                                    "Vibrate on"
+                                else
+                                    "Vibrate off",
+                                modifier = Modifier.graphicsLayer {
+                                    rotationZ = vibrateAnim.value
+                                }
                             )
                         }
                     }
@@ -452,11 +583,18 @@ fun AlarmEditSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         if (onDelete != null) {
-                            val deleteInteraction = remember { MutableInteractionSource() }
-                            val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                            val deleteInteraction = remember {
+                                MutableInteractionSource()
+                            }
+                            val isDeletePressed by
+                                deleteInteraction.collectIsPressedAsState()
+
                             val deleteScale by animateFloatAsState(
                                 targetValue = if (isDeletePressed) 0.90f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessHigh
+                                ),
                                 label = "deleteScale"
                             )
 
@@ -465,7 +603,7 @@ fun AlarmEditSheet(
                                 interactionSource = deleteInteraction,
                                 colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.error 
+                                    contentColor = MaterialTheme.colorScheme.error
                                 ),
                                 contentPadding = PaddingValues(horizontal = 12.dp),
                                 modifier = Modifier
@@ -476,20 +614,36 @@ fun AlarmEditSheet(
                                         scaleY = deleteScale
                                     },
                             ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(24.dp))
+                                Icon(
+                                    Icons.Rounded.Delete,
+                                    contentDescription = null,
+                                    Modifier.size(24.dp)
+                                )
                             }
                         }
 
-                        val cancelInteraction = remember { MutableInteractionSource() }
-                        val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                        val cancelInteraction = remember {
+                            MutableInteractionSource()
+                        }
+                        val isCancelPressed by
+                            cancelInteraction.collectIsPressedAsState()
+
                         val cancelScale by animateFloatAsState(
                             targetValue = if (isCancelPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessHigh
+                            ),
                             label = "cancelScale"
                         )
 
                         FilledTonalButton(
-                            onClick = { scope.launch { sheetState.hide(); onDismiss() } },
+                            onClick = {
+                                scope.launch {
+                                    sheetState.hide()
+                                    onDismiss()
+                                }
+                            },
                             interactionSource = cancelInteraction,
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -504,19 +658,32 @@ fun AlarmEditSheet(
                                     scaleY = cancelScale
                                 },
                         ) {
-                            Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Cancel",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
 
-                        val saveInteraction = remember { MutableInteractionSource() }
-                        val isSavePressed by saveInteraction.collectIsPressedAsState()
+                        val saveInteraction = remember {
+                            MutableInteractionSource()
+                        }
+                        val isSavePressed by
+                            saveInteraction.collectIsPressedAsState()
+
                         val saveScale by animateFloatAsState(
                             targetValue = if (isSavePressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessHigh
+                            ),
                             label = "saveScale"
                         )
 
                         Button(
-                            onClick = { commitAndClose(explicit = true) },
+                            onClick = {
+                                commitAndClose(explicit = true)
+                            },
                             interactionSource = saveInteraction,
                             contentPadding = PaddingValues(horizontal = 12.dp),
                             modifier = Modifier
@@ -527,9 +694,17 @@ fun AlarmEditSheet(
                                     scaleY = saveScale
                                 },
                         ) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                Modifier.size(20.dp)
+                            )
                             Spacer(Modifier.width(8.dp))
-                            Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Save",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -539,35 +714,51 @@ fun AlarmEditSheet(
 }
 
 // ---------------------------------------------------------
-// FIX: PERFECT COLON ALIGNMENT & SHIFTED DOWN NUMBERS
+// Time Entry
 // ---------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTimeEntry(state: TimePickerState) {
     val is24Hour = state.is24hour
-    
-    val hoursList = if (is24Hour) (0..23).map { "%02d".format(it) } else (1..12).map { "%02d".format(it) }
+
+    val hoursList = if (is24Hour)
+        (0..23).map { "%02d".format(it) }
+    else
+        (1..12).map { "%02d".format(it) }
+
     val minutesList = (0..59).map { "%02d".format(it) }
     val amPmList = listOf("am", "pm")
 
-    val currentHourIndex = if (is24Hour) state.hour else {
+    val currentHourIndex = if (is24Hour) {
+        state.hour
+    } else {
         val h12 = (state.hour % 12).takeIf { it != 0 } ?: 12
         h12 - 1
     }
+
     val currentAmPmIndex = if (state.hour < 12) 0 else 1
 
-    val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+    val titleStyle = MaterialTheme.typography.titleMedium.copy(
+        fontWeight = FontWeight.Medium
+    )
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Hours", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // FIX: Shifted numbers further down from the title
+            Text(
+                text = "Hours",
+                style = titleStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             Spacer(Modifier.height(24.dp))
+
             WheelPicker(
                 items = hoursList,
                 selectedIndex = currentHourIndex,
@@ -586,27 +777,35 @@ private fun SwipeTimeEntry(state: TimePickerState) {
 
         Spacer(Modifier.width(12.dp))
 
-        // FIX: The Colon is now enclosed in a matching Column & Box to mathematically force absolute center alignment
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = " ", style = titleStyle) // Invisible placeholder to match Title height
-            Spacer(Modifier.height(24.dp)) 
+            Text(text = " ", style = titleStyle)
+            Spacer(Modifier.height(24.dp))
+
             Box(
-                modifier = Modifier.height(180.dp), // Exact match to Wheel Picker Height
+                modifier = Modifier.height(180.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = ":",
-                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
 
-        Spacer(Modifier.width(12.dp)) 
+        Spacer(Modifier.width(12.dp))
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "Minutes",
+                style = titleStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             Spacer(Modifier.height(24.dp))
+
             WheelPicker(
                 items = minutesList,
                 selectedIndex = state.minute,
@@ -616,17 +815,20 @@ private fun SwipeTimeEntry(state: TimePickerState) {
         }
 
         if (!is24Hour) {
-            Spacer(Modifier.width(24.dp)) 
+            Spacer(Modifier.width(24.dp))
+
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = " ", style = titleStyle) 
+                Text(text = " ", style = titleStyle)
                 Spacer(Modifier.height(24.dp))
+
                 WheelPicker(
                     items = amPmList,
                     selectedIndex = currentAmPmIndex,
-                    isAmPm = true, 
+                    isAmPm = true,
                     onIndexChanged = { newIndex ->
                         val isCurrentlyPm = state.hour >= 12
                         val wantsPm = newIndex == 1
+
                         if (wantsPm && !isCurrentlyPm) {
                             state.hour += 12
                         } else if (!wantsPm && isCurrentlyPm) {
@@ -640,8 +842,9 @@ private fun SwipeTimeEntry(state: TimePickerState) {
 }
 
 // ---------------------------------------------------------
-// FIX: "ONE-WAY SYNC" TO PREVENT JUMPING/STUCK NUMBERS
+// Wheel Picker
 // ---------------------------------------------------------
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WheelPicker(
@@ -651,78 +854,109 @@ private fun WheelPicker(
     onIndexChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val virtualCount = 100_000 
+    val virtualCount = 100_000
     val initialCenter = virtualCount / 2
-    val initialIndex = initialCenter - (initialCenter % items.size) + selectedIndex.coerceAtLeast(0)
-    
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val initialIndex =
+        initialCenter - (initialCenter % items.size) + selectedIndex.coerceAtLeast(0)
 
-    // FIX: State Tug-of-war resolved. 
-    // Wheel ONLY updates the external state when your finger completely stops scrolling.
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialIndex
+    )
+
     LaunchedEffect(listState.isScrollInProgress) {
         if (!listState.isScrollInProgress) {
-            val realIndex = listState.firstVisibleItemIndex % items.size
+            val realIndex =
+                listState.firstVisibleItemIndex % items.size
+
             if (realIndex != selectedIndex) {
-                onIndexChanged(realIndex) 
+                onIndexChanged(realIndex)
             }
         }
     }
 
     LaunchedEffect(selectedIndex) {
-        val currentlyShowing = listState.firstVisibleItemIndex % items.size
+        val currentlyShowing =
+            listState.firstVisibleItemIndex % items.size
+
         if (currentlyShowing != selectedIndex) {
             val currentCenter = listState.firstVisibleItemIndex
-            val targetOffset = selectedIndex - (currentCenter % items.size)
+            val targetOffset =
+                selectedIndex - (currentCenter % items.size)
+
             var diff = targetOffset
-            
-            if (diff > items.size / 2) diff -= items.size
-            else if (diff < -items.size / 2) diff += items.size
-            
+
+            if (diff > items.size / 2) {
+                diff -= items.size
+            } else if (diff < -items.size / 2) {
+                diff += items.size
+            }
+
             listState.animateScrollToItem(currentCenter + diff)
         }
     }
 
-    val firstVisible by remember { derivedStateOf { listState.firstVisibleItemIndex } }
-    
-    val itemHeight = 60.dp 
-    val pickerHeight = 180.dp // Reduced height to make the sheet compact
+    val firstVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex
+        }
+    }
+
+    val itemHeight = 60.dp
+    val pickerHeight = 180.dp
 
     LazyColumn(
         state = listState,
-        flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+        flingBehavior = rememberSnapFlingBehavior(
+            lazyListState = listState
+        ),
         modifier = modifier
-            .height(pickerHeight) 
-            .width(80.dp), 
-        contentPadding = PaddingValues(vertical = itemHeight), 
+            .height(pickerHeight)
+            .width(80.dp),
+        contentPadding = PaddingValues(vertical = itemHeight),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(virtualCount) { index ->
             val realIndex = index % items.size
             val itemText = items[realIndex]
             val isSelected = index == firstVisible
-            
-            val fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Light
-            val textAlpha = if (isSelected) 1f else 0.3f
-            
-            val baseStyle = if (isAmPm) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium
-            val textStyle = baseStyle.copy(fontWeight = fontWeight)
+
+            val fontWeight =
+                if (isSelected) FontWeight.SemiBold
+                else FontWeight.Light
+
+            val textAlpha =
+                if (isSelected) 1f
+                else 0.3f
+
+            val baseStyle =
+                if (isAmPm) MaterialTheme.typography.headlineMedium
+                else MaterialTheme.typography.displayMedium
+
+            val textStyle = baseStyle.copy(
+                fontWeight = fontWeight
+            )
 
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.05f else 0.85f, 
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                targetValue = if (isSelected) 1.05f else 0.85f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
                 label = "scale"
             )
-            
+
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(itemHeight) 
+                    .height(itemHeight)
                     .fillMaxWidth()
             ) {
                 Text(
                     text = itemText,
                     style = textStyle,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha),
+                    color = MaterialTheme.colorScheme.onSurface.copy(
+                        alpha = textAlpha
+                    ),
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
                         scaleY = scale
@@ -734,7 +968,7 @@ private fun WheelPicker(
 }
 
 // ---------------------------------------------------------
-// Subcomponents
+// Group Picker
 // ---------------------------------------------------------
 
 @Composable
@@ -747,14 +981,22 @@ private fun GroupPicker(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
-    val selectedName = groups.firstOrNull { it.id == selectedId }?.name ?: "No group"
 
-    val interactionSource = remember { MutableInteractionSource() }
+    val selectedName =
+        groups.firstOrNull { it.id == selectedId }?.name ?: "No group"
+
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "groupPickerScale"
     )
 
@@ -771,8 +1013,14 @@ private fun GroupPicker(
                     scaleY = scale
                 },
         ) {
-            Icon(Icons.Rounded.Group, contentDescription = null, Modifier.size(20.dp))
+            Icon(
+                Icons.Rounded.Group,
+                contentDescription = null,
+                Modifier.size(20.dp)
+            )
+
             Spacer(Modifier.width(10.dp))
+
             Text(
                 selectedName,
                 maxLines = 1,
@@ -783,32 +1031,56 @@ private fun GroupPicker(
                 textAlign = TextAlign.Start,
             )
         }
-        
+
         MaterialTheme(
-            shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
+            shapes = MaterialTheme.shapes.copy(
+                extraSmall = RoundedCornerShape(16.dp)
+            )
         ) {
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
                 DropdownMenuItem(
                     text = { Text("No group") },
-                    onClick = { onSelect(null); expanded = false },
+                    onClick = {
+                        onSelect(null)
+                        expanded = false
+                    },
                 )
+
                 groups.forEach { group ->
                     DropdownMenuItem(
                         text = { Text(group.name) },
-                        onClick = { onSelect(group.id); expanded = false },
+                        onClick = {
+                            onSelect(group.id)
+                            expanded = false
+                        },
                     )
                 }
+
                 DropdownMenuItem(
                     text = { Text("New group") },
-                    leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                    onClick = { expanded = false; showCreate = true },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.Add,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        showCreate = true
+                    },
                 )
             }
         }
     }
 
     if (showCreate) {
-        var name by rememberSaveable { mutableStateOf("") }
+        var name by rememberSaveable {
+            mutableStateOf("")
+        }
+
         AlertDialog(
             onDismissRequest = { showCreate = false },
             title = { Text("New group") },
@@ -825,27 +1097,43 @@ private fun GroupPicker(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (name.isNotBlank()) onCreateGroup(name.trim())
+                        if (name.isNotBlank()) {
+                            onCreateGroup(name.trim())
+                        }
                         showCreate = false
                     },
-                ) { Text("Create") }
+                ) {
+                    Text("Create")
+                }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showCreate = false }) { Text("Cancel") }
+                OutlinedButton(
+                    onClick = { showCreate = false }
+                ) {
+                    Text("Cancel")
+                }
             },
         )
     }
 }
 
+// ---------------------------------------------------------
+// Ringtone Name
+// ---------------------------------------------------------
+
 @Composable
 private fun ringtoneName(uri: String?): String {
     val context = LocalContext.current
+
     return remember(uri) {
         when {
             uri == null -> "Default sound"
             uri == SILENT -> "Silent"
+
             else -> runCatching {
-                RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
+                RingtoneManager
+                    .getRingtone(context, Uri.parse(uri))
+                    ?.getTitle(context)
             }.getOrNull() ?: "Default sound"
         }
     }
@@ -853,7 +1141,10 @@ private fun ringtoneName(uri: String?): String {
 
 private val EDGE = 24.dp
 private val ROW_H = 56.dp
+
 const val SILENT = "silent"
 
 fun systemFirstDay(): DayOfWeek =
-    java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
+    java.time.temporal.WeekFields
+        .of(Locale.getDefault())
+        .firstDayOfWeek
