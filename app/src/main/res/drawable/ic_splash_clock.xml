@@ -30,7 +30,7 @@
         android:pivotY="54">
         <path
             android:strokeColor="#E34BAF"
-            android:strokeWidth="5.30"
+            android:strokeWidth="5.28"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 69.2,42.3" />
     </group>
