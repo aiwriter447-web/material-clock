@@ -61,7 +61,7 @@ private val AlarmFilledCustom: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
-            // Outer Clock Body (Drawn Clockwise for Non-Zero Winding Rule)
+            // Main Clock Body (Clockwise)
             moveTo(12f, 2f)
             curveTo(17.52f, 2f, 22f, 6.48f, 22f, 12f)
             curveTo(22f, 17.52f, 17.52f, 22f, 12f, 22f)
@@ -69,27 +69,27 @@ private val AlarmFilledCustom: ImageVector
             curveTo(2f, 6.48f, 6.48f, 2f, 12f, 2f)
             close()
             
-            // Inner Hands Cutout (Drawn Counter-Clockwise to guarantee transparent hole)
+            // Inner Hands Cutout (Counter-Clockwise for transparent hole)
             moveTo(11f, 7f)
-            lineTo(11f, 13f)
-            lineTo(15.5f, 17.5f)
-            lineTo(16.9f, 16.1f)
-            lineTo(12.5f, 11.7f)
-            lineTo(12.5f, 7f)
+            lineTo(11f, 12.5f)
+            lineTo(15.5f, 17f)
+            lineTo(17f, 15.5f)
+            lineTo(13f, 11.5f)
+            lineTo(13f, 7f)
             close()
 
-            // Left Bell (Drawn Clockwise)
-            moveTo(3.2f, 1.5f)
-            lineTo(6f, 4.4f)
-            lineTo(4.6f, 5.8f)
-            lineTo(1.8f, 2.9f)
+            // Left Bell (Solid angled thick rectangle)
+            moveTo(3.5f, 1.5f)
+            lineTo(7.5f, 4.5f)
+            lineTo(6.0f, 6.5f)
+            lineTo(2.0f, 3.5f)
             close()
 
-            // Right Bell (Drawn Clockwise)
-            moveTo(20.8f, 1.5f)
-            lineTo(22.2f, 2.9f)
-            lineTo(19.4f, 5.8f)
-            lineTo(18f, 4.4f)
+            // Right Bell (Solid angled thick rectangle)
+            moveTo(20.5f, 1.5f)
+            lineTo(16.5f, 4.5f)
+            lineTo(18.0f, 6.5f)
+            lineTo(22.0f, 3.5f)
             close()
         }.build()
         return _alarmFilledCustom!!
@@ -106,26 +106,17 @@ private val TimerFilledCustom: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
-            // Perfect Geometric Hourglass Shape
-            moveTo(8f, 22f)
-            curveTo(6.9f, 22f, 6f, 21.1f, 6f, 20f)
-            verticalLineTo(16.5f)
-            curveTo(6f, 15.97f, 6.21f, 15.46f, 6.59f, 15.09f)
-            lineTo(10.17f, 11.5f)
-            lineTo(6.59f, 7.91f)
-            curveTo(6.21f, 7.54f, 6f, 7.03f, 6f, 6.5f)
-            verticalLineTo(4f)
-            curveTo(6f, 2.9f, 6.9f, 2f, 8f, 2f)
-            horizontalLineTo(16f)
-            curveTo(17.1f, 2f, 18f, 2.9f, 18f, 4f)
-            verticalLineTo(6.5f)
-            curveTo(18f, 7.03f, 17.79f, 7.54f, 17.41f, 7.91f)
-            lineTo(13.83f, 11.5f)
-            lineTo(17.41f, 15.09f)
-            curveTo(17.79f, 15.46f, 18f, 15.97f, 18f, 16.5f)
-            verticalLineTo(20f)
-            curveTo(18f, 21.1f, 17.1f, 22f, 16f, 22f)
-            horizontalLineTo(8f)
+            // Perfect 100% Geometric Sharp Hourglass matching the outline
+            moveTo(6f, 22f)
+            lineTo(6f, 16f)
+            lineTo(10f, 12f) // Sharp inner diagonal
+            lineTo(6f, 8f)
+            lineTo(6f, 2f)
+            lineTo(18f, 2f) // Top horizontal bar
+            lineTo(18f, 8f)
+            lineTo(14f, 12f) // Sharp inner diagonal
+            lineTo(18f, 16f)
+            lineTo(18f, 22f) // Bottom horizontal bar
             close()
         }.build()
         return _timerFilledCustom!!
@@ -187,29 +178,33 @@ private val StopwatchFilledCustom: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 22f)
-            curveTo(9.23f, 22f, 6.88f, 21.02f, 4.93f, 19.07f)
-            curveTo(2.98f, 17.12f, 2f, 14.77f, 2f, 12f)
-            curveTo(2f, 9.23f, 2.98f, 6.88f, 4.93f, 4.93f)
-            curveTo(6.88f, 2.98f, 9.23f, 2f, 12f, 2f)
-            curveTo(14.77f, 2f, 17.12f, 2.98f, 19.07f, 4.93f)
-            curveTo(21.02f, 6.88f, 22f, 9.23f, 22f, 12f)
-            curveTo(22f, 14.77f, 21.02f, 17.12f, 19.07f, 19.07f)
-            curveTo(17.12f, 21.02f, 14.77f, 22f, 12f, 22f)
+            // Main Circular Body (Clockwise)
+            moveTo(12f, 4f)
+            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
+            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
+            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
+            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
             close()
-            moveTo(12.5f, 7f)
-            lineTo(11.5f, 7f)
-            lineTo(11.5f, 12.5f)
-            lineTo(15f, 16f)
-            lineTo(15.7f, 15.3f)
-            lineTo(12.5f, 12.1f)
-            lineTo(12.5f, 7f)
-            close()
+
+            // Top Rectangular Button (Clockwise)
             moveTo(9f, 1f)
             lineTo(15f, 1f)
             lineTo(15f, 3f)
             lineTo(9f, 3f)
-            lineTo(9f, 1f)
+            close()
+
+            // Right Angled Button (Clockwise) - Matching the non-filled design
+            moveTo(19.03f, 4.88f)
+            lineTo(20.44f, 6.3f)
+            lineTo(19.03f, 7.71f)
+            lineTo(17.62f, 6.29f)
+            close()
+
+            // Inner Vertical Dial Cutout (Counter-Clockwise for transparency)
+            moveTo(11f, 8f)
+            lineTo(11f, 14f)
+            lineTo(13f, 14f)
+            lineTo(13f, 8f)
             close()
         }.build()
         return _stopwatchFilledCustom!!
@@ -311,7 +306,6 @@ fun ClockDock(
                                 }
                             }
                             
-                            // Safe fallback to your original unselected configuration
                             val icon = if (isSelected) activeIcon else destination.icon
                             val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
 
