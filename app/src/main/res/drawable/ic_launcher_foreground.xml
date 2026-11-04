@@ -4,34 +4,34 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-  <!-- White Solid Dial inside Safe Zone -->
+  <!-- White Solid Dial -->
   <path
       android:fillColor="#F6F6F6"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Hour Hand -->
-  <path
-      android:strokeColor="#171C4C"
-      android:strokeWidth="10"
-      android:strokeLineCap="round"
-      android:pathData="M 54,54 L 43.0,47.2" />
-
-  <!-- Minute Hand -->
-  <path
-      android:strokeColor="#171C4C"
-      android:strokeWidth="5.28"
-      android:strokeLineCap="round"
-      android:pathData="M 54,54 L 69.2,42.3" />
-
-  <!-- Second Hand -->
+  <!-- Second Hand (Bottom Layer) -->
   <path
       android:strokeColor="#E44DAE"
       android:strokeWidth="2.79"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 54,73.2" />
 
-  <!-- Center Pin -->
+  <!-- Minute Hand (Middle Layer) -->
   <path
-      android:fillColor="#E44DAE"
+      android:strokeColor="#171C4C"
+      android:strokeWidth="5.28"
+      android:strokeLineCap="round"
+      android:pathData="M 54,54 L 69.2,42.3" />
+
+  <!-- Hour Hand (Top Layer - Covers the joints to create perfect "Y" shape) -->
+  <path
+      android:strokeColor="#171C4C"
+      android:strokeWidth="10"
+      android:strokeLineCap="round"
+      android:pathData="M 54,54 L 43.0,47.2" />
+
+  <!-- Center Pin (White Dot, Radius 2.5) -->
+  <path
+      android:fillColor="#F6F6F6"
       android:pathData="M 54,51.5 A 2.5,2.5 0 1,1 53.9,51.5 Z" />
 </vector>
