@@ -62,34 +62,34 @@ private val AlarmFilledCustom: ImageVector
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
             // Main Clock Body (Clockwise)
-            moveTo(12f, 2f)
-            curveTo(17.52f, 2f, 22f, 6.48f, 22f, 12f)
-            curveTo(22f, 17.52f, 17.52f, 22f, 12f, 22f)
-            curveTo(6.48f, 22f, 2f, 17.52f, 2f, 12f)
-            curveTo(2f, 6.48f, 6.48f, 2f, 12f, 2f)
+            moveTo(12f, 4f)
+            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
+            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
+            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
+            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
             close()
             
             // Inner Hands Cutout (Counter-Clockwise for transparent hole)
-            moveTo(11f, 7f)
-            lineTo(11f, 12.5f)
-            lineTo(15.5f, 17f)
-            lineTo(17f, 15.5f)
-            lineTo(13f, 11.5f)
-            lineTo(13f, 7f)
+            moveTo(11f, 8f)
+            lineTo(11f, 14f)
+            lineTo(15.25f, 16.55f)
+            lineTo(16f, 15.32f)
+            lineTo(12.5f, 13.25f)
+            lineTo(12.5f, 8f)
             close()
 
-            // Left Bell (Solid angled thick rectangle)
-            moveTo(3.5f, 1.5f)
-            lineTo(7.5f, 4.5f)
-            lineTo(6.0f, 6.5f)
-            lineTo(2.0f, 3.5f)
+            // Left Bell (Connected accurately to the main body)
+            moveTo(7.88f, 3.39f)
+            lineTo(6.6f, 1.86f)
+            lineTo(2f, 5.71f)
+            lineTo(3.29f, 7.25f)
             close()
 
-            // Right Bell (Solid angled thick rectangle)
-            moveTo(20.5f, 1.5f)
-            lineTo(16.5f, 4.5f)
-            lineTo(18.0f, 6.5f)
-            lineTo(22.0f, 3.5f)
+            // Right Bell (Connected accurately to the main body)
+            moveTo(22f, 5.72f)
+            lineTo(17.4f, 1.86f)
+            lineTo(16.11f, 3.39f)
+            lineTo(20.71f, 7.25f)
             close()
         }.build()
         return _alarmFilledCustom!!
@@ -106,17 +106,22 @@ private val TimerFilledCustom: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
-            // Perfect 100% Geometric Sharp Hourglass matching the outline
-            moveTo(6f, 22f)
-            lineTo(6f, 16f)
-            lineTo(10f, 12f) // Sharp inner diagonal
-            lineTo(6f, 8f)
-            lineTo(6f, 2f)
-            lineTo(18f, 2f) // Top horizontal bar
-            lineTo(18f, 8f)
-            lineTo(14f, 12f) // Sharp inner diagonal
-            lineTo(18f, 16f)
-            lineTo(18f, 22f) // Bottom horizontal bar
+            // Perfect Geometric Sharp Hourglass (Exact Google Dimensions)
+            moveTo(8f, 22f)
+            lineTo(16f, 22f)
+            verticalLineTo(16.5f)
+            lineTo(13.83f, 11.5f)
+            lineTo(17.41f, 7.91f)
+            curveTo(17.79f, 7.54f, 18f, 7.03f, 18f, 6.5f)
+            verticalLineTo(2f)
+            horizontalLineTo(6f)
+            verticalLineTo(6.5f)
+            curveTo(6f, 7.03f, 6.21f, 7.54f, 6.59f, 7.91f)
+            lineTo(10.17f, 11.5f)
+            lineTo(6.59f, 15.09f)
+            curveTo(6.21f, 15.46f, 6f, 15.97f, 6f, 16.5f)
+            verticalLineTo(22f)
+            horizontalLineTo(8f)
             close()
         }.build()
         return _timerFilledCustom!!
@@ -193,7 +198,7 @@ private val StopwatchFilledCustom: ImageVector
             lineTo(9f, 3f)
             close()
 
-            // Right Angled Button (Clockwise) - Matching the non-filled design
+            // Right Angled Button (Clockwise) - Unchanged as per instructions
             moveTo(19.03f, 4.88f)
             lineTo(20.44f, 6.3f)
             lineTo(19.03f, 7.71f)
