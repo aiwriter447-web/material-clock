@@ -18,7 +18,7 @@
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#031435"
+            android:strokeColor="#171C4C"
             android:strokeWidth="10"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 43.0,47.2" />
