@@ -7,8 +7,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
@@ -98,12 +101,13 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
+    // NEW SMOOTH TRANSITION: Slide + Fade for premium feel
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
-            fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) using
-                SizeTransform(clip = false)
+            (fadeIn(tween(400)) + slideInVertically(tween(400)) { height -> height / 4 }) togetherWith
+            (fadeOut(tween(400)) + slideOutVertically(tween(400)) { height -> -height / 4 }) using
+            SizeTransform(clip = false)
         },
         label = "timer-state",
         modifier = modifier.fillMaxSize(),
@@ -132,19 +136,20 @@ private fun SetTimer(
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    LaunchedEffect(draft.seconds) {
-        hours = (draft.seconds / 3600).toInt()
-        mins = ((draft.seconds % 3600) / 60).toInt()
-        secs = (draft.seconds % 60).toInt()
+    // Ensures UI matches ViewModel only when ViewModel dictates a reset
+    LaunchedEffect(draft) {
+        val dHours = (draft.seconds / 3600).toInt()
+        val dMins = ((draft.seconds % 3600) / 60).toInt()
+        val dSecs = (draft.seconds % 60).toInt()
+        
+        if (hours != dHours || mins != dMins || secs != dSecs) {
+            hours = dHours
+            mins = dMins
+            secs = dSecs
+        }
     }
 
     val armed = hours > 0 || mins > 0 || secs > 0
-
-    val syncToViewModel = {
-        repeat(6) { onBackspace() } 
-        val digits = "%02d%02d%02d".format(hours, mins, secs)
-        digits.forEach { onDigit(it, TimerField.SECONDS) }
-    }
 
     val defaultPresets = remember {
         listOf(
@@ -172,14 +177,14 @@ private fun SetTimer(
                 .fillMaxSize()
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding()
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp // Adjusted bottom padding
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             
-            Spacer(Modifier.weight(0.10f)) // Fluid layout gap
+            Spacer(Modifier.weight(0.15f)) 
 
-            // LABELS: Perfectly distributed
+            // LABELS
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -201,35 +206,34 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.height(16.dp)) // Fixed distance from labels to numbers
+            Spacer(Modifier.height(12.dp)) 
 
-            // STRICT ALIGNMENT CONTAINER: Prevents all zigzags and floating colons
+            // STRICT ALIGNMENT CONTAINER (Fixed Zigzag)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(192.dp), // Strictly 64.dp * 3
+                    .height(192.dp), 
                 contentAlignment = Alignment.Center
             ) {
-                // Wheels Layer
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                 ) {
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..99, initialValue = hours, onValueChange = { hours = it; syncToViewModel() })
+                        InfiniteWheelPicker(range = 0..99, initialValue = hours, onValueChange = { hours = it })
                     }
-                    Spacer(Modifier.width(16.dp)) // Ghost space for alignment calculation
+                    Spacer(Modifier.width(16.dp)) 
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..59, initialValue = mins, onValueChange = { mins = it; syncToViewModel() })
+                        InfiniteWheelPicker(range = 0..59, initialValue = mins, onValueChange = { mins = it })
                     }
-                    Spacer(Modifier.width(16.dp)) // Ghost space for alignment calculation
+                    Spacer(Modifier.width(16.dp)) 
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..59, initialValue = secs, onValueChange = { secs = it; syncToViewModel() })
+                        InfiniteWheelPicker(range = 0..59, initialValue = secs, onValueChange = { secs = it })
                     }
                 }
 
-                // Colons Overlay Layer (Absolutely centered, cannot float or misalign)
+                // ABSOLUTE COLONS OVERLAY
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -247,7 +251,7 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.weight(0.15f)) // Fluid layout gap
+            Spacer(Modifier.weight(0.15f)) 
 
             PresetGrid(defaultPresets, onStartPreset, onEditPreset)
             
@@ -259,16 +263,19 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
 
-            Spacer(Modifier.weight(0.20f)) // Fluid layout gap before button
+            Spacer(Modifier.weight(0.12f)) // Reduced to pull start button UP
 
             Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed, onClick = {
-                    syncToViewModel()
+                    // Sync happens ONLY when start is pressed, fixing the fight between UI and ViewModel
+                    repeat(6) { onBackspace() }
+                    val digits = "%02d%02d%02d".format(hours, mins, secs)
+                    digits.forEach { onDigit(it, TimerField.SECONDS) }
                     onStart()
                 })
             }
             
-            Spacer(Modifier.weight(0.10f)) // Fluid layout bottom padding
+            Spacer(Modifier.weight(0.10f))
         }
     }
 }
@@ -288,12 +295,12 @@ private fun InfiniteWheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
+    // FIXED RESET BUG: Instant snap to 0, no messy animations
     LaunchedEffect(initialValue) {
-        val currentIndex = listState.firstVisibleItemIndex
-        val currentValue = (currentIndex % count) + range.first
-        if (initialValue != currentValue) {
-            val diff = initialValue - currentValue
-            listState.animateScrollToItem(currentIndex + diff)
+        val currentActual = (listState.firstVisibleItemIndex % count) + range.first
+        if (initialValue != currentActual) {
+            val diff = initialValue - currentActual
+            listState.scrollToItem(listState.firstVisibleItemIndex + diff)
         }
     }
 
@@ -331,7 +338,6 @@ private fun InfiniteWheelPicker(
                 label = "colorAnim"
             )
 
-            // STRICT BOX HEIGHT: This completely eliminates the zigzag shifting bug
             Box(
                 modifier = Modifier
                     .requiredHeight(itemHeight)
@@ -465,7 +471,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp) // STRICT HEIGHT LOCK: prevents squashing completely
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
