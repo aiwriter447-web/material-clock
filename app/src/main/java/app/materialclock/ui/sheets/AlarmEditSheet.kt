@@ -34,8 +34,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.rounded.Add
@@ -112,6 +114,8 @@ fun AlarmEditSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // नया स्क्रॉल स्टेट जोड़ा गया ताकि कीबोर्ड आने पर लेआउट रिस्पॉन्सिव हो सके
+    val scrollState = rememberScrollState()
 
     var label by rememberSaveable(initial.id) { mutableStateOf(initial.label) }
     var days by remember(initial.id) { mutableStateOf(initial.days) }
@@ -232,6 +236,8 @@ fun AlarmEditSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // कीबोर्ड बग फिक्स: verticalScroll जोड़ा गया है ताकि कीबोर्ड खुलने पर टेक्स्ट फील्ड ऊपर आ सके
+                .verticalScroll(scrollState)
                 .imePadding()
                 .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
         ) {
@@ -352,7 +358,6 @@ fun AlarmEditSheet(
                         }
                     }
                     
-                    // Added top padding to create that "little ideal space" without breaking layout structure
                     OutlinedTextField(
                         value = label,
                         onValueChange = { label = it },
