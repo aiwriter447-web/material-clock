@@ -4,14 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
@@ -56,6 +55,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +78,8 @@ import app.materialclock.core.TimerState
 import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
 import java.time.Duration
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
 enum class TimerField { HOURS, MINUTES, SECONDS }
@@ -101,12 +103,12 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // NEW SMOOTH TRANSITION: Slide + Fade for premium feel
+    // NEW PREMIUM TRANSITION: Smooth Scale & Fade (Zero choppy slides)
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
-            (fadeIn(tween(400)) + slideInVertically(tween(400)) { height -> height / 4 }) togetherWith
-            (fadeOut(tween(400)) + slideOutVertically(tween(400)) { height -> -height / 4 }) using
+            (fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.92f)) togetherWith
+            (fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.92f)) using
             SizeTransform(clip = false)
         },
         label = "timer-state",
@@ -115,7 +117,9 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            SetTimer(draft, onDigit, onBackspace, onStart, onStartPreset, onEditPreset, contentPadding)
+            // Using REAL DB Presets so edits actually save!
+            val sortedPresets = remember(presets) { presets.sortedBy { it.totalSeconds } }
+            SetTimer(draft, onDigit, onBackspace, onStart, onStartPreset, onEditPreset, sortedPresets, contentPadding)
         }
     }
 }
@@ -130,13 +134,13 @@ private fun SetTimer(
     onStart: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
     onEditPreset: (TimerPreset) -> Unit,
+    presets: List<TimerPreset>,
     contentPadding: PaddingValues,
 ) {
     var hours by remember { mutableStateOf((draft.seconds / 3600).toInt()) }
     var mins by remember { mutableStateOf(((draft.seconds % 3600) / 60).toInt()) }
     var secs by remember { mutableStateOf((draft.seconds % 60).toInt()) }
 
-    // Ensures UI matches ViewModel only when ViewModel dictates a reset
     LaunchedEffect(draft) {
         val dHours = (draft.seconds / 3600).toInt()
         val dMins = ((draft.seconds % 3600) / 60).toInt()
@@ -150,20 +154,8 @@ private fun SetTimer(
     }
 
     val armed = hours > 0 || mins > 0 || secs > 0
-
-    val defaultPresets = remember {
-        listOf(
-            TimerPreset(1L, "Short Break", 5 * 60),
-            TimerPreset(2L, "Long Break", 15 * 60),
-            TimerPreset(3L, "Focus", 25 * 60),
-            TimerPreset(4L, "Nap", 30 * 60),
-            TimerPreset(5L, "Workout", 45 * 60),
-            TimerPreset(6L, "Deep Work", 50 * 60),
-            TimerPreset(7L, "Study", 60 * 60),
-            TimerPreset(8L, "Sports", 2 * 60 * 60),
-            TimerPreset(9L, "Sleep", 6 * 60 * 60)
-        ).sortedBy { it.totalSeconds }
-    }
+    val scope = rememberCoroutineScope()
+    var isStarting by remember { mutableStateOf(false) }
 
     val colonColor by animateColorAsState(
         targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
@@ -177,12 +169,12 @@ private fun SetTimer(
                 .fillMaxSize()
                 .padding(
                     top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 16.dp // Adjusted bottom padding
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             
-            Spacer(Modifier.weight(0.15f)) 
+            Spacer(Modifier.weight(0.12f)) 
 
             // LABELS
             Row(
@@ -206,9 +198,9 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.height(12.dp)) 
+            Spacer(Modifier.height(16.dp)) 
 
-            // STRICT ALIGNMENT CONTAINER (Fixed Zigzag)
+            // STRICT ALIGNMENT CONTAINER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -251,9 +243,9 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.weight(0.15f)) 
+            Spacer(Modifier.weight(0.12f)) 
 
-            PresetGrid(defaultPresets, onStartPreset, onEditPreset)
+            PresetGrid(presets, onStartPreset, onEditPreset)
             
             Spacer(Modifier.height(12.dp))
 
@@ -263,15 +255,20 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
 
-            Spacer(Modifier.weight(0.12f)) // Reduced to pull start button UP
+            Spacer(Modifier.height(24.dp)) // Pulling Start button up perfectly
 
             Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
-                AnimatedStartButton(armed = armed, onClick = {
-                    // Sync happens ONLY when start is pressed, fixing the fight between UI and ViewModel
-                    repeat(6) { onBackspace() }
-                    val digits = "%02d%02d%02d".format(hours, mins, secs)
-                    digits.forEach { onDigit(it, TimerField.SECONDS) }
-                    onStart()
+                AnimatedStartButton(armed = armed && !isStarting, onClick = {
+                    if (isStarting) return@AnimatedStartButton // Crash-prevention Debounce
+                    isStarting = true
+                    scope.launch {
+                        repeat(6) { onBackspace() }
+                        val digits = "%02d%02d%02d".format(hours, mins, secs)
+                        digits.forEach { onDigit(it, TimerField.SECONDS) }
+                        onStart()
+                        delay(600) // Cooldown to prevent spam-crash
+                        isStarting = false
+                    }
                 })
             }
             
@@ -295,12 +292,11 @@ private fun InfiniteWheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // FIXED RESET BUG: Instant snap to 0, no messy animations
+    // BUG KILLED: Exact absolute snap to MiddlePoint avoids any offset errors on 00:00:00 reset
     LaunchedEffect(initialValue) {
         val currentActual = (listState.firstVisibleItemIndex % count) + range.first
         if (initialValue != currentActual) {
-            val diff = initialValue - currentActual
-            listState.scrollToItem(listState.firstVisibleItemIndex + diff)
+            listState.scrollToItem(middlePoint + (initialValue - range.first))
         }
     }
 
@@ -324,11 +320,12 @@ private fun InfiniteWheelPicker(
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
-            val targetCap = if (isSelected) 42.dp else 26.dp
-            val animatedCap by animateDpAsState(
-                targetValue = targetCap,
+            // BUG KILLED: Layout thrashing removed. Size is strict, only SCALE is animated.
+            val targetScale = if (isSelected) 1f else 0.65f
+            val animatedScale by animateFloatAsState(
+                targetValue = targetScale,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                label = "capHeightAnim"
+                label = "scaleAnim"
             )
 
             val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
@@ -344,14 +341,19 @@ private fun InfiniteWheelPicker(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Numerals(
-                    text = "%02d".format(actualValue),
-                    capHeight = animatedCap,
-                    color = animatedColor,
-                    width = ClockFace.TIMER_WIDTH,
-                    weight = ClockFace.TIMER_WEIGHT,
-                    slashedZero = true
-                )
+                Box(modifier = Modifier.graphicsLayer {
+                    scaleX = animatedScale
+                    scaleY = animatedScale
+                }) {
+                    Numerals(
+                        text = "%02d".format(actualValue),
+                        capHeight = 42.dp, // STRICT fixed height, avoids all jumpy layouts!
+                        color = animatedColor,
+                        width = ClockFace.TIMER_WIDTH,
+                        weight = ClockFace.TIMER_WEIGHT,
+                        slashedZero = true
+                    )
+                }
             }
         }
     }
@@ -508,6 +510,8 @@ private fun RunningTimer(
         "%02d:%02d".format((secs % 3600) / 60, secs % 60)
     }
     val running = timer.state == TimerState.RUNNING
+    val scope = rememberCoroutineScope()
+    var isCanceling by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
@@ -624,7 +628,15 @@ private fun RunningTimer(
         AnimatedPillButton(
             text = "Cancel",
             icon = Icons.Rounded.Close,
-            onClick = onCancel,
+            onClick = {
+                if (isCanceling) return@AnimatedPillButton // Crash-prevention Debounce
+                isCanceling = true
+                scope.launch {
+                    onCancel()
+                    delay(500)
+                    isCanceling = false
+                }
+            },
             container = MaterialTheme.colorScheme.surfaceContainer,
             content = MaterialTheme.colorScheme.onSurfaceVariant,
         )
