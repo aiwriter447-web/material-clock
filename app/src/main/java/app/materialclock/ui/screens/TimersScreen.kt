@@ -103,7 +103,6 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // NEW PREMIUM TRANSITION: Smooth Scale & Fade (Zero choppy slides)
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
@@ -117,9 +116,27 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            // Using REAL DB Presets so edits actually save!
-            val sortedPresets = remember(presets) { presets.sortedBy { it.totalSeconds } }
-            SetTimer(draft, onDigit, onBackspace, onStart, onStartPreset, onEditPreset, sortedPresets, contentPadding)
+            // Fallback to 6 requested presets if old DB defaults exist
+            val default6Presets = remember {
+                listOf(
+                    TimerPreset(1L, "Short Break", 5 * 60),
+                    TimerPreset(2L, "Long Break", 15 * 60),
+                    TimerPreset(3L, "Focus", 25 * 60),
+                    TimerPreset(4L, "Nap", 30 * 60),
+                    TimerPreset(5L, "Workout", 45 * 60),
+                    TimerPreset(6L, "Study", 60 * 60)
+                )
+            }
+
+            val displayPresets = remember(presets) {
+                if (presets.isEmpty() || (presets.size <= 3 && presets.any { it.name in listOf("High", "Deep work", "Study") })) {
+                    default6Presets
+                } else {
+                    presets.sortedBy { it.totalSeconds }
+                }
+            }
+
+            SetTimer(draft, onDigit, onBackspace, onStart, onStartPreset, onEditPreset, displayPresets, contentPadding)
         }
     }
 }
@@ -243,7 +260,7 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.weight(0.12f)) 
+            Spacer(Modifier.weight(0.14f)) 
 
             PresetGrid(presets, onStartPreset, onEditPreset)
             
@@ -255,18 +272,18 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
 
-            Spacer(Modifier.height(24.dp)) // Pulling Start button up perfectly
+            Spacer(Modifier.height(24.dp)) 
 
             Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed && !isStarting, onClick = {
-                    if (isStarting) return@AnimatedStartButton // Crash-prevention Debounce
+                    if (isStarting) return@AnimatedStartButton 
                     isStarting = true
                     scope.launch {
                         repeat(6) { onBackspace() }
                         val digits = "%02d%02d%02d".format(hours, mins, secs)
                         digits.forEach { onDigit(it, TimerField.SECONDS) }
                         onStart()
-                        delay(600) // Cooldown to prevent spam-crash
+                        delay(600) 
                         isStarting = false
                     }
                 })
@@ -292,7 +309,6 @@ private fun InfiniteWheelPicker(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // BUG KILLED: Exact absolute snap to MiddlePoint avoids any offset errors on 00:00:00 reset
     LaunchedEffect(initialValue) {
         val currentActual = (listState.firstVisibleItemIndex % count) + range.first
         if (initialValue != currentActual) {
@@ -320,7 +336,6 @@ private fun InfiniteWheelPicker(
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
-            // BUG KILLED: Layout thrashing removed. Size is strict, only SCALE is animated.
             val targetScale = if (isSelected) 1f else 0.65f
             val animatedScale by animateFloatAsState(
                 targetValue = targetScale,
@@ -347,7 +362,7 @@ private fun InfiniteWheelPicker(
                 }) {
                     Numerals(
                         text = "%02d".format(actualValue),
-                        capHeight = 42.dp, // STRICT fixed height, avoids all jumpy layouts!
+                        capHeight = 42.dp,
                         color = animatedColor,
                         width = ClockFace.TIMER_WIDTH,
                         weight = ClockFace.TIMER_WEIGHT,
@@ -407,8 +422,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = RoundedCornerShape(percent = 50), 
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(96.dp)
-            .height(56.dp)
+            .width(100.dp) // Uniform width
+            .height(56.dp)  // Uniform height
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -425,12 +440,17 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Live news headline scrolling effect (basicMarquee) for long names
             Text(
                 text = preset.name,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                softWrap = false,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    velocity = 30.dp
+                )
             )
             Spacer(Modifier.height(1.dp))
             Text(
@@ -438,7 +458,11 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                softWrap = false,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    velocity = 30.dp
+                )
             )
         }
     }
@@ -629,7 +653,7 @@ private fun RunningTimer(
             text = "Cancel",
             icon = Icons.Rounded.Close,
             onClick = {
-                if (isCanceling) return@AnimatedPillButton // Crash-prevention Debounce
+                if (isCanceling) return@AnimatedPillButton 
                 isCanceling = true
                 scope.launch {
                     onCancel()
