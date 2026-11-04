@@ -41,7 +41,7 @@ class ClockStore(private val context: Context) {
         p[KEY_CITIES]?.let(::parseCities) ?: SEED_CITIES
     }
     val groups: Flow<List<AlarmGroup>> = context.prefs.data.map { p ->
-        p[KEY_GROUPS]?.let(::parseGroups) ?: emptyList()
+        p[KEY_GROUPS]?.let(::parseGroups) ?: SEED_GROUPS
     }
     val timer: Flow<ClockTimer?> = context.prefs.data.map { p -> p[KEY_TIMER]?.let(::parseTimer) }
     val stopwatch: Flow<Stopwatch> = context.prefs.data.map { p ->
@@ -147,10 +147,40 @@ class ClockStore(private val context: Context) {
         val KEY_PRESETS = stringPreferencesKey("timerPresets")
         val KEY_NEXT_ID = longPreferencesKey("nextId")
 
+        /**
+         * What a fresh install starts with: two groups and four alarms. They are only used while
+         * nothing has been saved; the moment the user adds, changes or deletes anything, their own
+         * list is what is stored, and these are never brought back.
+         */
+        val SEED_GROUPS = listOf(
+            AlarmGroup(1, "Morning"),
+            AlarmGroup(2, "Night"),
+        )
+
         val SEED_ALARMS = listOf(
-            Alarm(1, LocalTime.of(6, 40), "Gym", setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)),
-            Alarm(2, LocalTime.of(7, 15), "Work", Alarm.WEEKDAYS),
-            Alarm(3, LocalTime.of(8, 0), "Standup", setOf(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY), enabled = false),
+            // Monday to Saturday, on.
+            Alarm(
+                1, LocalTime.of(4, 30), "Gym",
+                setOf(
+                    DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                    DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY,
+                ),
+                enabled = true, groupId = 1,
+            ),
+            // Every day, off.
+            Alarm(2, LocalTime.of(21, 30), "Sleep", DayOfWeek.entries.toSet(), enabled = false, groupId = 2),
+            // Monday, Wednesday, Friday and Sunday, off.
+            Alarm(
+                3, LocalTime.of(11, 0), "Medication",
+                setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY, DayOfWeek.SUNDAY),
+                enabled = false,
+            ),
+            // Every day except Thursday, on.
+            Alarm(
+                4, LocalTime.of(8, 30), "Gardening",
+                DayOfWeek.entries.filter { it != DayOfWeek.THURSDAY }.toSet(),
+                enabled = true,
+            ),
         )
 
         val SEED_CITIES = listOf(
