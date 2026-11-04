@@ -9,28 +9,28 @@
       android:fillColor="#F6F6F6"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Second Hand (Bottom Layer) -->
+  <!-- Second Hand -->
   <path
       android:strokeColor="#E44DAE"
       android:strokeWidth="2.79"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 54,73.2" />
 
-  <!-- Minute Hand (Middle Layer) -->
+  <!-- Minute Hand -->
   <path
       android:strokeColor="#171C4C"
       android:strokeWidth="5.28"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 69.2,42.3" />
 
-  <!-- Hour Hand (Top Layer - Covers the joints to create perfect "Y" shape) -->
+  <!-- Hour Hand -->
   <path
       android:strokeColor="#171C4C"
       android:strokeWidth="10"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 43.0,47.2" />
 
-  <!-- Center Pin (White Dot, Radius 2.5) -->
+  <!-- Center Pin -->
   <path
       android:fillColor="#F6F6F6"
       android:pathData="M 54,51.5 A 2.5,2.5 0 1,1 53.9,51.5 Z" />
