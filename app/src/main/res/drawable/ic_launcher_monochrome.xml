@@ -9,26 +9,22 @@
       android:fillColor="#4D000000"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
+  <!-- Second Dot -->
   <path
-      android:strokeColor="#FF000000"
-      android:strokeWidth="2.79"
-      android:strokeLineCap="round"
-      android:pathData="M 54,54 L 54,73.2" />
+      android:fillColor="#FF000000"
+      android:pathData="M 54,72.2 A 1.5,1.5 0 1,1 52.5,72.2 A 1.5,1.5 0 1,1 54,72.2 Z"
 
+  <!-- Minute Hand -->
   <path
       android:strokeColor="#FF000000"
       android:strokeWidth="5.28"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 69.2,42.3" />
 
+  <!-- Hour Hand -->
   <path
       android:strokeColor="#FF000000"
       android:strokeWidth="10"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 43.0,47.2" />
-
-  <!-- Center Pin -->
-  <path
-      android:fillColor="#4D000000"
-      android:pathData="M 54,51.5 A 2.5,2.5 0 1,1 53.9,51.5 Z" />
 </vector>
