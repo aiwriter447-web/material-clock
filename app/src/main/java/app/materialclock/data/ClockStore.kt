@@ -463,7 +463,13 @@ private fun parsePresets(s: String): List<TimerPreset> = runCatching {
 }.getOrDefault(SEED_PRESETS)
 
 private val SEED_PRESETS = listOf(
-    TimerPreset(id = 1L, name = "Study", totalSeconds = 25 * 60),
-    TimerPreset(id = 2L, name = "Deep work", totalSeconds = 50 * 60),
-    TimerPreset(id = 3L, name = "Break", totalSeconds = 5 * 60),
+    TimerPreset(id = 1L, name = "Short Break", totalSeconds = 5 * 60),
+    TimerPreset(id = 2L, name = "Long Break", totalSeconds = 15 * 60),
+    TimerPreset(id = 3L, name = "Focus", totalSeconds = 25 * 60),
+    TimerPreset(id = 4L, name = "Nap", totalSeconds = 30 * 60),
+    TimerPreset(id = 5L, name = "Workout", totalSeconds = 45 * 60),
+    TimerPreset(id = 6L, name = "Deep Work", totalSeconds = 50 * 60),
+    TimerPreset(id = 7L, name = "Study", totalSeconds = 60 * 60),      // 1 hour
+    TimerPreset(id = 8L, name = "Sport", totalSeconds = 2 * 60 * 60),   // 2 hours
+    TimerPreset(id = 9L, name = "Sleep", totalSeconds = 6 * 60 * 60),   // 6 hours
 )
