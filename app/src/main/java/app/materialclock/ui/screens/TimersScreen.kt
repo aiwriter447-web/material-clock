@@ -116,21 +116,20 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            // Fallback to 6 requested presets if old DB defaults exist
-            val default6Presets = remember {
-                listOf(
-                    TimerPreset(1L, "Short Break", 5 * 60),
-                    TimerPreset(2L, "Long Break", 15 * 60),
-                    TimerPreset(3L, "Focus", 25 * 60),
-                    TimerPreset(4L, "Nap", 30 * 60),
-                    TimerPreset(5L, "Workout", 45 * 60),
-                    TimerPreset(6L, "Study", 60 * 60)
-                )
-            }
-
+            // DB Sync Logic: If DB is empty, load 9 defaults. Otherwise, show real DB presets (allows edits to save).
             val displayPresets = remember(presets) {
-                if (presets.isEmpty() || (presets.size <= 3 && presets.any { it.name in listOf("High", "Deep work", "Study") })) {
-                    default6Presets
+                if (presets.isEmpty()) {
+                    listOf(
+                        TimerPreset(1L, "Short Break", 5 * 60),
+                        TimerPreset(2L, "Long Break", 15 * 60),
+                        TimerPreset(3L, "Focus", 25 * 60),
+                        TimerPreset(4L, "Nap", 30 * 60),
+                        TimerPreset(5L, "Workout", 45 * 60),
+                        TimerPreset(6L, "Deep Work", 50 * 60),
+                        TimerPreset(7L, "Study", 60 * 60),
+                        TimerPreset(8L, "Sports", 2 * 60 * 60),
+                        TimerPreset(9L, "Sleep", 6 * 60 * 60)
+                    ).sortedBy { it.totalSeconds }
                 } else {
                     presets.sortedBy { it.totalSeconds }
                 }
@@ -422,8 +421,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = RoundedCornerShape(percent = 50), 
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(100.dp) // Uniform width
-            .height(56.dp)  // Uniform height
+            .width(100.dp) // Uniform fixed width for all 9 preset pills
+            .height(56.dp) // Uniform fixed height for all 9 preset pills
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -440,7 +439,6 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Live news headline scrolling effect (basicMarquee) for long names
             Text(
                 text = preset.name,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
