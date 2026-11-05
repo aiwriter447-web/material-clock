@@ -1,3 +1,4 @@
+
 package app.materialclock.ui
 
 import android.Manifest
@@ -202,9 +203,6 @@ fun ClockApp(
             }
         }
 
-        // First-run setup: three things the app cannot do its job without, asked one at a time
-        // before it opens (see SetupScreens.kt). An existing install that already has an alarm sound
-        // picked is not asked again.
         val soundChosen = settings.alarms.soundChosen || settings.alarms.defaultSoundUri != null
         val setupStep = when {
             !hasFullScreenPermission -> SetupStep.FULL_SCREEN
@@ -216,7 +214,9 @@ fun ClockApp(
             SetupScreen(
                 step = setupStep,
                 onSoundChosen = { uri ->
-                    vm.updateSettings { it.copy(alarms = it.alarms.copy(defaultSoundUri = uri, soundChosen = true)) }
+                    vm.updateSettings {
+                        it.copy(alarms = it.alarms.copy(defaultSoundUri = uri, soundChosen = true))
+                    }
                 },
             )
             return@ClockTheme
@@ -224,9 +224,7 @@ fun ClockApp(
 
         val initialPageIndex = rememberSaveable {
             startTab?.let { k ->
-                Tab.entries.indexOfFirst {
-                    it.key == k
-                }.takeIf { it >= 0 }
+                Tab.entries.indexOfFirst { it.key == k }.takeIf { it >= 0 }
             } ?: 0
         }
 
@@ -241,9 +239,10 @@ fun ClockApp(
         var editing by remember { mutableStateOf<Alarm?>(null) }
         var editingPreset by remember { mutableStateOf<TimerPreset?>(null) }
         var showSettings by remember { mutableStateOf(false) }
-        
-        var showScreensaverSettingsSheet by remember(startWithScreensaver) { mutableStateOf(startWithScreensaver) }
-        // Memory flag for ideal navigation back-stack (Screensaver -> WorldClock)
+
+        var showScreensaverSettingsSheet by remember(startWithScreensaver) {
+            mutableStateOf(startWithScreensaver)
+        }
         var returnToWorldClock by remember { mutableStateOf(false) }
 
         var showGroupsManager by remember { mutableStateOf(false) }
@@ -275,18 +274,11 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        // ---- One-hand mode: swipe down to bring the top of the screen into thumb reach ----
-        //
-        // `reachFraction` is how far the top has been pulled down, from 0 (normal) to 1 (all the
-        // way). It is a plain state that only layout and drawing read, never composition, so
-        // dragging it moves things without rebuilding the whole screen on every frame.
-        // How far the top comes down on the Alarms screen: about 15% of the screen's height, from the
-        // reference screenshots.
-        val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+        val screenHeightPx = with(density) {
+            LocalConfiguration.current.screenHeightDp.dp.toPx()
+        }
         val reachMaxPx = screenHeightPx * 0.15f
 
-        // One-hand mode belongs to the Alarms screen only. The World Clock, Timers and Stopwatch
-        // screens do not use it.
         val reachActive = !selectionActive && targetTab == Tab.ALARMS
 
         var reachFraction by remember { mutableFloatStateOf(0f) }
@@ -299,8 +291,6 @@ fun ClockApp(
         }
 
         fun reachSettle() {
-            // Let go past a quarter of the way down and it opens fully; past a quarter of the way
-            // back up and it closes. The gesture starts easily and finishes by itself.
             val target = if (reachResting < 0.5f) {
                 if (reachFraction > 0.30f) 1f else 0f
             } else {
@@ -317,35 +307,36 @@ fun ClockApp(
             }
         }
 
-        // Closes itself when it stops applying: the setting is turned off, a selection starts, or
-        // the World Clock tab (which has its own large clock) is on its way in.
         LaunchedEffect(reachActive) {
             if (!reachActive && reachFraction > 0f) {
                 reachResting = 0f
                 reachJob?.cancel()
-                animate(reachFraction, 0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)) { v, _ ->
-                    reachFraction = v
-                }
+                animate(
+                    reachFraction,
+                    0f,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
+                ) { v, _ -> reachFraction = v }
             }
         }
 
-        // Every tab starts closed. The amount differs from tab to tab, so carrying a half-open top
-        // from one to another would leave it at the wrong height.
         LaunchedEffect(targetTab) {
             if (reachFraction > 0f) {
                 reachResting = 0f
                 reachJob?.cancel()
-                animate(reachFraction, 0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)) { v, _ ->
-                    reachFraction = v
-                }
+                animate(
+                    reachFraction,
+                    0f,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
+                ) { v, _ -> reachFraction = v }
             }
         }
 
-        // For the screens that scroll: a drag down that the list cannot use (it is already at the
-        // top) opens the gap, and a drag up closes the gap before the list is allowed to scroll.
         val reachConnection = remember(reachActive, reachMaxPx) {
             object : NestedScrollConnection {
-                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource
+                ): Offset {
                     if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
                     if (available.y < 0f && reachFraction > 0f) {
                         val before = reachFraction
@@ -358,7 +349,7 @@ fun ClockApp(
                 override fun onPostScroll(
                     consumed: Offset,
                     available: Offset,
-                    source: NestedScrollSource,
+                    source: NestedScrollSource
                 ): Offset {
                     if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
                     if (available.y > 0f && reachFraction < 1f) {
@@ -369,7 +360,10 @@ fun ClockApp(
                     return Offset.Zero
                 }
 
-                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                override suspend fun onPostFling(
+                    consumed: Velocity,
+                    available: Velocity
+                ): Velocity {
                     reachSettle()
                     return Velocity.Zero
                 }
@@ -391,56 +385,70 @@ fun ClockApp(
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                Box(Modifier.graphicsLayer { translationY = reachFraction * reachMaxPx }) {
-                TopAppBar(
-                    title = {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                        ) {
-                            AnimatedContent(
-                                targetState = targetTab,
-                                transitionSpec = {
-                                    if (targetState.ordinal > initialState.ordinal) {
-                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> width / 3 } + fadeIn(tween(100))) togetherWith
-                                            (slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
-                                    } else {
-                                        (slideInHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeIn(tween(100))) togetherWith
-                                            (slideOutHorizontally(animationSpec = fastSnappySpringSpec()) { width -> -width / 3 } + fadeOut(tween(80)))
-                                    }
-                                },
-                                label = "TopBarTitleAnim"
-                            ) { tab ->
-                                Text(
-                                    text = tab.label,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                Box(Modifier.graphicsLayer {
+                    translationY = reachFraction * reachMaxPx
+                }) {
+                    TopAppBar(
+                        title = {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                            ) {
+                                AnimatedContent(
+                                    targetState = targetTab,
+                                    transitionSpec = {
+                                        if (targetState.ordinal > initialState.ordinal) {
+                                            (slideInHorizontally(
+                                                animationSpec = fastSnappySpringSpec()
+                                            ) { width -> width / 3 } + fadeIn(tween(100))) togetherWith
+                                                (slideOutHorizontally(
+                                                    animationSpec = fastSnappySpringSpec()
+                                                ) { width -> -width / 3 } + fadeOut(tween(80)))
+                                        } else {
+                                            (slideInHorizontally(
+                                                animationSpec = fastSnappySpringSpec()
+                                            ) { width -> -width / 3 } + fadeIn(tween(100))) togetherWith
+                                                (slideOutHorizontally(
+                                                    animationSpec = fastSnappySpringSpec()
+                                                ) { width -> -width / 3 } + fadeOut(tween(80)))
+                                        }
+                                    },
+                                    label = "TopBarTitleAnim"
+                                ) { tab ->
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(
+                                            horizontal = 20.dp,
+                                            vertical = 10.dp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { showSettings = true }) {
+                                Icon(
+                                    Icons.Rounded.Settings,
+                                    contentDescription = "${currentTab.label} settings",
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(
-                                Icons.Rounded.Settings,
-                                contentDescription = "${currentTab.label} settings",
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    )
                 }
             },
         ) { padding ->
 
             val ld = LocalLayoutDirection.current
-            val underDock = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
+            val underDock = padding.calculateBottomPadding() +
+                dockHeight + DOCK_CLEARANCE + 12.dp
             val underDockAndFab = underDock + DOCK_HEIGHT + 12.dp
 
             val body = PaddingValues(
@@ -462,8 +470,6 @@ fun ClockApp(
                 Modifier
                     .fillMaxSize()
                     .nestedScroll(reachConnection)
-                    // For screens with nothing to scroll (a short list, the timer keypad): a plain
-                    // vertical drag that nothing else used.
                     .pointerInput(reachActive) {
                         if (!reachActive) return@pointerInput
                         detectVerticalDragGestures(
@@ -480,23 +486,28 @@ fun ClockApp(
                     beyondViewportPageCount = 1
                 ) { page ->
 
-                    val isFocused = pagerState.currentPage == page || pagerState.targetPage == page
+                    val isFocused =
+                        pagerState.currentPage == page || pagerState.targetPage == page
 
                     Box(
                         Modifier
                             .fillMaxSize()
-                            // Only drawing moves, never layout: the page is slid down as a picture, so the
-                            // pull-down costs nothing per frame however long the list is.
                             .then(
                                 if (Tab.entries[page] == Tab.ALARMS) {
-                                    Modifier.graphicsLayer { translationY = reachFraction * reachMaxPx }
+                                    Modifier.graphicsLayer {
+                                        translationY = reachFraction * reachMaxPx
+                                    }
                                 } else {
                                     Modifier
                                 },
                             )
                             .graphicsLayer {
-                                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                alpha = 1f - (kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0f, 1f)
+                                val pageOffset =
+                                    (pagerState.currentPage - page) +
+                                        pagerState.currentPageOffsetFraction
+                                alpha = 1f - (
+                                    kotlin.math.abs(pageOffset) * 0.15f
+                                    ).coerceIn(0f, 1f)
                             }
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
@@ -520,6 +531,7 @@ fun ClockApp(
                                     contentPadding = body,
                                 )
                             }
+
                             Tab.WORLD -> {
                                 val cities by vm.cities.collectAsStateWithLifecycle()
                                 val homeZone by vm.homeZone.collectAsStateWithLifecycle()
@@ -538,17 +550,24 @@ fun ClockApp(
                                                 actionLabel = "Undo",
                                                 duration = SnackbarDuration.Short,
                                             )
-                                            if (r == SnackbarResult.ActionPerformed) vm.addCity(city)
+                                            if (r == SnackbarResult.ActionPerformed) {
+                                                vm.addCity(city)
+                                            }
                                         }
                                     },
-                                    onTogglePin = { city -> vm.togglePinCity(city.zone) },
+                                    onTogglePin = { city ->
+                                        vm.togglePinCity(city.zone)
+                                    },
                                     onDeleteSelected = vm::deleteSelectedCities,
                                     contentPadding = edgeToEdgeWithFab,
                                 )
                             }
+
                             Tab.TIMERS -> {
                                 val presets by vm.presets.collectAsStateWithLifecycle()
-                                val now by rememberElapsedTicker(active = isFocused && timer != null)
+                                val now by rememberElapsedTicker(
+                                    active = isFocused && timer != null
+                                )
                                 TimersScreen(
                                     timer = timer,
                                     draft = vm.draftDuration,
@@ -567,9 +586,12 @@ fun ClockApp(
                                     contentPadding = edgeToEdge,
                                 )
                             }
+
                             Tab.STOPWATCH -> {
                                 val sw by vm.stopwatch.collectAsStateWithLifecycle()
-                                val now by rememberElapsedTicker(active = isFocused && sw.running)
+                                val now by rememberElapsedTicker(
+                                    active = isFocused && sw.running
+                                )
                                 StopwatchScreen(
                                     stopwatch = sw,
                                     nowElapsedMillis = now,
@@ -583,14 +605,25 @@ fun ClockApp(
                     }
                 }
 
-                // Only the Alarms tab has room for the summary: the others move too little.
                 if (targetTab == Tab.ALARMS) {
                     ReachSummary(
-                        summary = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, is24Hour, minuteTick),
+                        summary = reachSummaryText(
+                            targetTab,
+                            alarmsNow,
+                            timer,
+                            stopwatchNow,
+                            is24Hour,
+                            minuteTick
+                        ),
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 40.dp)
-                            .graphicsLayer { alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f) },
+                            .padding(
+                                top = WindowInsets.statusBars.asPaddingValues()
+                                    .calculateTopPadding() + 40.dp
+                            )
+                            .graphicsLayer {
+                                alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                            },
                     )
                 }
 
@@ -623,14 +656,16 @@ fun ClockApp(
                             }
                         },
                         modifier = Modifier.onGloballyPositioned { coords ->
-                            with(density) { dockHeight = coords.size.height.toDp() }
+                            with(density) {
+                                dockHeight = coords.size.height.toDp()
+                            }
                         },
                     )
                 }
 
                 FloatingAddButton(
                     visible = !selectionActive &&
-                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
+                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
                     label = when (targetTab) {
                         Tab.WORLD -> "Add city"
                         Tab.TIMERS -> "Add preset"
@@ -639,7 +674,11 @@ fun ClockApp(
                     onClick = {
                         when (targetTab) {
                             Tab.WORLD -> addingCity = true
-                            Tab.TIMERS -> editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60)
+                            Tab.TIMERS -> editingPreset = TimerPreset(
+                                id = 0L,
+                                name = "",
+                                totalSeconds = 25 * 60
+                            )
                             else -> editing = vm.blankAlarm()
                         }
                     },
@@ -647,7 +686,8 @@ fun ClockApp(
                         .align(Alignment.BottomEnd)
                         .padding(
                             end = 16.dp,
-                            bottom = padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp,
+                            bottom = padding.calculateBottomPadding() +
+                                dockHeight + DOCK_CLEARANCE + 12.dp,
                         ),
                 )
             }
@@ -662,7 +702,9 @@ fun ClockApp(
                 onCreateGroup = { name -> vm.addGroup(name) },
                 onDismiss = { editing = null },
                 onSave = { vm.saveAlarm(it) },
-                onDelete = if (draft.id == 0L) null else { { id -> vm.deleteAlarm(id) } },
+                onDelete = if (draft.id == 0L) null else {
+                    { id -> vm.deleteAlarm(id) }
+                },
             )
         }
 
@@ -684,7 +726,9 @@ fun ClockApp(
                 initial = draft,
                 onDismiss = { editingPreset = null },
                 onSave = { vm.savePreset(it) },
-                onDelete = if (draft.id == 0L) null else { { id -> vm.deletePreset(id) } },
+                onDelete = if (draft.id == 0L) null else {
+                    { id -> vm.deletePreset(id) }
+                },
             )
         }
 
@@ -707,18 +751,27 @@ fun ClockApp(
                     onManageGroups = { showGroupsManager = true },
                     onDismiss = { showSettings = false },
                 )
+
                 Tab.WORLD -> WorldSettingsSheet(
                     settings = settings,
                     onChange = vm::updateSettings,
                     onOpenScreensaverSettings = {
                         showSettings = false
-                        returnToWorldClock = true // Sets the flag to remember where we came from
+                        returnToWorldClock = true
                         showScreensaverSettingsSheet = true
                     },
                     onDismiss = { showSettings = false },
                 )
-                Tab.TIMERS -> TimerSettingsSheet(settings, vm::updateSettings) { showSettings = false }
-                Tab.STOPWATCH -> StopwatchSettingsSheet(settings, vm::updateSettings) { showSettings = false }
+
+                Tab.TIMERS -> TimerSettingsSheet(
+                    settings,
+                    vm::updateSettings
+                ) { showSettings = false }
+
+                Tab.STOPWATCH -> StopwatchSettingsSheet(
+                    settings,
+                    vm::updateSettings
+                ) { showSettings = false }
             }
         }
 
@@ -726,13 +779,15 @@ fun ClockApp(
             ScreensaverSettingsSheet(
                 settings = screensaverSettings,
                 onChange = { transform ->
-                    scope.launch { screensaverRepository.updateSettings(transform) }
+                    scope.launch {
+                        screensaverRepository.updateSettings(transform)
+                    }
                 },
                 onDismiss = {
                     showScreensaverSettingsSheet = false
                     if (returnToWorldClock) {
-                        showSettings = true // Returns directly to WorldSettingsSheet
-                        returnToWorldClock = false // Resets the flag
+                        showSettings = true
+                        returnToWorldClock = false
                     }
                 }
             )
