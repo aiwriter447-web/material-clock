@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 
-// --- Alarm Vectors (Working perfectly as per previous iteration) ---
+// --- Alarm Vectors (Correct) ---
 private val AlarmFilledCustom: ImageVector
     get() {
         if (_alarmFilledCustom != null) return _alarmFilledCustom!!
@@ -135,7 +135,7 @@ private val AlarmOutlinedCustom: ImageVector
 private var _alarmOutlinedCustom: ImageVector? = null
 
 
-// --- NEW: Timer Vectors based on specific geometric analysis ---
+// --- PERFECTED STRICT GEOMETRIC TIMER VECTORS ---
 
 private val TimerFilledCustom: ImageVector
     get() {
@@ -147,36 +147,25 @@ private val TimerFilledCustom: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).path(fill = SolidColor(Color.Black)) {
-            // Filled Hourglass with overhanging caps and smooth center curves
+            // Strict straight lines for the sharp, blocky hourglass shape
             moveTo(6f, 2f)
             lineTo(18f, 2f)
             lineTo(18f, 4f)
             lineTo(16f, 4f)
-            lineTo(16f, 8f)
-            curveTo(16f, 9.66f, 14.66f, 11f, 13f, 11f)
-            lineTo(11f, 11f)
-            curveTo(9.34f, 11f, 8f, 9.66f, 8f, 8f)
+            lineTo(16f, 9f)
+            lineTo(13.5f, 12f) // Sharp diagonal to center
+            lineTo(16f, 15f)   // Sharp diagonal outward
+            lineTo(16f, 20f)
+            lineTo(18f, 20f)
+            lineTo(18f, 22f)
+            lineTo(6f, 22f)
+            lineTo(6f, 20f)
+            lineTo(8f, 20f)
+            lineTo(8f, 15f)
+            lineTo(10.5f, 12f) // Sharp diagonal to center
+            lineTo(8f, 9f)     // Sharp diagonal outward
             lineTo(8f, 4f)
             lineTo(6f, 4f)
-            close()
-            
-            moveTo(6f, 22f)
-            lineTo(18f, 22f)
-            lineTo(18f, 20f)
-            lineTo(16f, 20f)
-            lineTo(16f, 16f)
-            curveTo(16f, 14.34f, 14.66f, 13f, 13f, 13f)
-            lineTo(11f, 13f)
-            curveTo(9.34f, 13f, 8f, 14.34f, 8f, 16f)
-            lineTo(8f, 20f)
-            lineTo(6f, 20f)
-            close()
-            
-            // Center connector
-            moveTo(11f, 11f)
-            lineTo(13f, 11f)
-            lineTo(13f, 13f)
-            lineTo(11f, 13f)
             close()
         }.build()
         return _timerFilledCustom!!
@@ -198,37 +187,36 @@ private val TimerOutlinedCustom: ImageVector
             lineTo(18f, 2f)
             lineTo(18f, 4f)
             lineTo(16f, 4f)
-            lineTo(16f, 8f)
-            curveTo(16f, 10.3f, 14.47f, 12.23f, 12.35f, 12.83f) // Top curve to center
-            curveTo(14.47f, 13.43f, 16f, 15.36f, 16f, 17.66f) // Center curve to bottom
+            lineTo(16f, 9f)
+            lineTo(13.5f, 12f)
+            lineTo(16f, 15f)
             lineTo(16f, 20f)
             lineTo(18f, 20f)
             lineTo(18f, 22f)
             lineTo(6f, 22f)
             lineTo(6f, 20f)
             lineTo(8f, 20f)
-            lineTo(8f, 17.66f)
-            curveTo(8f, 15.36f, 9.53f, 13.43f, 11.65f, 12.83f) // Bottom curve to center
-            curveTo(9.53f, 12.23f, 8f, 10.3f, 8f, 8f) // Center curve to top
+            lineTo(8f, 15f)
+            lineTo(10.5f, 12f)
+            lineTo(8f, 9f)
             lineTo(8f, 4f)
             lineTo(6f, 4f)
             close()
             
-            // Inner Cutout Top (Counter-Clockwise)
-            moveTo(10f, 8f)
-            curveTo(10f, 9.1f, 10.9f, 10f, 12f, 10f)
-            curveTo(13.1f, 10f, 14f, 9.1f, 14f, 8f)
+            // Inner Cutout Top (Counter-Clockwise, strict diagonals)
+            moveTo(10f, 4f)
             lineTo(14f, 4f)
-            lineTo(10f, 4f)
+            lineTo(14f, 8.5f)
+            lineTo(12f, 11f)
+            lineTo(10f, 8.5f)
             close()
 
-            // Inner Cutout Bottom (Counter-Clockwise)
-            moveTo(10f, 17.66f)
-            lineTo(10f, 20f)
+            // Inner Cutout Bottom (Counter-Clockwise, strict diagonals)
+            moveTo(12f, 13f)
+            lineTo(14f, 15.5f)
             lineTo(14f, 20f)
-            lineTo(14f, 17.66f)
-            curveTo(14f, 16.56f, 13.1f, 15.66f, 12f, 15.66f)
-            curveTo(10.9f, 15.66f, 10f, 16.56f, 10f, 17.66f)
+            lineTo(10f, 20f)
+            lineTo(10f, 15.5f)
             close()
         }.build()
         return _timerOutlinedCustom!!
@@ -236,7 +224,7 @@ private val TimerOutlinedCustom: ImageVector
 private var _timerOutlinedCustom: ImageVector? = null
 
 
-// --- World and Stopwatch Vectors (Working perfectly as per previous iteration) ---
+// --- World and Stopwatch Vectors (Correct) ---
 private val WorldFilledCustom: ImageVector
     get() {
         if (_worldFilledCustom != null) return _worldFilledCustom!!
@@ -496,7 +484,6 @@ fun ClockDock(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            // Using the custom geometrically precise icons for BOTH states
                             val activeIcon = remember(destination) {
                                 when (destination) {
                                     Tab.ALARMS -> AlarmFilledCustom
