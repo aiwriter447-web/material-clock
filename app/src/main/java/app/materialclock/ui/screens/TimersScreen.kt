@@ -82,7 +82,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
-enum class TimerField { HOURS, MINUTES, SECONDS }
 
 @Composable
 fun TimersScreen(
@@ -90,7 +89,7 @@ fun TimersScreen(
     draft: Duration,
     nowElapsedMillis: Long,
     presets: List<TimerPreset>,
-    onDigit: (Char, TimerField) -> Unit, 
+    onDigit: (Char) -> Unit, 
     onBackspace: () -> Unit,
     onWind: (Int) -> Unit,
     onStart: () -> Unit,
@@ -116,7 +115,6 @@ fun TimersScreen(
         if (running && timer != null) {
             RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
         } else {
-            // DB Sync Logic: If DB is empty, load 9 defaults. Otherwise, show real DB presets (allows edits to save).
             val displayPresets = remember(presets) {
                 if (presets.isEmpty()) {
                     listOf(
@@ -145,7 +143,7 @@ fun TimersScreen(
 @Composable
 private fun SetTimer(
     draft: Duration,
-    onDigit: (Char, TimerField) -> Unit,
+    onDigit: (Char) -> Unit,
     onBackspace: () -> Unit,
     onStart: () -> Unit,
     onStartPreset: (TimerPreset) -> Unit,
@@ -280,7 +278,7 @@ private fun SetTimer(
                     scope.launch {
                         repeat(6) { onBackspace() }
                         val digits = "%02d%02d%02d".format(hours, mins, secs)
-                        digits.forEach { onDigit(it, TimerField.SECONDS) }
+                        digits.forEach { onDigit(it) } // Fixed parameter
                         onStart()
                         delay(600) 
                         isStarting = false
@@ -421,8 +419,8 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         shape = RoundedCornerShape(percent = 50), 
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(100.dp) // Uniform fixed width for all 9 preset pills
-            .height(56.dp) // Uniform fixed height for all 9 preset pills
+            .width(100.dp) 
+            .height(56.dp) 
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
