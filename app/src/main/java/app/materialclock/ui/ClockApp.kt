@@ -202,6 +202,9 @@ fun ClockApp(
             }
         }
 
+        // First-run setup: three things the app cannot do its job without, asked one at a time
+        // before it opens (see SetupScreens.kt). An existing install that already has an alarm sound
+        // picked is not asked again.
         val soundChosen = settings.alarms.soundChosen || settings.alarms.defaultSoundUri != null
         val setupStep = when {
             !hasFullScreenPermission -> SetupStep.FULL_SCREEN
@@ -272,11 +275,19 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        val oneHandOn = settings.theme.oneHandMode
+        // ---- One-hand mode: swipe down to bring the top of the screen into thumb reach ----
+        //
+        // `reachFraction` is how far the top has been pulled down, from 0 (normal) to 1 (all the
+        // way). It is a plain state that only layout and drawing read, never composition, so
+        // dragging it moves things without rebuilding the whole screen on every frame.
+        // How far the top comes down on the Alarms screen: about 15% of the screen's height, from the
+        // reference screenshots.
         val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
         val reachMaxPx = screenHeightPx * 0.15f
 
-        val reachActive = oneHandOn && !selectionActive && targetTab == Tab.ALARMS
+        // One-hand mode belongs to the Alarms screen only. The World Clock, Timers and Stopwatch
+        // screens do not use it.
+        val reachActive = !selectionActive && targetTab == Tab.ALARMS
 
         var reachFraction by remember { mutableFloatStateOf(0f) }
         var reachResting by remember { mutableFloatStateOf(0f) }
@@ -288,6 +299,8 @@ fun ClockApp(
         }
 
         fun reachSettle() {
+            // Let go past a quarter of the way down and it opens fully; past a quarter of the way
+            // back up and it closes. The gesture starts easily and finishes by itself.
             val target = if (reachResting < 0.5f) {
                 if (reachFraction > 0.30f) 1f else 0f
             } else {
@@ -304,6 +317,8 @@ fun ClockApp(
             }
         }
 
+        // Closes itself when it stops applying: the setting is turned off, a selection starts, or
+        // the World Clock tab (which has its own large clock) is on its way in.
         LaunchedEffect(reachActive) {
             if (!reachActive && reachFraction > 0f) {
                 reachResting = 0f
@@ -314,6 +329,8 @@ fun ClockApp(
             }
         }
 
+        // Every tab starts closed. The amount differs from tab to tab, so carrying a half-open top
+        // from one to another would leave it at the wrong height.
         LaunchedEffect(targetTab) {
             if (reachFraction > 0f) {
                 reachResting = 0f
@@ -324,6 +341,8 @@ fun ClockApp(
             }
         }
 
+        // For the screens that scroll: a drag down that the list cannot use (it is already at the
+        // top) opens the gap, and a drag up closes the gap before the list is allowed to scroll.
         val reachConnection = remember(reachActive, reachMaxPx) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -443,6 +462,8 @@ fun ClockApp(
                 Modifier
                     .fillMaxSize()
                     .nestedScroll(reachConnection)
+                    // For screens with nothing to scroll (a short list, the timer keypad): a plain
+                    // vertical drag that nothing else used.
                     .pointerInput(reachActive) {
                         if (!reachActive) return@pointerInput
                         detectVerticalDragGestures(
@@ -464,6 +485,8 @@ fun ClockApp(
                     Box(
                         Modifier
                             .fillMaxSize()
+                            // Only drawing moves, never layout: the page is slid down as a picture, so the
+                            // pull-down costs nothing per frame however long the list is.
                             .then(
                                 if (Tab.entries[page] == Tab.ALARMS) {
                                     Modifier.graphicsLayer { translationY = reachFraction * reachMaxPx }
@@ -531,7 +554,7 @@ fun ClockApp(
                                     draft = vm.draftDuration,
                                     nowElapsedMillis = now,
                                     presets = presets,
-                                    onDigit = { char, _ -> vm.pressDigit(char) },
+                                    onDigit = vm::pressDigit,
                                     onBackspace = vm::backspace,
                                     onWind = vm::windToMinutes,
                                     onStart = { vm.startTimer() },
@@ -560,7 +583,8 @@ fun ClockApp(
                     }
                 }
 
-                if (oneHandOn && targetTab == Tab.ALARMS) {
+                // Only the Alarms tab has room for the summary: the others move too little.
+                if (targetTab == Tab.ALARMS) {
                     ReachSummary(
                         summary = reachSummaryText(targetTab, alarmsNow, timer, stopwatchNow, is24Hour, minuteTick),
                         modifier = Modifier
@@ -606,14 +630,16 @@ fun ClockApp(
 
                 FloatingAddButton(
                     visible = !selectionActive &&
-                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
+                        (targetTab == Tab.ALARMS || targetTab == Tab.WORLD || (targetTab == Tab.TIMERS && timer == null)),
                     label = when (targetTab) {
                         Tab.WORLD -> "Add city"
+                        Tab.TIMERS -> "Add preset"
                         else -> "Add alarm"
                     },
                     onClick = {
                         when (targetTab) {
                             Tab.WORLD -> addingCity = true
+                            Tab.TIMERS -> editingPreset = TimerPreset(id = 0L, name = "", totalSeconds = 25 * 60)
                             else -> editing = vm.blankAlarm()
                         }
                     },
