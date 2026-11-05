@@ -606,13 +606,6 @@ fun StopwatchSettingsSheet(
                         checked = settings.theme.amoledBlack,
                         onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
                     )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "One-hand mode",
-                        subtitle = "Swipe down on the Alarms screen to bring the top into thumb reach",
-                        checked = settings.theme.oneHandMode,
-                        onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(oneHandMode = v)) } },
-                    )
                 }
             }
 
