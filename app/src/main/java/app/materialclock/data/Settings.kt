@@ -89,13 +89,6 @@ data class ThemeSettings(
     val palette: Palette = Palette.EXPRESSIVE,
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val amoledBlack: Boolean = false,
-    /**
-     * Swiping down on the Alarms screen pulls the top of the screen (the title bar and the first
-     * things under it) down into thumb reach, and shows a large summary in the space it leaves
-     * ("All alarms are off"). Swiping up pushes it back. The other screens do not use it. On by default:
-     * the gesture only exists when you make it, so it cannot get in a two-handed user's way.
-     */
-    val oneHandMode: Boolean = true,
 )
 
 enum class DarkMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
