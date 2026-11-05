@@ -5,53 +5,45 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Dual Background -->
+    <!-- Dark Background -->
     <path
-        android:fillColor="#102447"
+        android:fillColor="#3C50F1"
         android:pathData="M 54,4 C 88,4 104,20 104,54 C 104,88 88,104 54,104 C 20,104 4,88 4,54 C 4,20 20,4 54,4 Z" />
 
+    <!-- White Dial -->
     <path
-        android:fillColor="#F6F6F6"
+        android:fillColor="#FFFFFF"
         android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-    <!-- Second Hand Group -->
+    <!-- Second Dot Group (Will orbit around the center pivot) -->
     <group
         android:name="second"
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#E44DAE"
-            android:strokeWidth="2.79"
-            android:strokeLineCap="round"
-            android:pathData="M 54,54 L 54,73.2" />
+            android:fillColor="#A44EFF"
+            android:pathData="M 54,72.2 A 1.5,1.5 0 1,1 52.5,72.2 A 1.5,1.5 0 1,1 54,72.2 Z"
     </group>
 
-    <!-- Minute Hand Group -->
     <group
         android:name="minute"
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#171C4C"
+            android:strokeColor="#000000"
             android:strokeWidth="5.28"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 69.2,42.3" />
     </group>
 
-    <!-- Hour Hand Group -->
     <group
         android:name="hour"
         android:pivotX="54"
         android:pivotY="54">
         <path
-            android:strokeColor="#171C4C"
+            android:strokeColor="#000000"
             android:strokeWidth="10"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 43.0,47.2" />
     </group>
-
-    <!-- Center White Pin -->
-    <path
-        android:fillColor="#F6F6F6"
-        android:pathData="M 54,51.5 A 2.5,2.5 0 1,1 53.9,51.5 Z" />
 </vector>
