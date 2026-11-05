@@ -219,7 +219,6 @@ private fun Preferences.toSettings() = ClockSettings(
         palette = enumOr(this[stringPreferencesKey("palette")], Palette.EXPRESSIVE),
         darkMode = enumOr(this[stringPreferencesKey("darkMode")], DarkMode.SYSTEM),
         amoledBlack = this[booleanPreferencesKey("amoled")] ?: false,
-        oneHandMode = this[booleanPreferencesKey("oneHand")] ?: true,
     ),
 )
 
@@ -250,7 +249,6 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeSettings
     this[stringPreferencesKey("palette")] = s.theme.palette.name
     this[stringPreferencesKey("darkMode")] = s.theme.darkMode.name
     this[booleanPreferencesKey("amoled")] = s.theme.amoledBlack
-    this[booleanPreferencesKey("oneHand")] = s.theme.oneHandMode
 }
 
 private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
@@ -465,7 +463,4 @@ private fun parsePresets(s: String): List<TimerPreset> = runCatching {
 }.getOrDefault(SEED_PRESETS)
 
 private val SEED_PRESETS = listOf(
-    TimerPreset(id = 1L, name = "Study", totalSeconds = 25 * 60),
-    TimerPreset(id = 2L, name = "Deep work", totalSeconds = 50 * 60),
-    TimerPreset(id = 3L, name = "Break", totalSeconds = 5 * 60),
-)
+    TimerPreset(id = 1L, name = "Study
