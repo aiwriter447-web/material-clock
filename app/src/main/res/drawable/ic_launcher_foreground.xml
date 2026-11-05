@@ -6,32 +6,25 @@
 
   <!-- White Solid Dial -->
   <path
-      android:fillColor="#F6F6F6"
+      android:fillColor="#FFFFFF"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Second Hand -->
+  <!-- Second Dot (Radius 1, placed exactly at the end of the previous needle: Y=73.2) -->
   <path
-      android:strokeColor="#E44DAE"
-      android:strokeWidth="2.79"
-      android:strokeLineCap="round"
-      android:pathData="M 54,54 L 54,73.2" />
+      android:fillColor="#A44EFF"
+      android:pathData="M 54,72.2 A 1.5,1.5 0 1,1 52.5,72.2 A 1.5,1.5 0 1,1 54,72.2 Z"
 
-  <!-- Minute Hand -->
+  <!-- Minute Hand (Middle Layer) -->
   <path
-      android:strokeColor="#171C4C"
+      android:strokeColor="#000000"
       android:strokeWidth="5.28"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 69.2,42.3" />
 
-  <!-- Hour Hand -->
+  <!-- Hour Hand (Top Layer - creates the seamless "Y" shape with Minute Hand) -->
   <path
-      android:strokeColor="#171C4C"
+      android:strokeColor="#000000"
       android:strokeWidth="10"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 43.0,47.2" />
-
-  <!-- Center Pin -->
-  <path
-      android:fillColor="#F6F6F6"
-      android:pathData="M 54,51.5 A 2.5,2.5 0 1,1 53.9,51.5 Z" />
 </vector>
