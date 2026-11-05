@@ -114,7 +114,7 @@ fun AlarmsScreen(
     val order = remember(weekStart) { weekStart.order(systemFirstDay()) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
+    
     var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
 
     DisposableEffect(lifecycleOwner) {
@@ -135,14 +135,6 @@ fun AlarmsScreen(
     var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
     val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
-
-    var nowTime by remember { mutableStateOf(ZonedDateTime.now(ZoneId.systemDefault())) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(60_000)
-            nowTime = ZonedDateTime.now(ZoneId.systemDefault())
-        }
-    }
 
     LaunchedEffect(inSelectionMode) {
         onSelectionChange(inSelectionMode)
@@ -180,47 +172,8 @@ fun AlarmsScreen(
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item(key = "upcoming-alarm-text", contentType = "upcoming") {
-                val upcomingInfo = remember(alarms, nowTime) { calculateTimeUntilNextAlarm(alarms, nowTime) }
-                AnimatedVisibility(
-                    visible = upcomingInfo != null,
-                    enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(300)),
-                    exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(300))
-                ) {
-                    if (upcomingInfo != null) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 6.dp),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            AnimatedContent(
-                                targetState = upcomingInfo.first,
-                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                                label = "upcomingFirstText"
-                            ) { text ->
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            AnimatedContent(
-                                targetState = upcomingInfo.second,
-                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                                label = "upcomingSecondText"
-                            ) { text ->
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            // The next alarm's countdown used to be the first item here. It took room from the list on
+            // every visit, so it now lives in the space the pull-down opens above the screen.
 
             if (groups.isNotEmpty()) {
                 item(key = "group-cards", contentType = "groups") {
@@ -326,48 +279,6 @@ fun AlarmsScreen(
     }
 }
 
-private fun calculateTimeUntilNextAlarm(alarms: List<Alarm>, now: ZonedDateTime): Pair<String, String>? {
-    val activeAlarms = alarms.filter { it.enabled }
-    if (activeAlarms.isEmpty()) return null
-
-    var minDuration: Duration? = null
-    var nextAlarmTime: ZonedDateTime? = null
-
-    for (alarm in activeAlarms) {
-        val nextTime = alarm.nextFire(now)
-        if (nextTime != null) {
-            val duration = Duration.between(now, nextTime)
-            if (minDuration == null || duration < minDuration) {
-                minDuration = duration
-                nextAlarmTime = nextTime
-            }
-        }
-    }
-
-    if (minDuration == null || nextAlarmTime == null) return null
-
-    val days = minDuration.toDays()
-    val hours = minDuration.toHours() % 24
-    val minutes = minDuration.toMinutes() % 60
-
-    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM, h:mm a")
-    val formattedDate = nextAlarmTime.format(formatter).replace("AM", "am").replace("PM", "pm")
-
-    val durationString = buildString {
-        append("Alarm in ")
-        if (days > 0) {
-            append("$days ")
-            append(if (days == 1L) "day " else "days ")
-        }
-        if (hours > 0 || days > 0) {
-            append("$hours ")
-            append(if (hours == 1L) "hour " else "hours ")
-        }
-        append("$minutes minutes")
-    }
-    return Pair(durationString, formattedDate)
-}
-
 private val GROUP_SECTION_PADDING_H = 4.dp
 private val GROUP_CARD_GAP = 10.dp
 private val GROUP_CARD_PADDING = 16.dp
@@ -449,7 +360,7 @@ private fun GroupCard(
 
     val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessMediumLow), label = "iconBg")
     val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessMediumLow), label = "iconTint")
-
+    
     val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
     Surface(
@@ -488,9 +399,9 @@ private fun GroupCard(
                     )
                 }
             }
-
+            
             Spacer(Modifier.width(10.dp))
-
+            
             Column(
                 verticalArrangement = Arrangement.Center
             ) {
@@ -660,10 +571,8 @@ private fun AlarmRow(
                         uncheckedBorderColor = ink,
                         disabledCheckedThumbColor = container,
                         disabledCheckedTrackColor = ink,
-                        disabledCheckedBorderColor = Color.Transparent,
                         disabledUncheckedThumbColor = ink,
                         disabledUncheckedTrackColor = Color.Transparent,
-                        disabledUncheckedBorderColor = ink,
                     ),
                 )
             }
