@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -82,6 +84,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -93,6 +96,7 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Instant
@@ -101,7 +105,7 @@ import java.time.ZoneId
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AlarmEditSheet(
     initial: Alarm,
@@ -115,6 +119,9 @@ fun AlarmEditSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    
+    // नया API: कीबोर्ड आने पर टेक्स्ट फील्ड को विज़िबल एरिया में लाने के लिए
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     var label by rememberSaveable(initial.id) { mutableStateOf(initial.label) }
     var days by remember(initial.id) { mutableStateOf(initial.days) }
@@ -181,7 +188,6 @@ fun AlarmEditSheet(
         }
     }
 
-    // COMPACT DATE PICKER FIX: Removed the edit (pencil) icon as requested
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -198,7 +204,6 @@ fun AlarmEditSheet(
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
-            // FIX: showModeToggle = false removes the unwanted pencil icon and makes it compact
             DatePicker(
                 state = datePickerState,
                 showModeToggle = false 
@@ -233,7 +238,6 @@ fun AlarmEditSheet(
         )
     }
 
-    // Custom Predefined Colors for Delete and Cancel to ensure visibility across Light/Dark modes
     val isDark = isSystemInDarkTheme()
     val customDeleteBgColor = if (isDark) Color(0xFFEF5350) else Color(0xFFD32F2F)
     val customDeleteContentColor = if (isDark) Color(0xFF121212) else Color(0xFFFFFFFF)
@@ -245,315 +249,328 @@ fun AlarmEditSheet(
         onDismissRequest = { scope.launch { sheetState.hide(); onDismiss() } },
         sheetState = sheetState,
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            Spacer(Modifier.height(16.dp)) 
-            
-            SwipeTimeEntry(state = timeState)
-            
-            Spacer(Modifier.height(24.dp)) 
+            item {
+                Spacer(Modifier.height(16.dp)) 
+                
+                SwipeTimeEntry(state = timeState)
+                
+                Spacer(Modifier.height(24.dp)) 
+            }
 
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = RoundedCornerShape(36.dp), 
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp) 
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp) 
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shape = RoundedCornerShape(36.dp), 
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp) 
                 ) {
-                    
-                    val dayText = remember(days, specificDateMillis) {
-                        if (specificDateMillis != null && days.isEmpty()) {
-                            val inst = Instant.ofEpochMilli(specificDateMillis!!)
-                            val ld = inst.atZone(ZoneId.systemDefault()).toLocalDate()
-                            val formatter = java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM")
-                            ld.format(formatter)
-                        } else {
-                            when {
-                                days.size == 7 -> "Every day"
-                                days.isEmpty() -> "Tomorrow"
-                                days == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
-                                days == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
-                                else -> {
-                                    val sortedDays = days.sortedBy { it.value }
-                                    "Every " + sortedDays.joinToString(", ") { it.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) }
-                                }
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp) 
                     ) {
-                        Text(
-                            text = dayText, 
-                            style = MaterialTheme.typography.titleMedium, 
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        IconButton(
-                            onClick = { showDatePicker = true }, 
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarMonth, 
-                                contentDescription = "Choose specific date",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween, 
-                    ) {
-                        weekStart.order(systemFirstDay()).forEach { day ->
-                            val interactionSource = remember { MutableInteractionSource() }
-                            val isPressed by interactionSource.collectIsPressedAsState()
-                            val isChecked = day in days
-
-                            val pressScale by animateFloatAsState(
-                                targetValue = if (isPressed) 0.85f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                                label = "dayTogglePressScale"
-                            )
-                            
-                            val selectionScale by animateFloatAsState(
-                                targetValue = if (isChecked) 1.05f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                label = "dayToggleSelectionScale"
-                            )
-
-                            val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-                            val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-
-                            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
-                            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
-
-                            Surface(
-                                onClick = { 
-                                    days = if (day in days) days - day else days + day 
-                                    specificDateMillis = null 
-                                },
-                                interactionSource = interactionSource,
-                                shape = CircleShape,
-                                color = containerColor,
-                                contentColor = contentColor,
-                                modifier = Modifier
-                                    .size(44.dp) 
-                                    .graphicsLayer {
-                                        scaleX = pressScale * selectionScale
-                                        scaleY = pressScale * selectionScale
+                        
+                        val dayText = remember(days, specificDateMillis) {
+                            if (specificDateMillis != null && days.isEmpty()) {
+                                val inst = Instant.ofEpochMilli(specificDateMillis!!)
+                                val ld = inst.atZone(ZoneId.systemDefault()).toLocalDate()
+                                val formatter = java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM")
+                                ld.format(formatter)
+                            } else {
+                                when {
+                                    days.size == 7 -> "Every day"
+                                    days.isEmpty() -> "Tomorrow"
+                                    days == setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY) -> "Weekdays"
+                                    days == setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> "Weekends"
+                                    else -> {
+                                        val sortedDays = days.sortedBy { it.value }
+                                        "Every " + sortedDays.joinToString(", ") { it.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) }
                                     }
-                            ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Text(
-                                        day.getDisplayName(JavaTextStyle.NARROW, Locale.getDefault()),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                    )
                                 }
                             }
                         }
-                    }
-                    
-                    OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text("Alarm Name", style = MaterialTheme.typography.titleMedium) },
-                        textStyle = MaterialTheme.typography.titleMedium,
-                        singleLine = true,
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    )
 
-                    // GROUP PICKER: Uses secondaryContainer as requested
-                    GroupPicker(
-                        groups = groups,
-                        selectedId = groupId,
-                        onSelect = { groupId = it },
-                        onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val soundInteraction = remember { MutableInteractionSource() }
-                        val isSoundPressed by soundInteraction.collectIsPressedAsState()
-                        val soundScale by animateFloatAsState(
-                            targetValue = if (isSoundPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "soundScale"
-                        )
-
-                        // SOUND BUTTON: Uses primary as requested
-                        FilledTonalButton(
-                            onClick = {
-                                ringtonePicker.launch(
-                                    Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                                        .putExtra(
-                                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                                            soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
-                                        )
-                                )
-                            },
-                            interactionSource = soundInteraction,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            contentPadding = PaddingValues(horizontal = 18.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = soundScale
-                                    scaleY = soundScale
-                                },
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.MusicNote, contentDescription = null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
                             Text(
-                                ringtoneName(soundUri),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                text = dayText, 
                                 style = MaterialTheme.typography.titleMedium, 
                                 fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                        }
-
-                        val vibrateAnim = remember { Animatable(0f) }
-                        LaunchedEffect(vibrate) {
-                            if (vibrate) {
-                                vibrateAnim.animateTo(15f, spring(dampingRatio = 0.2f, stiffness = Spring.StiffnessHigh))
-                                vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                            IconButton(
+                                onClick = { showDatePicker = true }, 
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CalendarMonth, 
+                                    contentDescription = "Choose specific date",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(28.dp)
+                                )
                             }
                         }
-
-                        // VIBRATION BUTTON: primaryContainer (ON) and secondaryContainer (OFF)
-                        FilledIconToggleButton(
-                            checked = vibrate,
-                            onCheckedChange = { vibrate = it },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = IconButtonDefaults.filledIconToggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer, // Off State
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer, // On State
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier.size(ROW_H),
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween, 
                         ) {
-                            Icon(
-                                imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
-                                contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
-                                modifier = Modifier.graphicsLayer { rotationZ = vibrateAnim.value }
-                            )
+                            weekStart.order(systemFirstDay()).forEach { day ->
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+                                val isChecked = day in days
+
+                                val pressScale by animateFloatAsState(
+                                    targetValue = if (isPressed) 0.85f else 1f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                    label = "dayTogglePressScale"
+                                )
+                                
+                                val selectionScale by animateFloatAsState(
+                                    targetValue = if (isChecked) 1.05f else 1f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                    label = "dayToggleSelectionScale"
+                                )
+
+                                val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+                                val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+                                val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
+                                val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
+
+                                Surface(
+                                    onClick = { 
+                                        days = if (day in days) days - day else days + day 
+                                        specificDateMillis = null 
+                                    },
+                                    interactionSource = interactionSource,
+                                    shape = CircleShape,
+                                    color = containerColor,
+                                    contentColor = contentColor,
+                                    modifier = Modifier
+                                        .size(44.dp) 
+                                        .graphicsLayer {
+                                            scaleX = pressScale * selectionScale
+                                            scaleY = pressScale * selectionScale
+                                        }
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Text(
+                                            day.getDisplayName(JavaTextStyle.NARROW, Locale.getDefault()),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    }
+                        
+                        // कीबोर्ड बग फिक्स: BringIntoViewRequester और onFocusEvent अटैच किया गया
+                        OutlinedTextField(
+                            value = label,
+                            onValueChange = { label = it },
+                            label = { Text("Alarm Name", style = MaterialTheme.typography.titleMedium) },
+                            textStyle = MaterialTheme.typography.titleMedium,
+                            singleLine = true,
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .bringIntoViewRequester(bringIntoViewRequester)
+                                .onFocusEvent { focusState ->
+                                    if (focusState.isFocused) {
+                                        scope.launch {
+                                            // कीबोर्ड एनीमेशन पूरा होने के लिए 300ms का डिले
+                                            delay(300) 
+                                            bringIntoViewRequester.bringIntoView()
+                                        }
+                                    }
+                                },
+                        )
 
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (onDelete != null) {
-                            val deleteInteraction = remember { MutableInteractionSource() }
-                            val isDeletePressed by deleteInteraction.collectIsPressedAsState()
-                            val deleteScale by animateFloatAsState(
-                                targetValue = if (isDeletePressed) 0.90f else 1f,
+                        GroupPicker(
+                            groups = groups,
+                            selectedId = groupId,
+                            onSelect = { groupId = it },
+                            onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val soundInteraction = remember { MutableInteractionSource() }
+                            val isSoundPressed by soundInteraction.collectIsPressedAsState()
+                            val soundScale by animateFloatAsState(
+                                targetValue = if (isSoundPressed) 0.95f else 1f,
                                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                                label = "deleteScale"
+                                label = "soundScale"
                             )
 
-                            // DELETE BUTTON: Custom predefined colors for highest visibility
                             FilledTonalButton(
-                                onClick = { showDeleteConfirm = true },
-                                interactionSource = deleteInteraction,
+                                onClick = {
+                                    ringtonePicker.launch(
+                                        Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+                                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                            .putExtra(
+                                                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                                soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
+                                            )
+                                    )
+                                },
+                                interactionSource = soundInteraction,
                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = customDeleteBgColor,
-                                    contentColor = customDeleteContentColor 
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
-                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                contentPadding = PaddingValues(horizontal = 18.dp),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(ROW_H)
                                     .graphicsLayer {
-                                        scaleX = deleteScale
-                                        scaleY = deleteScale
+                                        scaleX = soundScale
+                                        scaleY = soundScale
                                     },
                             ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(24.dp))
+                                Icon(Icons.Rounded.MusicNote, contentDescription = null, Modifier.size(20.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    ringtoneName(soundUri),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.titleMedium, 
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+
+                            val vibrateAnim = remember { Animatable(0f) }
+                            LaunchedEffect(vibrate) {
+                                if (vibrate) {
+                                    vibrateAnim.animateTo(15f, spring(dampingRatio = 0.2f, stiffness = Spring.StiffnessHigh))
+                                    vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                                }
+                            }
+
+                            FilledIconToggleButton(
+                                checked = vibrate,
+                                onCheckedChange = { vibrate = it },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = IconButtonDefaults.filledIconToggleButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer, 
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primaryContainer, 
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.size(ROW_H),
+                            ) {
+                                Icon(
+                                    imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
+                                    contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
+                                    modifier = Modifier.graphicsLayer { rotationZ = vibrateAnim.value }
+                                )
                             }
                         }
 
-                        val cancelInteraction = remember { MutableInteractionSource() }
-                        val isCancelPressed by cancelInteraction.collectIsPressedAsState()
-                        val cancelScale by animateFloatAsState(
-                            targetValue = if (isCancelPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "cancelScale"
-                        )
-
-                        // CANCEL BUTTON: Custom predefined colors for clear distinction
-                        FilledTonalButton(
-                            onClick = { scope.launch { sheetState.hide(); onDismiss() } },
-                            interactionSource = cancelInteraction,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = customCancelBgColor,
-                                contentColor = customCancelContentColor
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = cancelScale
-                                    scaleY = cancelScale
-                                },
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        }
+                            if (onDelete != null) {
+                                val deleteInteraction = remember { MutableInteractionSource() }
+                                val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                                val deleteScale by animateFloatAsState(
+                                    targetValue = if (isDeletePressed) 0.90f else 1f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                    label = "deleteScale"
+                                )
 
-                        val saveInteraction = remember { MutableInteractionSource() }
-                        val isSavePressed by saveInteraction.collectIsPressedAsState()
-                        val saveScale by animateFloatAsState(
-                            targetValue = if (isSavePressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                            label = "saveScale"
-                        )
+                                FilledTonalButton(
+                                    onClick = { showDeleteConfirm = true },
+                                    interactionSource = deleteInteraction,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = customDeleteBgColor,
+                                        contentColor = customDeleteContentColor 
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(ROW_H)
+                                        .graphicsLayer {
+                                            scaleX = deleteScale
+                                            scaleY = deleteScale
+                                        },
+                                ) {
+                                    Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(24.dp))
+                                }
+                            }
 
-                        Button(
-                            onClick = { commitAndClose(explicit = true) },
-                            interactionSource = saveInteraction,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .weight(if (onDelete != null) 1.8f else 2.4f)
-                                .height(ROW_H)
-                                .graphicsLayer {
-                                    scaleX = saveScale
-                                    scaleY = saveScale
-                                },
-                        ) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            val cancelInteraction = remember { MutableInteractionSource() }
+                            val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                            val cancelScale by animateFloatAsState(
+                                targetValue = if (isCancelPressed) 0.95f else 1f,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                label = "cancelScale"
+                            )
+
+                            FilledTonalButton(
+                                onClick = { scope.launch { sheetState.hide(); onDismiss() } },
+                                interactionSource = cancelInteraction,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = customCancelBgColor,
+                                    contentColor = customCancelContentColor
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .height(ROW_H)
+                                    .graphicsLayer {
+                                        scaleX = cancelScale
+                                        scaleY = cancelScale
+                                    },
+                            ) {
+                                Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            val saveInteraction = remember { MutableInteractionSource() }
+                            val isSavePressed by saveInteraction.collectIsPressedAsState()
+                            val saveScale by animateFloatAsState(
+                                targetValue = if (isSavePressed) 0.95f else 1f,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                label = "saveScale"
+                            )
+
+                            Button(
+                                onClick = { commitAndClose(explicit = true) },
+                                interactionSource = saveInteraction,
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier
+                                    .weight(if (onDelete != null) 1.8f else 2.4f)
+                                    .height(ROW_H)
+                                    .graphicsLayer {
+                                        scaleX = saveScale
+                                        scaleY = saveScale
+                                    },
+                            ) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -561,8 +578,6 @@ fun AlarmEditSheet(
         }
     }
 }
-
-// REST OF THE CODE REMAINS EXACTLY THE SAME AND 100% BUG FREE
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
