@@ -15,7 +15,6 @@
         android:fillColor="#262729"
         android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-    <!-- Second Dot Group -->
     <group
         android:name="second"
         android:pivotX="54"
@@ -25,7 +24,6 @@
             android:pathData="M 54,70.7 A 2.5,2.5 0 1,1 53.9,70.7 Z" />
     </group>
 
-    <!-- Minute Hand Group -->
     <group
         android:name="minute"
         android:pivotX="54"
@@ -37,15 +35,19 @@
             android:pathData="M 54,54 L 69.2,42.3" />
     </group>
 
-    <!-- Hour Hand Group -->
     <group
         android:name="hour"
         android:pivotX="54"
         android:pivotY="54">
         <path
             android:strokeColor="#FFFFFF"
-            android:strokeWidth="5.28"
+            android:strokeWidth="7.04"
             android:strokeLineCap="round"
             android:pathData="M 54,54 L 43.0,47.2" />
     </group>
+
+    <!-- Center Pin Group (Rotates with the hands if needed, but visually stays still) -->
+    <path
+        android:fillColor="#262729"
+        android:pathData="M 54,52.5 A 1.5,1.5 0 1,1 53.9,52.5 Z" />
 </vector>
