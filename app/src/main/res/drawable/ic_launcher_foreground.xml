@@ -9,22 +9,27 @@
       android:fillColor="#262729"
       android:pathData="M 54,28.8 A 25.2,25.2 0 1,1 53.9,28.8 Z" />
 
-  <!-- Second Dot (Radius 2.5, Red color #EE3E48) -->
+  <!-- Second Dot (Radius 2.5, Red color) -->
   <path
       android:fillColor="#EE3E48"
       android:pathData="M 54,70.7 A 2.5,2.5 0 1,1 53.9,70.7 Z" />
 
-  <!-- Minute Hand (Light Grey #C2C2C1, Width 5.28) -->
+  <!-- Minute Hand (Width 5.28) -->
   <path
       android:strokeColor="#C2C2C1"
       android:strokeWidth="5.28"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 69.2,42.3" />
 
-  <!-- Hour Hand (White #FFFFFF, Width synced to 5.28) -->
+  <!-- Hour Hand (Width increased to 7.04) -->
   <path
       android:strokeColor="#FFFFFF"
-      android:strokeWidth="5.28"
+      android:strokeWidth="7.04"
       android:strokeLineCap="round"
       android:pathData="M 54,54 L 43.0,47.2" />
+
+  <!-- New Center Pin (Radius 1.5, matches dial color to create a hollow effect) -->
+  <path
+      android:fillColor="#262729"
+      android:pathData="M 54,52.5 A 1.5,1.5 0 1,1 53.9,52.5 Z" />
 </vector>
