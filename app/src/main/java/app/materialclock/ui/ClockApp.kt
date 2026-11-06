@@ -1,4 +1,3 @@
-
 package app.materialclock.ui
 
 import android.Manifest
