@@ -1,3 +1,4 @@
+
 package app.materialclock.ui
 
 import androidx.compose.foundation.layout.Column
@@ -48,7 +49,7 @@ fun ReachSummary(summary: ReachText, modifier: Modifier = Modifier) {
             Text(
                 text = summary.detail,
                 modifier = Modifier.padding(top = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -126,7 +127,7 @@ private fun dayAndTime(t: ZonedDateTime, is24Hour: Boolean): String =
 private fun plural(n: Long, unit: String) = if (n == 1L) "$n $unit" else "$n ${unit}s"
 
 /**
- * "1 day 22 hours 43 minutes". Once it is a day or more away the count is in days, so "46 hours"
+ * "1 Day 22 Hours 43 Minutes". Once it is a day or more away the count is in days, so "46 Hours"
  * never appears: the parts that are zero are left out.
  */
 private fun countdown(d: Duration): String {
@@ -134,9 +135,9 @@ private fun countdown(d: Duration): String {
     val hours = d.toHours() % 24
     val minutes = d.toMinutes() % 60
     val parts = buildList {
-        if (days > 0) add(plural(days, "day"))
-        if (hours > 0) add(plural(hours, "hour"))
-        if (minutes > 0) add(plural(minutes, "minute"))
+        if (days > 0) add(plural(days, "Day"))
+        if (hours > 0) add(plural(hours, "Hour"))
+        if (minutes > 0) add(plural(minutes, "Minute"))
     }
     return if (parts.isEmpty()) "less than a minute" else parts.joinToString(" ")
 }
