@@ -1,3 +1,4 @@
+
 package app.materialclock.ui
 
 import android.Manifest
@@ -618,7 +619,7 @@ fun ClockApp(
                             .align(Alignment.TopCenter)
                             .padding(
                                 top = WindowInsets.statusBars.asPaddingValues()
-                                    .calculateTopPadding() + 40.dp
+                                    .calculateTopPadding() + 16.dp
                             )
                             .graphicsLayer {
                                 alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f)
