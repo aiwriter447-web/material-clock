@@ -41,7 +41,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType // Required for the EvenOdd cutout rule
+import androidx.compose.ui.graphics.PathFillType // Required for EvenOdd transparent cutouts
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,7 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 
-// --- Alarm Vectors (100% Solved, Untouched) ---
+// --- Alarm Vectors (Perfect, Untouched) ---
 private val AlarmFilledCustom: ImageVector
     get() {
         if (_alarmFilledCustom != null) return _alarmFilledCustom!!
@@ -136,7 +136,7 @@ private val AlarmOutlinedCustom: ImageVector
 private var _alarmOutlinedCustom: ImageVector? = null
 
 
-// --- PERFECTED MATERIAL 3 TIMER VECTORS (Hourglass Empty & Hourglass Bottom) ---
+// --- NEW PERFECT WIDE GEOMETRIC TIMER VECTORS ---
 
 private val TimerFilledCustom: ImageVector
     get() {
@@ -149,44 +149,38 @@ private val TimerFilledCustom: ImageVector
             viewportHeight = 24f
         ).path(
             fill = SolidColor(Color.Black),
-            pathFillType = PathFillType.EvenOdd // Crucial for perfect transparent cutouts
+            pathFillType = PathFillType.EvenOdd
         ) {
-            // 1. The Outer Frame (Same for both states)
-            moveTo(6f, 2f)
-            lineTo(18f, 2f)
+            // 1. Expanded Wide Outer Frame (Clockwise)
+            moveTo(4f, 2f)
+            lineTo(20f, 2f)
+            lineTo(20f, 4f)
             lineTo(18f, 4f)
-            lineTo(16f, 4f)
-            lineTo(16f, 8.25f)
-            curveTo(16f, 8.87f, 15.83f, 9.46f, 15.49f, 10.03f)
-            curveTo(15.15f, 10.6f, 14.68f, 11.05f, 14.08f, 11.39f)
-            curveTo(14.68f, 11.73f, 15.15f, 12.18f, 15.49f, 12.75f)
-            curveTo(15.83f, 13.31f, 16f, 13.9f, 16f, 14.5f)
-            lineTo(16f, 20f)
+            lineTo(18f, 7f)
+            lineTo(14f, 11f)
+            lineTo(14f, 13f)
+            lineTo(18f, 17f)
             lineTo(18f, 20f)
-            lineTo(18f, 22f)
-            lineTo(6f, 22f)
+            lineTo(20f, 20f)
+            lineTo(20f, 22f)
+            lineTo(4f, 22f)
+            lineTo(4f, 20f)
             lineTo(6f, 20f)
-            lineTo(8f, 20f)
-            lineTo(8f, 14.5f)
-            curveTo(8f, 13.9f, 8.17f, 13.31f, 8.51f, 12.75f)
-            curveTo(8.85f, 12.18f, 9.32f, 11.73f, 9.92f, 11.39f)
-            curveTo(9.32f, 11.05f, 8.85f, 10.6f, 8.51f, 10.03f)
-            curveTo(8.17f, 9.46f, 8f, 8.87f, 8f, 8.25f)
-            lineTo(8f, 4f)
+            lineTo(6f, 17f)
+            lineTo(10f, 13f)
+            lineTo(10f, 11f)
+            lineTo(6f, 7f)
             lineTo(6f, 4f)
+            lineTo(4f, 4f)
             close()
 
-            // 2. ONLY the Top Inner Cutout. 
-            // This leaves the top empty, but keeps the bottom filled (hourglass_bottom).
-            moveTo(10f, 4f)
-            lineTo(14f, 4f)
-            lineTo(14f, 8.25f)
-            curveTo(14f, 8.65f, 13.9f, 9.01f, 13.71f, 9.33f)
-            curveTo(13.52f, 9.65f, 13.25f, 9.9f, 12.9f, 10.08f)
-            lineTo(12f, 10.55f)
-            lineTo(11.1f, 10.08f)
-            curveTo(10.75f, 9.9f, 10.48f, 9.65f, 10.29f, 9.33f)
-            curveTo(10.1f, 9.01f, 10f, 8.65f, 10f, 8.25f)
+            // 2. Top Cutout ONLY (Counter-Clockwise) - Makes it "hourglass_bottom"
+            moveTo(8f, 4f)
+            lineTo(16f, 4f)
+            lineTo(16f, 7f)
+            lineTo(14f, 9f)
+            lineTo(10f, 9f)
+            lineTo(8f, 7f)
             close()
         }.build()
         return _timerFilledCustom!!
@@ -206,53 +200,45 @@ private val TimerOutlinedCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // 1. The Outer Frame (Same as filled)
-            moveTo(6f, 2f)
-            lineTo(18f, 2f)
+            // 1. Expanded Wide Outer Frame (Clockwise)
+            moveTo(4f, 2f)
+            lineTo(20f, 2f)
+            lineTo(20f, 4f)
             lineTo(18f, 4f)
-            lineTo(16f, 4f)
-            lineTo(16f, 8.25f)
-            curveTo(16f, 8.87f, 15.83f, 9.46f, 15.49f, 10.03f)
-            curveTo(15.15f, 10.6f, 14.68f, 11.05f, 14.08f, 11.39f)
-            curveTo(14.68f, 11.73f, 15.15f, 12.18f, 15.49f, 12.75f)
-            curveTo(15.83f, 13.31f, 16f, 13.9f, 16f, 14.5f)
-            lineTo(16f, 20f)
+            lineTo(18f, 7f)
+            lineTo(14f, 11f)
+            lineTo(14f, 13f)
+            lineTo(18f, 17f)
             lineTo(18f, 20f)
-            lineTo(18f, 22f)
-            lineTo(6f, 22f)
+            lineTo(20f, 20f)
+            lineTo(20f, 22f)
+            lineTo(4f, 22f)
+            lineTo(4f, 20f)
             lineTo(6f, 20f)
-            lineTo(8f, 20f)
-            lineTo(8f, 14.5f)
-            curveTo(8f, 13.9f, 8.17f, 13.31f, 8.51f, 12.75f)
-            curveTo(8.85f, 12.18f, 9.32f, 11.73f, 9.92f, 11.39f)
-            curveTo(9.32f, 11.05f, 8.85f, 10.6f, 8.51f, 10.03f)
-            curveTo(8.17f, 9.46f, 8f, 8.87f, 8f, 8.25f)
-            lineTo(8f, 4f)
+            lineTo(6f, 17f)
+            lineTo(10f, 13f)
+            lineTo(10f, 11f)
+            lineTo(6f, 7f)
             lineTo(6f, 4f)
+            lineTo(4f, 4f)
             close()
             
-            // 2. The Top Inner Cutout
-            moveTo(10f, 4f)
-            lineTo(14f, 4f)
-            lineTo(14f, 8.25f)
-            curveTo(14f, 8.65f, 13.9f, 9.01f, 13.71f, 9.33f)
-            curveTo(13.52f, 9.65f, 13.25f, 9.9f, 12.9f, 10.08f)
-            lineTo(12f, 10.55f)
-            lineTo(11.1f, 10.08f)
-            curveTo(10.75f, 9.9f, 10.48f, 9.65f, 10.29f, 9.33f)
-            curveTo(10.1f, 9.01f, 10f, 8.65f, 10f, 8.25f)
+            // 2. Top Cutout (Counter-Clockwise)
+            moveTo(8f, 4f)
+            lineTo(16f, 4f)
+            lineTo(16f, 7f)
+            lineTo(14f, 9f)
+            lineTo(10f, 9f)
+            lineTo(8f, 7f)
             close()
 
-            // 3. The Bottom Inner Cutout (Making it fully empty for the unselected state)
-            moveTo(10f, 20f)
-            lineTo(14f, 20f)
-            lineTo(14f, 14.5f)
-            curveTo(14f, 14.1f, 13.9f, 13.74f, 13.71f, 13.42f)
-            curveTo(13.52f, 13.1f, 13.25f, 12.85f, 12.9f, 12.67f)
-            lineTo(12f, 12.2f)
-            lineTo(11.1f, 12.67f)
-            curveTo(10.75f, 12.85f, 10.48f, 13.1f, 10.29f, 13.42f)
-            curveTo(10.1f, 13.74f, 10f, 14.1f, 10f, 14.5f)
+            // 3. Bottom Cutout (Counter-Clockwise) - Makes it fully empty
+            moveTo(10f, 15f)
+            lineTo(14f, 15f)
+            lineTo(16f, 17f)
+            lineTo(16f, 20f)
+            lineTo(8f, 20f)
+            lineTo(8f, 17f)
             close()
         }.build()
         return _timerOutlinedCustom!!
@@ -260,7 +246,7 @@ private val TimerOutlinedCustom: ImageVector
 private var _timerOutlinedCustom: ImageVector? = null
 
 
-// --- World and Stopwatch Vectors (100% Solved, Untouched) ---
+// --- World and Stopwatch Vectors (Perfect, Untouched) ---
 private val WorldFilledCustom: ImageVector
     get() {
         if (_worldFilledCustom != null) return _worldFilledCustom!!
