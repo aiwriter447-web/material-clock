@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -114,8 +117,19 @@ fun AlarmsScreen(
     val order = remember(weekStart) { weekStart.order(systemFirstDay()) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val layoutDirection = LocalLayoutDirection.current
     
     var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
+
+    // Ensure the space between the top "Alarms" capsule and the first group card matches the 10.dp item gap
+    val adjustedContentPadding = remember(contentPadding, layoutDirection) {
+        PaddingValues(
+            top = contentPadding.calculateTopPadding() + 10.dp,
+            bottom = contentPadding.calculateBottomPadding(),
+            start = contentPadding.calculateStartPadding(layoutDirection),
+            end = contentPadding.calculateEndPadding(layoutDirection)
+        )
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -169,12 +183,9 @@ fun AlarmsScreen(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = contentPadding,
+            contentPadding = adjustedContentPadding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // The next alarm's countdown used to be the first item here. It took room from the list on
-            // every visit, so it now lives in the space the pull-down opens above the screen.
-
             if (groups.isNotEmpty()) {
                 item(key = "group-cards", contentType = "groups") {
                     GroupCardsSection(
