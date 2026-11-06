@@ -276,7 +276,9 @@ fun ClockApp(
         val screenHeightPx = with(density) {
             LocalConfiguration.current.screenHeightDp.dp.toPx()
         }
-        val reachMaxPx = screenHeightPx * 0.15f
+        
+        // फिक्स 1: यहाँ 0.15f को 0.22f किया गया है ताकि टेक्स्ट के लिए ज्यादा जगह (height) मिल सके
+        val reachMaxPx = screenHeightPx * 0.22f
 
         val reachActive = !selectionActive && targetTab == Tab.ALARMS
 
@@ -477,6 +479,30 @@ fun ClockApp(
                         ) { _, dy -> reachMoveBy(dy) }
                     },
             ) {
+                // फिक्स 2: ReachSummary को HorizontalPager से ऊपर रखा गया है ताकि यह 
+                // अलार्म कार्ड्स के 'पीछे' छिप सके और ओवरलैप न करे।
+                if (targetTab == Tab.ALARMS) {
+                    ReachSummary(
+                        summary = reachSummaryText(
+                            targetTab,
+                            alarmsNow,
+                            timer,
+                            stopwatchNow,
+                            is24Hour,
+                            minuteTick
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(
+                                top = WindowInsets.statusBars.asPaddingValues()
+                                    .calculateTopPadding() + 20.dp
+                            )
+                            .graphicsLayer {
+                                alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                            },
+                    )
+                }
+
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier
@@ -602,28 +628,6 @@ fun ClockApp(
                             }
                         }
                     }
-                }
-
-                if (targetTab == Tab.ALARMS) {
-                    ReachSummary(
-                        summary = reachSummaryText(
-                            targetTab,
-                            alarmsNow,
-                            timer,
-                            stopwatchNow,
-                            is24Hour,
-                            minuteTick
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(
-                                top = WindowInsets.statusBars.asPaddingValues()
-                                    .calculateTopPadding() + 16.dp
-                            )
-                            .graphicsLayer {
-                                alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f)
-                            },
-                    )
                 }
 
                 AnimatedVisibility(
