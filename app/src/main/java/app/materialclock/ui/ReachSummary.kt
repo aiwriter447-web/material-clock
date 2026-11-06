@@ -21,24 +21,19 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The large line, and a smaller line under it, shown in the space the one-hand pull-down opens. */
 class ReachText(val title: String, val detail: String? = null)
 
-/**
- * The text that fills the space the "one-hand" pull-down opens at the top of a tab: a one-glance
- * answer to "what is this tab doing right now".
- */
 @Composable
 fun ReachSummary(summary: ReachText, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = summary.title,
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
@@ -47,8 +42,8 @@ fun ReachSummary(summary: ReachText, modifier: Modifier = Modifier) {
         if (summary.detail != null) {
             Text(
                 text = summary.detail,
-                modifier = Modifier.padding(top = 8.dp),
-                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 2.dp),
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -57,13 +52,6 @@ fun ReachSummary(summary: ReachText, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * What [ReachSummary] says for [tab].
- *
- * [minuteTick] is not used for anything except being different each time it is called: it makes the
- * caller recompute this a couple of times a minute, so "Alarm in 8 hours 12 minutes" does not go
- * stale while the screen is open.
- */
 @Suppress("UNUSED_PARAMETER")
 fun reachSummaryText(
     tab: Tab,
@@ -82,7 +70,6 @@ fun reachSummaryText(
             } else {
                 ReachText(
                     "Alarm in ${countdown(Duration.between(now, next))}",
-                    // "Wed, 21 Oct, 6:40 am"
                     dayAndTime(next, is24Hour),
                 )
             }
@@ -102,7 +89,6 @@ fun reachSummaryText(
                 else -> "Stopwatch ready"
             },
         )
-        // The time here, and today's date under it.
         Tab.WORLD -> ReachText(
             timeOnly(now, is24Hour),
             now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())),
@@ -110,7 +96,6 @@ fun reachSummaryText(
     }
 }
 
-/** "6:40 am", or "06:40" on a 24-hour clock. */
 private fun timeOnly(t: ZonedDateTime, is24Hour: Boolean): String =
     if (is24Hour) {
         t.format(DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()))
@@ -119,16 +104,11 @@ private fun timeOnly(t: ZonedDateTime, is24Hour: Boolean): String =
         t.format(DateTimeFormatter.ofPattern("h:mm", Locale.getDefault())) + " " + amPm.lowercase()
     }
 
-/** "Wed, 21 Oct, 6:40 am". */
 private fun dayAndTime(t: ZonedDateTime, is24Hour: Boolean): String =
     t.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())) + ", " + timeOnly(t, is24Hour)
 
 private fun plural(n: Long, unit: String) = if (n == 1L) "$n $unit" else "$n ${unit}s"
 
-/**
- * "1 Day 22 Hours 43 Minutes". Once it is a day or more away the count is in days, so "46 Hours"
- * never appears: the parts that are zero are left out.
- */
 private fun countdown(d: Duration): String {
     val days = d.toDays()
     val hours = d.toHours() % 24
