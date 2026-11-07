@@ -100,8 +100,8 @@ fun StopwatchScreen(
                 end = contentPadding.calculateEndPadding(layoutDirection)
             )
     ) {
-        // Increased top spacing as requested
-        Spacer(Modifier.height(32.dp))
+        // Problem B Fix: Shifted everything upwards by reducing the top spacer significantly
+        Spacer(Modifier.height(8.dp))
 
         StackedDigits(
             parts = listOf(a, b, c),
@@ -110,7 +110,8 @@ fun StopwatchScreen(
             leading = Icons.Rounded.Timer,
             label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                 if (stopwatch.running) ", running" else ", stopped",
-            modifier = Modifier.padding(horizontal = 20.dp),
+            // Center alignment handled inherently by Column fillMaxWidth in StackedDigits
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(Modifier.height(STACK_GAP))
@@ -123,7 +124,7 @@ fun StopwatchScreen(
                 onLap = onLap,
                 onReset = onReset,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -222,22 +223,13 @@ private fun StopwatchControls(
     }
 
     SubcomposeLayout(
-        Modifier.fillMaxWidth().height(ROW_HEIGHT).padding(horizontal = 20.dp),
+        // Removed the hardcoded horizontal padding to allow true centering
+        Modifier.fillMaxWidth().height(ROW_HEIGHT),
     ) { constraints ->
         val full = constraints.maxWidth
         val h = ROW_HEIGHT.roundToPx()
 
-        val inset = ROW_INK_INSET.roundToPx()
-        val rowWidth = subcompose("rowProbe") {
-            DigitRow(
-                part = "00",
-                capHeight = READOUT_CAP,
-                color = MaterialTheme.colorScheme.primary,
-                separator = true,
-            )
-        }.first().measure(Constraints()).width
-
-        // Increased IDLE_PADDING_H creates a wider button
+        // Natural width of the Single "Start" button
         val natural = subcompose("probe") {
             WidePill(
                 text = "Start",
@@ -250,11 +242,16 @@ private fun StopwatchControls(
             )
         }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
 
-        val collapsedW = maxOf(rowWidth - inset, natural).coerceAtMost(full)
-        val collapsedX = ((full - rowWidth) / 2 + rowWidth - collapsedW).coerceAtLeast(0)
+        // Problem A Fix: Force the collapsed button to sit exactly in the middle of the screen
+        val collapsedW = natural.coerceAtMost(full)
+        val collapsedX = (full - collapsedW) / 2 
 
-        val w = lerp(collapsedW, full, e)
-        val x = lerp(collapsedX, 0, e)
+        // When expanded, factor in 20.dp margin on left and right sides
+        val expandedW = full - 40.dp.roundToPx() 
+        val expandedX = 20.dp.roundToPx()
+
+        val w = lerp(collapsedW, expandedW, e)
+        val x = lerp(collapsedX, expandedX, e)
 
         val single = if (split < 1f) {
             subcompose("single") {
@@ -296,14 +293,14 @@ private fun StopwatchControls(
                         Box(Modifier.weight(1f)) { startStop(true) }
                     }
                 }
-            }.first().measure(Constraints.fixed(full, h))
+            }.first().measure(Constraints.fixed(expandedW, h))
         } else {
             null
         }
 
         layout(full, h) {
             single?.place(x, 0)
-            trio?.place(0, 0)
+            trio?.place(expandedX, 0)
         }
     }
 }
@@ -312,11 +309,10 @@ private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
-// Adjusted padding and sizes for buttons
-private val IDLE_PADDING_H = 48.dp // Increased from 36.dp for wider Start button
-private val STACK_GAP = 16.dp
+private val IDLE_PADDING_H = 48.dp
+private val STACK_GAP = 12.dp // Problem B Fix: Reduced gap above the Start button
 private val READOUT_CAP = 56.dp
-private val GAP = 8.dp // Slightly increased gap between trio buttons
+private val GAP = 8.dp 
 private val ROW_HEIGHT = 64.dp
 private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
