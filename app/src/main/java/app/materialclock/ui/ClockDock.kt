@@ -134,6 +134,8 @@ private val AlarmOutlinedCustom: ImageVector
     }
 private var _alarmOutlinedCustom: ImageVector? = null
 
+
+// Perfectly Blended U-Shape Timer
 private val TimerFilledCustom: ImageVector
     get() {
         if (_timerFilledCustom != null) return _timerFilledCustom!!
@@ -147,7 +149,7 @@ private val TimerFilledCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Wide Outer Silhouette with Blended 'U' Curve
+            // Outer Silhouette
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
@@ -168,12 +170,12 @@ private val TimerFilledCustom: ImageVector
             lineTo(4f, 4f)
             close()
 
-            // Smooth Top Cutout perfectly parallel to the outer curve
+            // Top Inner Cutout perfectly blended with outer U curve
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
-            curveTo(16f, 9.2f, 14.2f, 10.5f, 12f, 10.5f)
-            curveTo(9.8f, 10.5f, 8f, 9.2f, 8f, 7.5f)
+            curveTo(16f, 9.2f, 14.5f, 10.5f, 12f, 10.5f)
+            curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
         }.build()
         return _timerFilledCustom!!
@@ -193,7 +195,7 @@ private val TimerOutlinedCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Wide Outer Silhouette with Blended 'U' Curve
+            // Outer Silhouette
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
@@ -214,20 +216,20 @@ private val TimerOutlinedCustom: ImageVector
             lineTo(4f, 4f)
             close()
 
-            // Smooth Top Cutout
+            // Top Inner Cutout perfectly blended
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
-            curveTo(16f, 9.2f, 14.2f, 10.5f, 12f, 10.5f)
-            curveTo(9.8f, 10.5f, 8f, 9.2f, 8f, 7.5f)
+            curveTo(16f, 9.2f, 14.5f, 10.5f, 12f, 10.5f)
+            curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
 
-            // Smooth Bottom Cutout
+            // Bottom Inner Cutout perfectly blended
             moveTo(8f, 20f)
             lineTo(16f, 20f)
             lineTo(16f, 16.5f)
-            curveTo(16f, 14.8f, 14.2f, 13.5f, 12f, 13.5f)
-            curveTo(9.8f, 13.5f, 8f, 14.8f, 8f, 16.5f)
+            curveTo(16f, 14.8f, 14.5f, 13.5f, 12f, 13.5f)
+            curveTo(9.5f, 13.5f, 8f, 14.8f, 8f, 16.5f)
             close()
         }.build()
         return _timerOutlinedCustom!!
