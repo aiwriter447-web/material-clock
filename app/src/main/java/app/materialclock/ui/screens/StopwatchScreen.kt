@@ -100,7 +100,8 @@ fun StopwatchScreen(
                 end = contentPadding.calculateEndPadding(layoutDirection)
             )
     ) {
-        Spacer(Modifier.height(4.dp))
+        // Increased top spacing as requested
+        Spacer(Modifier.height(32.dp))
 
         StackedDigits(
             parts = listOf(a, b, c),
@@ -236,6 +237,7 @@ private fun StopwatchControls(
             )
         }.first().measure(Constraints()).width
 
+        // Increased IDLE_PADDING_H creates a wider button
         val natural = subcompose("probe") {
             WidePill(
                 text = "Start",
@@ -244,7 +246,7 @@ private fun StopwatchControls(
                 height = ROW_HEIGHT,
                 compact = true,
                 fillWidth = false,
-                contentPaddingH = IDLE_PADDING_H,
+                contentPaddingH = IDLE_PADDING_H, 
             )
         }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
 
@@ -310,10 +312,11 @@ private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
-private val IDLE_PADDING_H = 36.dp
+// Adjusted padding and sizes for buttons
+private val IDLE_PADDING_H = 48.dp // Increased from 36.dp for wider Start button
 private val STACK_GAP = 16.dp
 private val READOUT_CAP = 56.dp
-private val GAP = 6.dp
+private val GAP = 8.dp // Slightly increased gap between trio buttons
 private val ROW_HEIGHT = 64.dp
 private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
