@@ -1,6 +1,7 @@
 package app.materialclock.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -134,8 +135,6 @@ private val AlarmOutlinedCustom: ImageVector
     }
 private var _alarmOutlinedCustom: ImageVector? = null
 
-
-// Perfectly Blended U-Shape Timer
 private val TimerFilledCustom: ImageVector
     get() {
         if (_timerFilledCustom != null) return _timerFilledCustom!!
@@ -149,7 +148,6 @@ private val TimerFilledCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Outer Silhouette
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
@@ -170,7 +168,6 @@ private val TimerFilledCustom: ImageVector
             lineTo(4f, 4f)
             close()
 
-            // Top Inner Cutout perfectly blended with outer U curve
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
@@ -195,7 +192,6 @@ private val TimerOutlinedCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Outer Silhouette
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
@@ -216,7 +212,6 @@ private val TimerOutlinedCustom: ImageVector
             lineTo(4f, 4f)
             close()
 
-            // Top Inner Cutout perfectly blended
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
@@ -224,7 +219,6 @@ private val TimerOutlinedCustom: ImageVector
             curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
 
-            // Bottom Inner Cutout perfectly blended
             moveTo(8f, 20f)
             lineTo(16f, 20f)
             lineTo(16f, 16.5f)
@@ -513,16 +507,23 @@ fun ClockDock(
                                     Tab.STOPWATCH -> StopwatchOutlinedCustom
                                 }
                             }
-                            
-                            val icon = if (isSelected) activeIcon else inactiveIcon
-                            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
 
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = destination.label,
-                                modifier = Modifier.size(24.dp),
-                                tint = contentColor
-                            )
+                            // Smooth Icon Crossfade Animation
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = tween(durationMillis = 300, easing = FastOutLinearInEasing),
+                                label = "iconFade"
+                            ) { state ->
+                                val icon = if (state) activeIcon else inactiveIcon
+                                val contentColor = if (state) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+                                
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = destination.label,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = contentColor
+                                )
+                            }
 
                             AnimatedVisibility(
                                 visible = isSelected,
@@ -533,6 +534,7 @@ fun ClockDock(
                                     animationSpec = tween(300, easing = FastOutLinearInEasing)
                                 ),
                             ) {
+                                val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
                                 Text(
                                     text = destination.label,
                                     modifier = Modifier.padding(start = 8.dp),
