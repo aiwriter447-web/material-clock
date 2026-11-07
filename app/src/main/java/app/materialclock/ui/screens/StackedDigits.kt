@@ -54,9 +54,12 @@ fun StackedDigits(
     leading: ImageVector? = null,
     label: String? = null,
 ) {
+    // Problem A Fix: The invisible inset (ROW_INK_INSET) that was pushing the layout to the right
+    // is now counter-balanced by adding padding to the END, forcing true center alignment.
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .padding(end = ROW_INK_INSET) // Counter-balance for the leading separator cell
             .then(
                 if (label != null) {
                     Modifier.clearAndSetSemantics { contentDescription = label }
@@ -65,9 +68,7 @@ fun StackedDigits(
                 }
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        // 35.2 dp measured. `Numerals` boxes are ink-tight, so this is the true ink gap with no
-        // ascent padding quietly padding it out.
-        verticalArrangement = Arrangement.spacedBy(35.dp),
+        verticalArrangement = Arrangement.spacedBy(30.dp), // Problem B: Reduced from 35 to 30 to compress height
     ) {
         parts.forEachIndexed { i, part ->
             DigitRow(
@@ -106,18 +107,16 @@ fun DigitRow(
                     leading,
                     contentDescription = null,
                     tint = color,
-                    // Icon size matched to the capHeight of the numbers for proper alignment and scaling
-                    modifier = Modifier.size(capHeight),
+                    // Problem B Fix: 96% of capHeight for the icon so numbers stand out
+                    modifier = Modifier.size(capHeight * 0.96f), 
                 )
-                separator -> ColonDots(color)
+                separator -> ColonDots(color, capHeight)
             }
         }
         Numerals(
             text = part,
             capHeight = capHeight,
             color = color,
-            // The concept's Plank cut: 0.66 wide over tall, stroke 0.139 of cap, slashed zero. Not
-            // the alarm grid's condensed face and not its light off-weight.
             width = ClockFace.TIMER_WIDTH,
             weight = ClockFace.TIMER_WEIGHT,
             slashedZero = true,
@@ -127,8 +126,7 @@ fun DigitRow(
 
 /** Measured: 18 dp dots with their centres 40.8 dp apart, so 22.8 dp of clear space between. */
 private const val SEPARATOR_CELL_DP = 67.2f
-// Reduced diameter to 14.dp to match the visual weight of the adjacent numerals
-private val DOT_DIAMETER = 14.dp
+private val DOT_DIAMETER = 13.dp // Made smaller to match visual weight
 
 /**
  * How far a row's **visible** left edge sits inside its layout box.
@@ -142,9 +140,10 @@ private val DOT_DIAMETER = 14.dp
 val ROW_INK_INSET: Dp = (SEPARATOR_CELL_DP.dp - DOT_DIAMETER) / 2
 
 @Composable
-private fun ColonDots(color: Color) {
-    // Spacing slightly adjusted to account for the thinner dots
-    Column(verticalArrangement = Arrangement.spacedBy(26.dp)) {
+private fun ColonDots(color: Color, capHeight: Dp) {
+    // Dynamically adjust dot spacing so it looks balanced relative to the slightly smaller numbers
+    val spacing = (capHeight.value * 0.45f).dp 
+    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         repeat(2) {
             Surface(color = color, shape = CircleShape, modifier = Modifier.size(DOT_DIAMETER)) {}
         }
@@ -170,31 +169,10 @@ fun WidePill(
     content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     icon: ImageVector? = null,
     outlined: Boolean = false,
-    // Only the primary action gets the extra-large treatment. The concept's timer screen has
-    // exactly one button; giving every secondary action 136 dp overflows the screen and Compose
-    // then squeezes them all, which looks worse than either size chosen deliberately.
     height: Dp = PILL_HEIGHT_DP.dp,
-    // Three pills abreast leave about 120 dp each, and "Reset" at headline-small inside 24 dp of
-    // padding does not fit that. The compact cut trades the display-scale label for a title one
-    // rather than letting the text ellipsise, which is the one thing a button must never do.
     compact: Boolean = false,
-    /**
-     * Off makes the pill exactly as wide as its own label and icon.
-     *
-     * Needed by the stopwatch, whose Start button is a lone control that has no business spanning
-     * the screen. It is needed *measurably*, too, because the morph that grows it into the
-     * three-button row has to know the width it grew from.
-     */
     fillWidth: Boolean = true,
     contentPaddingH: Dp = if (compact) 10.dp else 24.dp,
-    /**
-     * Fades the label and icon *without* touching the container.
-     *
-     * The stopwatch needs the two to move independently: when the Start pill elongates, its content
-     * has to be gone almost immediately, because text sliding along inside a growing container
-     * reads as a rendering glitch, while the container itself stays solid all the way to full
-     * width.
-     */
     contentAlpha: Float = 1f,
 ) {
     androidx.compose.material3.Button(
@@ -220,9 +198,9 @@ fun WidePill(
                 androidx.compose.material3.Icon(
                     icon,
                     contentDescription = null,
-                    modifier = Modifier.size(if (compact) 22.dp else 30.dp),
+                    modifier = Modifier.size(if (compact) 22.dp else 28.dp),
                 )
-                Spacer(Modifier.width(if (compact) 8.dp else 14.dp))
+                Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
             }
             androidx.compose.material3.Text(
                 text,
