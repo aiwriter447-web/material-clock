@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Analog Clock, added as 4x1: the capsule stretched to four columns. It shows the small clock, the
-  full date, and the time on the right. It can be narrowed to 2x1 but not made taller (a 2x2 is
-  its own entry), so only horizontal resizing is on.
+  Analog Clock, added as 4x1. It can be resized freely between 2x1, 2x2 and 4x1, like the other
+  widgets, in both directions.
+
+  The limits are in dp, and the launcher turns them into grid cells with the usual rule (a size of
+  n cells is 70n - 30 dp), rounding UP: 248dp wide is 4 columns and 108dp tall is 2 rows. A size
+  limit is one rectangle, so allowing 4 wide and 2 tall together also allows 4x2; there the clock
+  face simply sits in the middle of the wider area.
+
   updatePeriodMillis is 30 minutes, the shortest the system allows: the time itself is ticked by the
   launcher's own clock views, and this refresh only brings the colours (wallpaper, dark mode) up to
   date. configure is fully qualified: a leading dot would be a silent ActivityNotFoundException.
@@ -12,11 +17,11 @@
     android:minHeight="40dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="40dp"
-    android:maxResizeWidth="330dp"
-    android:maxResizeHeight="170dp"
+    android:maxResizeWidth="248dp"
+    android:maxResizeHeight="108dp"
     android:targetCellWidth="4"
     android:targetCellHeight="1"
-    android:resizeMode="horizontal"
+    android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_loading"
