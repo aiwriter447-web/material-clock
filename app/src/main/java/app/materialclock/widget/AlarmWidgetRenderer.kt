@@ -340,7 +340,10 @@ object AlarmWidgetRenderer {
                     val lblSize = ts * 0.55f
                     val lblCap = lblSize * 0.72f
                     val cap = ts * 0.72f
-                    val gap = ts * 0.16f
+                    // The gap under the name: room for the letters that hang below the line (the "y" in "Gym")
+                    // and then clear air before the time starts. 0.16 of the time's size was too little, so
+                    // the name and the time nearly touched.
+                    val gap = ts * 0.34f
                     val top = (hf - (lblCap + gap + cap)) / 2f
                     texts += TextSpec(2, name, x0, top + lblCap, lblSize, alpha(fg, 0.85f))
                     drawTimeInline(x0, top + lblCap + gap + cap, ts)
@@ -367,7 +370,10 @@ object AlarmWidgetRenderer {
                 val lblSize = ts * 0.55f
                 val lblCap = lblSize * 0.72f
                 val cap = ts * 0.72f
-                val gap = ts * 0.16f
+                // The gap under the name: room for the letters that hang below the line (the "y" in "Gym")
+                    // and then clear air before the time starts. 0.16 of the time's size was too little, so
+                    // the name and the time nearly touched.
+                    val gap = ts * 0.34f
                 val top = (hf - (lblCap + gap + cap)) / 2f
                 texts += TextSpec(2, name, x0, top + lblCap, lblSize, alpha(fg, 0.85f))
                 drawTimeInline(x0, top + lblCap + gap + cap, ts)
@@ -419,18 +425,18 @@ object AlarmWidgetRenderer {
             square -> {
                 val ts = min(wf * 0.84f / (if (is24) 2.9f else 3.5f), hf * 0.24f)
                 val cap = ts * 0.72f
-                val cy = if (name != null) hf * 0.31f else hf * 0.27f
+                val cy = if (name != null) hf * 0.33f else hf * 0.27f
                 drawTimeInline((wf - inlineWidth(ts)) / 2f, cy + cap / 2f, ts)
                 if (name != null) {
                     val lblSize = ts * 0.42f
                     val lblWidth = paint(fg, lblSize, 600).measureText(name)
-                    texts += TextSpec(2, name, ((wf - lblWidth) / 2f).coerceAtLeast(hf * 0.06f), cy - cap / 2f - lblSize * 0.40f, lblSize, alpha(fg, 0.85f))
+                    texts += TextSpec(2, name, ((wf - lblWidth) / 2f).coerceAtLeast(hf * 0.06f), cy - cap / 2f - ts * 0.34f, lblSize, alpha(fg, 0.85f))
                 }
                 val ls = ts * 0.46f
                 val cell = min(ls * 2.0f, wf * 0.86f / 7f)
                 val dotsY = cy + cap / 2f + ts * 0.30f
                 drawDays((wf - cell * 7f) / 2f, cell, dotsY + ls * 1.25f, ls)
-                button = drawButton(wf / 2f, hf * (if (name != null) 0.80f else 0.77f), min(hf * 0.34f, wf * 0.44f))
+                button = drawButton(wf / 2f, hf * (if (name != null) 0.81f else 0.77f), min(hf * 0.34f, wf * 0.44f))
             }
 
             // 4x2: label top-left, time and weekdays bottom-left, button bottom-right.
