@@ -134,7 +134,6 @@ private val AlarmOutlinedCustom: ImageVector
     }
 private var _alarmOutlinedCustom: ImageVector? = null
 
-
 private val TimerFilledCustom: ImageVector
     get() {
         if (_timerFilledCustom != null) return _timerFilledCustom!!
@@ -148,33 +147,33 @@ private val TimerFilledCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Wide Outer Frame with U-Curve
+            // Wide Outer Silhouette with Blended 'U' Curve
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
             lineTo(18f, 4f)
-            lineTo(18f, 9f)
-            curveTo(18f, 11.5f, 15f, 12f, 12f, 12f)
-            curveTo(15f, 12f, 18f, 12.5f, 18f, 15f)
+            lineTo(18f, 7.5f)
+            curveTo(18f, 9.8f, 16f, 11.5f, 13.5f, 12f)
+            curveTo(16f, 12.5f, 18f, 14.2f, 18f, 16.5f)
             lineTo(18f, 20f)
             lineTo(20f, 20f)
             lineTo(20f, 22f)
             lineTo(4f, 22f)
             lineTo(4f, 20f)
             lineTo(6f, 20f)
-            lineTo(6f, 15f)
-            curveTo(6f, 12.5f, 9f, 12f, 12f, 12f)
-            curveTo(9f, 12f, 6f, 11.5f, 6f, 9f)
+            lineTo(6f, 16.5f)
+            curveTo(6f, 14.2f, 8f, 12.5f, 10.5f, 12f)
+            curveTo(8f, 11.5f, 6f, 9.8f, 6f, 7.5f)
             lineTo(6f, 4f)
             lineTo(4f, 4f)
             close()
 
-            // Top Inner Cutout (For Hourglass Bottom look)
+            // Smooth Top Cutout perfectly parallel to the outer curve
             moveTo(8f, 4f)
             lineTo(16f, 4f)
-            lineTo(16f, 9f)
-            curveTo(16f, 10.25f, 14.5f, 10.5f, 12f, 10.5f)
-            curveTo(9.5f, 10.5f, 8f, 10.25f, 8f, 9f)
+            lineTo(16f, 7.5f)
+            curveTo(16f, 9.2f, 14.2f, 10.5f, 12f, 10.5f)
+            curveTo(9.8f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
         }.build()
         return _timerFilledCustom!!
@@ -194,42 +193,41 @@ private val TimerOutlinedCustom: ImageVector
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.EvenOdd
         ) {
-            // Wide Outer Frame with U-Curve
+            // Wide Outer Silhouette with Blended 'U' Curve
             moveTo(4f, 2f)
             lineTo(20f, 2f)
             lineTo(20f, 4f)
             lineTo(18f, 4f)
-            lineTo(18f, 9f)
-            curveTo(18f, 11.5f, 15f, 12f, 12f, 12f)
-            curveTo(15f, 12f, 18f, 12.5f, 18f, 15f)
+            lineTo(18f, 7.5f)
+            curveTo(18f, 9.8f, 16f, 11.5f, 13.5f, 12f)
+            curveTo(16f, 12.5f, 18f, 14.2f, 18f, 16.5f)
             lineTo(18f, 20f)
             lineTo(20f, 20f)
             lineTo(20f, 22f)
             lineTo(4f, 22f)
             lineTo(4f, 20f)
             lineTo(6f, 20f)
-            lineTo(6f, 15f)
-            curveTo(6f, 12.5f, 9f, 12f, 12f, 12f)
-            curveTo(9f, 12f, 6f, 11.5f, 6f, 9f)
+            lineTo(6f, 16.5f)
+            curveTo(6f, 14.2f, 8f, 12.5f, 10.5f, 12f)
+            curveTo(8f, 11.5f, 6f, 9.8f, 6f, 7.5f)
             lineTo(6f, 4f)
             lineTo(4f, 4f)
             close()
 
-            // Top Inner Cutout
+            // Smooth Top Cutout
             moveTo(8f, 4f)
             lineTo(16f, 4f)
-            lineTo(16f, 9f)
-            curveTo(16f, 10.25f, 14.5f, 10.5f, 12f, 10.5f)
-            curveTo(9.5f, 10.5f, 8f, 10.25f, 8f, 9f)
+            lineTo(16f, 7.5f)
+            curveTo(16f, 9.2f, 14.2f, 10.5f, 12f, 10.5f)
+            curveTo(9.8f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
 
-            // Bottom Inner Cutout
-            moveTo(12f, 13.5f)
-            curveTo(14.5f, 13.5f, 16f, 13.75f, 16f, 15f)
+            // Smooth Bottom Cutout
+            moveTo(8f, 20f)
             lineTo(16f, 20f)
-            lineTo(8f, 20f)
-            lineTo(8f, 15f)
-            curveTo(8f, 13.75f, 9.5f, 13.5f, 12f, 13.5f)
+            lineTo(16f, 16.5f)
+            curveTo(16f, 14.8f, 14.2f, 13.5f, 12f, 13.5f)
+            curveTo(9.8f, 13.5f, 8f, 14.8f, 8f, 16.5f)
             close()
         }.build()
         return _timerOutlinedCustom!!
