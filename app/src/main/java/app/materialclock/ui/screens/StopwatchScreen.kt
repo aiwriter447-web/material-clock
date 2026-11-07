@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -86,8 +89,18 @@ fun StopwatchScreen(
         if (stopwatch.laps.isNotEmpty()) listState.animateScrollToItem(0)
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
-        Spacer(Modifier.height(12.dp))
+    val layoutDirection = LocalLayoutDirection.current
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(
+                top = contentPadding.calculateTopPadding(),
+                start = contentPadding.calculateStartPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection)
+            )
+    ) {
+        Spacer(Modifier.height(4.dp))
 
         StackedDigits(
             parts = listOf(a, b, c),
@@ -109,11 +122,15 @@ fun StopwatchScreen(
                 onLap = onLap,
                 onReset = onReset,
             )
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(8.dp))
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(horizontal = 20.dp),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 24.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(LAP_GAP),
             ) {
                 val isIdle = !stopwatch.running && elapsed.isZero
@@ -144,7 +161,6 @@ fun StopwatchScreen(
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
     }
 }
 
@@ -158,7 +174,6 @@ private fun StopwatchControls(
 ) {
     val expanded = !idle
 
-    // Fluid spring physics for expanding / collapsing controls
     val expand by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -294,11 +309,12 @@ private fun StopwatchControls(
 private const val EXPAND_LEAD_MS = 95
 private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
-private val IDLE_PADDING_H = 48.dp
-private val STACK_GAP = 35.dp
-private val READOUT_CAP = 66.dp
+
+private val IDLE_PADDING_H = 36.dp
+private val STACK_GAP = 16.dp
+private val READOUT_CAP = 56.dp
 private val GAP = 6.dp
-private val ROW_HEIGHT = 76.dp
+private val ROW_HEIGHT = 64.dp
 private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
 
@@ -314,7 +330,6 @@ private fun LapRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Tactile press response
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
@@ -327,7 +342,6 @@ private fun LapRow(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    // Smooth color morphing for fastest/slowest highlights
     val timeColor by animateColorAsState(
         targetValue = targetTimeColor,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
