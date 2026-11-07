@@ -22,16 +22,19 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -106,25 +109,7 @@ import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
 import kotlinx.coroutines.delay
-import androidx.compose.animation.core.animate
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.Velocity
-import kotlin.math.roundToInt
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 20.dp
@@ -273,106 +258,7 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        val screenHeightPx = with(density) {
-            LocalConfiguration.current.screenHeightDp.dp.toPx()
-        }
-        
-        val reachMaxPx = screenHeightPx * 0.14f
-
-        val reachActive = !selectionActive && targetTab == Tab.ALARMS
-
-        var reachFraction by remember { mutableFloatStateOf(0f) }
-        var reachResting by remember { mutableFloatStateOf(0f) }
-        var reachJob by remember { mutableStateOf<Job?>(null) }
-
-        fun reachMoveBy(dy: Float) {
-            reachJob?.cancel()
-            reachFraction = (reachFraction + dy / reachMaxPx).coerceIn(0f, 1f)
-        }
-
-        fun reachSettle() {
-            val target = if (reachResting < 0.5f) {
-                if (reachFraction > 0.30f) 1f else 0f
-            } else {
-                if (reachFraction < 0.70f) 0f else 1f
-            }
-            reachResting = target
-            reachJob?.cancel()
-            reachJob = scope.launch {
-                animate(
-                    initialValue = reachFraction,
-                    targetValue = target,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f),
-                ) { v, _ -> reachFraction = v }
-            }
-        }
-
-        LaunchedEffect(reachActive) {
-            if (!reachActive && reachFraction > 0f) {
-                reachResting = 0f
-                reachJob?.cancel()
-                animate(
-                    reachFraction,
-                    0f,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
-                ) { v, _ -> reachFraction = v }
-            }
-        }
-
-        LaunchedEffect(targetTab) {
-            if (reachFraction > 0f) {
-                reachResting = 0f
-                reachJob?.cancel()
-                animate(
-                    reachFraction,
-                    0f,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 380f)
-                ) { v, _ -> reachFraction = v }
-            }
-        }
-
-        val reachConnection = remember(reachActive, reachMaxPx) {
-            object : NestedScrollConnection {
-                override fun onPreScroll(
-                    available: Offset,
-                    source: NestedScrollSource
-                ): Offset {
-                    if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
-                    if (available.y < 0f && reachFraction > 0f) {
-                        val before = reachFraction
-                        reachMoveBy(available.y)
-                        return Offset(0f, (reachFraction - before) * reachMaxPx)
-                    }
-                    return Offset.Zero
-                }
-
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource
-                ): Offset {
-                    if (!reachActive || source != NestedScrollSource.UserInput) return Offset.Zero
-                    if (available.y > 0f && reachFraction < 1f) {
-                        val before = reachFraction
-                        reachMoveBy(available.y)
-                        return Offset(0f, (reachFraction - before) * reachMaxPx)
-                    }
-                    return Offset.Zero
-                }
-
-                override suspend fun onPostFling(
-                    consumed: Velocity,
-                    available: Velocity
-                ): Velocity {
-                    reachSettle()
-                    return Velocity.Zero
-                }
-            }
-        }
-
         val alarmsNow by vm.alarms.collectAsStateWithLifecycle()
-        val stopwatchNow by vm.stopwatch.collectAsStateWithLifecycle()
-        val is24Hour = android.text.format.DateFormat.is24HourFormat(ctx)
         val minuteTick by produceState(0) {
             while (true) {
                 delay(30_000L)
@@ -380,16 +266,40 @@ fun ClockApp(
             }
         }
 
+        // Live News Headline Marquee Text Logic
+        val marqueeText = remember(targetTab, alarmsNow, minuteTick) {
+            if (targetTab == Tab.ALARMS) {
+                val now = java.time.ZonedDateTime.now()
+                val next = alarmsNow.mapNotNull { it.nextFire(now) }.minOrNull()
+                if (next == null) {
+                    "All alarms are off"
+                } else {
+                    val d = java.time.Duration.between(now, next)
+                    val days = d.toDays()
+                    val hours = d.toHours() % 24
+                    val minutes = d.toMinutes() % 60
+                    val parts = buildList {
+                        if (days > 0) add(if (days == 1L) "$days Day" else "$days Days")
+                        if (hours > 0) add(if (hours == 1L) "$hours Hour" else "$hours Hours")
+                        if (minutes > 0) add(if (minutes == 1L) "$minutes Minute" else "$minutes Minutes")
+                    }
+                    if (parts.isEmpty()) "Alarm in less than a minute"
+                    else "Alarm in ${parts.joinToString(" ")}"
+                }
+            } else ""
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                Box(Modifier.graphicsLayer {
-                    translationY = reachFraction * reachMaxPx
-                }) {
-                    TopAppBar(
-                        title = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -427,22 +337,40 @@ fun ClockApp(
                                     )
                                 }
                             }
-                        },
-                        actions = {
-                            IconButton(onClick = { showSettings = true }) {
-                                Icon(
-                                    Icons.Rounded.Settings,
-                                    contentDescription = "${currentTab.label} settings",
-                                    modifier = Modifier.size(28.dp)
+                            
+                            AnimatedVisibility(
+                                visible = targetTab == Tab.ALARMS,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                            ) {
+                                Text(
+                                    text = marqueeText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        velocity = 30.dp
+                                    )
                                 )
                             }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    )
-                }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showSettings = true }) {
+                            Icon(
+                                Icons.Rounded.Settings,
+                                contentDescription = "${currentTab.label} settings",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
             },
         ) { padding ->
 
@@ -466,40 +394,7 @@ fun ClockApp(
                 bottom = underDockAndFab,
             )
 
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .nestedScroll(reachConnection)
-                    .pointerInput(reachActive) {
-                        if (!reachActive) return@pointerInput
-                        detectVerticalDragGestures(
-                            onDragEnd = { reachSettle() },
-                            onDragCancel = { reachSettle() },
-                        ) { _, dy -> reachMoveBy(dy) }
-                    },
-            ) {
-                if (targetTab == Tab.ALARMS) {
-                    ReachSummary(
-                        summary = reachSummaryText(
-                            targetTab,
-                            alarmsNow,
-                            timer,
-                            stopwatchNow,
-                            is24Hour,
-                            minuteTick
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(
-                                top = WindowInsets.statusBars.asPaddingValues()
-                                    .calculateTopPadding() + 0.dp
-                            )
-                            .graphicsLayer {
-                                alpha = ((reachFraction - 0.15f) / 0.85f).coerceIn(0f, 1f)
-                            },
-                    )
-                }
-
+            Box(Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier
@@ -514,15 +409,6 @@ fun ClockApp(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .then(
-                                if (Tab.entries[page] == Tab.ALARMS) {
-                                    Modifier.graphicsLayer {
-                                        translationY = reachFraction * reachMaxPx
-                                    }
-                                } else {
-                                    Modifier
-                                },
-                            )
                             .graphicsLayer {
                                 val pageOffset =
                                     (pagerState.currentPage - page) +
