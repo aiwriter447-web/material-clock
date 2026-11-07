@@ -26,6 +26,7 @@ import app.materialclock.core.TimerState
 import app.materialclock.core.WorldCity
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ClockStore
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +36,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalTime
@@ -66,6 +69,14 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _isLoaded = MutableStateFlow(false)
     val isLoaded: StateFlow<Boolean> = _isLoaded
+
+    // Mutex locks to prevent state corruption on rapid clicks
+    private val stopwatchMutex = Mutex()
+    private val timerMutex = Mutex()
+
+    // Jobs for debouncing system calls (prevents Android from killing the app due to service spam)
+    private var stopwatchEffectsJob: Job? = null
+    private var timerEffectsJob: Job? = null
 
     val settings: StateFlow<ClockSettings> =
         store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, ClockSettings())
@@ -298,53 +309,73 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         timerDigits = if (minutes <= 0) "" else "%d%02d00".format(minutes / 60, minutes % 60).trimStart('0')
     }
 
+    // --- Debounced System Call Handlers ---
+    private fun triggerStopwatchEffects(sw: Stopwatch) {
+        stopwatchEffectsJob?.cancel()
+        stopwatchEffectsJob = viewModelScope.launch {
+            delay(200) 
+            try {
+                if (sw.running || sw.elapsed(SystemClock.elapsedRealtime()).toMillis() > 0) {
+                    Notifications.showStopwatch(ctx, sw)
+                } else {
+                    Notifications.hideStopwatch(ctx)
+                }
+                if (sw.running) {
+                    LiveUpdateService.ensureRunning(ctx)
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun triggerTimerEffects(t: ClockTimer?) {
+        timerEffectsJob?.cancel()
+        timerEffectsJob = viewModelScope.launch {
+            delay(200)
+            try {
+                TimerScheduler.sync(ctx, t)
+                if (t?.state == TimerState.RUNNING) {
+                    LiveUpdateService.ensureRunning(ctx)
+                } else if (t == null) {
+                    AlarmService.stop(ctx)
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // --- Safe Timer Functions ---
     fun startTimer(label: String = "Timer") = viewModelScope.launch {
         val total = draftDuration
         if (total.isZero) return@launch
-        val t = ClockTimer(
-            id = store.nextId(),
-            label = label,
-            total = total,
-            state = TimerState.RUNNING,
-            deadlineElapsedMillis = SystemClock.elapsedRealtime() + total.toMillis(),
-        )
-        timerDigits = ""
-        store.putTimer(t)
-        
-        try {
-            TimerScheduler.sync(ctx, t)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        try {
-            LiveUpdateService.ensureRunning(ctx)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        timerMutex.withLock {
+            val t = ClockTimer(
+                id = store.nextId(),
+                label = label,
+                total = total,
+                state = TimerState.RUNNING,
+                deadlineElapsedMillis = SystemClock.elapsedRealtime() + total.toMillis(),
+            )
+            timerDigits = ""
+            store.putTimer(t)
+            triggerTimerEffects(t)
         }
     }
 
     fun startPreset(preset: TimerPreset) = viewModelScope.launch {
         if (preset.totalSeconds <= 0) return@launch
-        val t = ClockTimer(
-            id = store.nextId(),
-            label = preset.name,
-            total = Duration.ofSeconds(preset.totalSeconds.toLong()),
-            state = TimerState.RUNNING,
-            deadlineElapsedMillis = SystemClock.elapsedRealtime() + preset.totalSeconds * 1000L,
-        )
-        store.putTimer(t)
-        
-        try {
-            TimerScheduler.sync(ctx, t)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        try {
-            LiveUpdateService.ensureRunning(ctx)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        timerMutex.withLock {
+            val t = ClockTimer(
+                id = store.nextId(),
+                label = preset.name,
+                total = Duration.ofSeconds(preset.totalSeconds.toLong()),
+                state = TimerState.RUNNING,
+                deadlineElapsedMillis = SystemClock.elapsedRealtime() + preset.totalSeconds * 1000L,
+            )
+            store.putTimer(t)
+            triggerTimerEffects(t)
         }
     }
 
@@ -363,108 +394,72 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun pauseOrResumeTimer() = viewModelScope.launch {
-        val t = timer.value ?: return@launch
-        val now = SystemClock.elapsedRealtime()
-        val next = when (t.state) {
-            TimerState.RUNNING -> t.copy(state = TimerState.PAUSED, pausedRemaining = t.remaining(now))
-            else -> t.copy(state = TimerState.RUNNING, deadlineElapsedMillis = now + t.pausedRemaining.toMillis())
-        }
-        store.putTimer(next)
-        
-        try {
-            TimerScheduler.sync(ctx, next)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        if (next.state == TimerState.RUNNING) {
-            try {
-                LiveUpdateService.ensureRunning(ctx)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        timerMutex.withLock {
+            val t = timer.value ?: return@launch
+            val now = SystemClock.elapsedRealtime()
+            val next = when (t.state) {
+                TimerState.RUNNING -> t.copy(state = TimerState.PAUSED, pausedRemaining = t.remaining(now))
+                else -> t.copy(state = TimerState.RUNNING, deadlineElapsedMillis = now + t.pausedRemaining.toMillis())
             }
+            store.putTimer(next)
+            triggerTimerEffects(next)
         }
     }
 
     fun addTenSeconds() = viewModelScope.launch {
-        val t = timer.value ?: return@launch
-        val next = when (t.state) {
-            TimerState.RUNNING -> t.copy(
-                total = t.total.plusSeconds(10),
-                deadlineElapsedMillis = t.deadlineElapsedMillis + 10_000,
-            )
-            else -> t.copy(total = t.total.plusSeconds(10), pausedRemaining = t.pausedRemaining.plusSeconds(10))
-        }
-        store.putTimer(next)
-        
-        try {
-            TimerScheduler.sync(ctx, next)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        timerMutex.withLock {
+            val t = timer.value ?: return@launch
+            val next = when (t.state) {
+                TimerState.RUNNING -> t.copy(
+                    total = t.total.plusSeconds(10),
+                    deadlineElapsedMillis = t.deadlineElapsedMillis + 10_000,
+                )
+                else -> t.copy(total = t.total.plusSeconds(10), pausedRemaining = t.pausedRemaining.plusSeconds(10))
+            }
+            store.putTimer(next)
+            triggerTimerEffects(next)
         }
     }
 
     fun cancelTimer() = viewModelScope.launch {
-        try {
-            AlarmService.stop(ctx)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        store.putTimer(null)
-        
-        try {
-            TimerScheduler.sync(ctx, null)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        timerMutex.withLock {
+            store.putTimer(null)
+            triggerTimerEffects(null)
         }
     }
 
+    // --- Safe Stopwatch Functions ---
     fun toggleStopwatch() = viewModelScope.launch {
-        val sw = stopwatch.value
-        val now = SystemClock.elapsedRealtime()
-        val next = if (sw.running) {
-            sw.copy(running = false, accumulated = sw.elapsed(now))
-        } else {
-            sw.copy(running = true, startedAtElapsed = now)
-        }
-        store.putStopwatch(next)
-        
-        try {
-            Notifications.showStopwatch(ctx, next)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        if (next.running) {
-            try {
-                LiveUpdateService.ensureRunning(ctx)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        stopwatchMutex.withLock {
+            val sw = stopwatch.value
+            val now = SystemClock.elapsedRealtime()
+            val next = if (sw.running) {
+                sw.copy(running = false, accumulated = sw.elapsed(now))
+            } else {
+                sw.copy(running = true, startedAtElapsed = now)
             }
+            store.putStopwatch(next)
+            triggerStopwatchEffects(next)
         }
     }
 
     fun lap() = viewModelScope.launch {
-        val sw = stopwatch.value
-        if (!sw.running) return@launch
-        val total = sw.elapsed(SystemClock.elapsedRealtime())
-        val previous = sw.laps.firstOrNull()?.total ?: Duration.ZERO
-        val next = sw.copy(laps = listOf(Lap(sw.laps.size + 1, total.minus(previous), total)) + sw.laps)
-        store.putStopwatch(next)
-        
-        try {
-            Notifications.showStopwatch(ctx, next)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        stopwatchMutex.withLock {
+            val sw = stopwatch.value
+            if (!sw.running) return@launch
+            val total = sw.elapsed(SystemClock.elapsedRealtime())
+            val previous = sw.laps.firstOrNull()?.total ?: Duration.ZERO
+            val next = sw.copy(laps = listOf(Lap(sw.laps.size + 1, total.minus(previous), total)) + sw.laps)
+            store.putStopwatch(next)
+            triggerStopwatchEffects(next)
         }
     }
 
     fun resetStopwatch() = viewModelScope.launch {
-        store.putStopwatch(Stopwatch())
-        try {
-            Notifications.hideStopwatch(ctx)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        stopwatchMutex.withLock {
+            val next = Stopwatch()
+            store.putStopwatch(next)
+            triggerStopwatchEffects(next)
         }
     }
 
