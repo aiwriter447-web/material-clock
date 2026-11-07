@@ -363,7 +363,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun pauseOrResumeTimer() = viewModelScope.launch {
-        val t = store.timerNow() ?: return@launch
+        val t = timer.value ?: return@launch
         val now = SystemClock.elapsedRealtime()
         val next = when (t.state) {
             TimerState.RUNNING -> t.copy(state = TimerState.PAUSED, pausedRemaining = t.remaining(now))
@@ -387,7 +387,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addTenSeconds() = viewModelScope.launch {
-        val t = store.timerNow() ?: return@launch
+        val t = timer.value ?: return@launch
         val next = when (t.state) {
             TimerState.RUNNING -> t.copy(
                 total = t.total.plusSeconds(10),
@@ -420,7 +420,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleStopwatch() = viewModelScope.launch {
-        val sw = store.stopwatch.first()
+        val sw = stopwatch.value
         val now = SystemClock.elapsedRealtime()
         val next = if (sw.running) {
             sw.copy(running = false, accumulated = sw.elapsed(now))
@@ -428,7 +428,12 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             sw.copy(running = true, startedAtElapsed = now)
         }
         store.putStopwatch(next)
-        Notifications.showStopwatch(ctx, next)
+        
+        try {
+            Notifications.showStopwatch(ctx, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         
         if (next.running) {
             try {
@@ -440,13 +445,18 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun lap() = viewModelScope.launch {
-        val sw = store.stopwatch.first()
+        val sw = stopwatch.value
         if (!sw.running) return@launch
         val total = sw.elapsed(SystemClock.elapsedRealtime())
         val previous = sw.laps.firstOrNull()?.total ?: Duration.ZERO
         val next = sw.copy(laps = listOf(Lap(sw.laps.size + 1, total.minus(previous), total)) + sw.laps)
         store.putStopwatch(next)
-        Notifications.showStopwatch(ctx, next)
+        
+        try {
+            Notifications.showStopwatch(ctx, next)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun resetStopwatch() = viewModelScope.launch {
