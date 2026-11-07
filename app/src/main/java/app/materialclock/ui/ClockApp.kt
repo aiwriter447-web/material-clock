@@ -295,10 +295,30 @@ fun ClockApp(
             topBar = {
                 TopAppBar(
                     title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart
                         ) {
+                            AnimatedVisibility(
+                                visible = targetTab == Tab.ALARMS,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 120.dp, end = 4.dp) 
+                            ) {
+                                Text(
+                                    text = marqueeText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        velocity = 30.dp
+                                    )
+                                )
+                            }
+
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -335,24 +355,6 @@ fun ClockApp(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
-                            }
-                            
-                            AnimatedVisibility(
-                                visible = targetTab == Tab.ALARMS,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                            ) {
-                                Text(
-                                    text = marqueeText,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    modifier = Modifier.basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        velocity = 30.dp
-                                    )
-                                )
                             }
                         }
                     },
