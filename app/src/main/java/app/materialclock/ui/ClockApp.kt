@@ -266,7 +266,6 @@ fun ClockApp(
             }
         }
 
-        // Live News Headline Marquee Text Logic
         val marqueeText = remember(targetTab, alarmsNow, minuteTick) {
             if (targetTab == Tab.ALARMS) {
                 val now = java.time.ZonedDateTime.now()
@@ -342,11 +341,11 @@ fun ClockApp(
                                 visible = targetTab == Tab.ALARMS,
                                 enter = fadeIn(),
                                 exit = fadeOut(),
-                                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                             ) {
                                 Text(
                                     text = marqueeText,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     modifier = Modifier.basicMarquee(
