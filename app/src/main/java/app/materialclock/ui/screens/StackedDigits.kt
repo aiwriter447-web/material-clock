@@ -106,7 +106,8 @@ fun DigitRow(
                     leading,
                     contentDescription = null,
                     tint = color,
-                    modifier = Modifier.size(46.dp),
+                    // Icon size matched to the capHeight of the numbers for proper alignment and scaling
+                    modifier = Modifier.size(capHeight),
                 )
                 separator -> ColonDots(color)
             }
@@ -126,7 +127,8 @@ fun DigitRow(
 
 /** Measured: 18 dp dots with their centres 40.8 dp apart, so 22.8 dp of clear space between. */
 private const val SEPARATOR_CELL_DP = 67.2f
-private val DOT_DIAMETER = 18.dp
+// Reduced diameter to 14.dp to match the visual weight of the adjacent numerals
+private val DOT_DIAMETER = 14.dp
 
 /**
  * How far a row's **visible** left edge sits inside its layout box.
@@ -141,7 +143,8 @@ val ROW_INK_INSET: Dp = (SEPARATOR_CELL_DP.dp - DOT_DIAMETER) / 2
 
 @Composable
 private fun ColonDots(color: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(22.8.dp)) {
+    // Spacing slightly adjusted to account for the thinner dots
+    Column(verticalArrangement = Arrangement.spacedBy(26.dp)) {
         repeat(2) {
             Surface(color = color, shape = CircleShape, modifier = Modifier.size(DOT_DIAMETER)) {}
         }
