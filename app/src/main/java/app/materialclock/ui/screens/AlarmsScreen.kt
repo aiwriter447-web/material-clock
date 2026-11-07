@@ -478,6 +478,8 @@ private fun AlarmRow(
 
     val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "rowContainer")
     val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "rowInk")
+    
+    val outlineColor = MaterialTheme.colorScheme.outline
 
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
     val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
@@ -579,11 +581,13 @@ private fun AlarmRow(
                         checkedBorderColor = Color.Transparent,
                         uncheckedThumbColor = ink,
                         uncheckedTrackColor = Color.Transparent,
-                        uncheckedBorderColor = ink,
+                        uncheckedBorderColor = outlineColor,
                         disabledCheckedThumbColor = container,
                         disabledCheckedTrackColor = ink,
+                        disabledCheckedBorderColor = Color.Transparent,
                         disabledUncheckedThumbColor = ink,
                         disabledUncheckedTrackColor = Color.Transparent,
+                        disabledUncheckedBorderColor = outlineColor,
                     ),
                 )
             }
