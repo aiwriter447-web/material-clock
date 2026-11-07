@@ -296,32 +296,56 @@ fun ClockApp(
                 TopAppBar(
                     title = {
                         Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterStart
+                            modifier = Modifier.fillMaxWidth()
                         ) {
+                            
+                            // 1. Scrolling Text Layer (Behind everything)
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS,
                                 enter = fadeIn(),
                                 exit = fadeOut(),
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 120.dp, end = 4.dp) 
+                                    .align(Alignment.CenterEnd)
+                                    // 24.dp end padding makes the marquee layout end exactly behind the center of the Settings icon
+                                    // 120.dp start padding ensures it stops scrolling before hitting the Alarms pill
+                                    .padding(start = 120.dp, end = 24.dp) 
                             ) {
                                 Text(
                                     text = marqueeText,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    modifier = Modifier.basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        velocity = 30.dp
-                                    )
+                                    textAlign = TextAlign.End, // Anchors the text to the right, letting it grow leftward
+                                    modifier = Modifier
+                                        // 12.dp end padding on the text itself prevents it from peeking out when stationary
+                                        .padding(end = 12.dp)
+                                        .basicMarquee(
+                                            iterations = Int.MAX_VALUE,
+                                            velocity = 30.dp
+                                        )
                                 )
                             }
 
+                            // 2. Settings Icon Mask Layer (Front Right)
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface, // Solid color creates the masking effect!
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                IconButton(onClick = { showSettings = true }) {
+                                    Icon(
+                                        Icons.Rounded.Settings,
+                                        contentDescription = "${currentTab.label} settings",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
+                            // 3. Alarms Pill (Front Left)
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.align(Alignment.CenterStart)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
@@ -358,15 +382,7 @@ fun ClockApp(
                             }
                         }
                     },
-                    actions = {
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(
-                                Icons.Rounded.Settings,
-                                contentDescription = "${currentTab.label} settings",
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    },
+                    actions = {}, // Intentionally left empty! We moved the Settings icon into the title Box to achieve the overlap mask effect.
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
