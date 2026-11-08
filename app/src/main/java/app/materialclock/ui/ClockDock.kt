@@ -1,8 +1,9 @@
 package app.materialclock.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+
+// --- 100% UNTOUCHED ICONS (Shape guaranteed) ---
 
 private val AlarmFilledCustom: ImageVector
     get() {
@@ -167,7 +171,6 @@ private val TimerFilledCustom: ImageVector
             lineTo(6f, 4f)
             lineTo(4f, 4f)
             close()
-
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
@@ -211,14 +214,12 @@ private val TimerOutlinedCustom: ImageVector
             lineTo(6f, 4f)
             lineTo(4f, 4f)
             close()
-
             moveTo(8f, 4f)
             lineTo(16f, 4f)
             lineTo(16f, 7.5f)
             curveTo(16f, 9.2f, 14.5f, 10.5f, 12f, 10.5f)
             curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
             close()
-
             moveTo(8f, 20f)
             lineTo(16f, 20f)
             lineTo(16f, 16.5f)
@@ -461,6 +462,44 @@ fun ClockDock(
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
                     
+                    // --- ANIMATION STATE ---
+                    val iconRotation = remember { Animatable(0f) }
+
+                    // Trigger micro-animations on selection
+                    LaunchedEffect(isSelected) {
+                        if (isSelected) {
+                            when (destination) {
+                                Tab.ALARMS -> {
+                                    // Wiggle like a ringing alarm
+                                    iconRotation.animateTo(15f, tween(50))
+                                    iconRotation.animateTo(-15f, tween(100))
+                                    iconRotation.animateTo(15f, tween(100))
+                                    iconRotation.animateTo(-15f, tween(100))
+                                    iconRotation.animateTo(0f, tween(50))
+                                }
+                                Tab.WORLD -> {
+                                    // Spin the globe 360 degrees
+                                    iconRotation.snapTo(0f)
+                                    iconRotation.animateTo(360f, tween(600, easing = FastOutSlowInEasing))
+                                }
+                                Tab.TIMERS -> {
+                                    // Flip the hourglass 180 degrees
+                                    iconRotation.snapTo(0f)
+                                    iconRotation.animateTo(180f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+                                }
+                                Tab.STOPWATCH -> {
+                                    // Quick tick like a stopwatch hand
+                                    iconRotation.animateTo(-15f, tween(100))
+                                    iconRotation.animateTo(15f, tween(100))
+                                    iconRotation.animateTo(0f, tween(100))
+                                }
+                            }
+                        } else {
+                            // Reset gracefully when unselected
+                            iconRotation.animateTo(0f, tween(300))
+                        }
+                    }
+
                     val tabScale by animateFloatAsState(
                         targetValue = if (isPressed) 0.90f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
@@ -507,23 +546,21 @@ fun ClockDock(
                                     Tab.STOPWATCH -> StopwatchOutlinedCustom
                                 }
                             }
+                            
+                            val icon = if (isSelected) activeIcon else inactiveIcon
+                            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
 
-                            // Smooth Icon Crossfade Animation
-                            Crossfade(
-                                targetState = isSelected,
-                                animationSpec = tween(durationMillis = 300, easing = FastOutLinearInEasing),
-                                label = "iconFade"
-                            ) { state ->
-                                val icon = if (state) activeIcon else inactiveIcon
-                                val contentColor = if (state) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
-                                
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = destination.label,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = contentColor
-                                )
-                            }
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = destination.label,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    // --- APPLY ROTATION HERE ---
+                                    .graphicsLayer {
+                                        rotationZ = iconRotation.value
+                                    },
+                                tint = contentColor
+                            )
 
                             AnimatedVisibility(
                                 visible = isSelected,
@@ -534,7 +571,6 @@ fun ClockDock(
                                     animationSpec = tween(300, easing = FastOutLinearInEasing)
                                 ),
                             ) {
-                                val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
                                 Text(
                                     text = destination.label,
                                     modifier = Modifier.padding(start = 8.dp),
