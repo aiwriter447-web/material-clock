@@ -1,4 +1,3 @@
-
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -11,8 +10,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
@@ -51,10 +53,10 @@ import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,9 +68,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
@@ -126,27 +130,55 @@ fun WorldClockScreen(
         selectedCities = emptySet()
     }
 
+    // Custom Pill-Shaped Delete Dialog matching Pic 2
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBatchDeleteConfirm = false },
-            title = { Text("Delete Cities") },
+            title = {
+                Text(
+                    text = "Delete Cities?",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                )
+            },
             text = {
-                Text("Are you sure you want to delete the selected ${selectedCities.size} cities?")
+                Text(
+                    text = "Are you sure you want to delete the selected ${selectedCities.size} cities?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             },
             confirmButton = {
-                TextButton(
+                Surface(
                     onClick = {
                         onDeleteSelected(selectedCities)
                         selectedCities = emptySet()
                         showBatchDeleteConfirm = false
-                    }
+                    },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.error,
+                    contentColor = Color.White
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "Delete",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBatchDeleteConfirm = false }) {
-                    Text("Cancel")
+                Surface(
+                    onClick = { showBatchDeleteConfirm = false },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    )
                 }
             }
         )
@@ -156,9 +188,6 @@ fun WorldClockScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-
-            // City Card to City Card gap = 12dp
-            // Clock bottom padding 12dp + this 12dp = 24dp total
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "main-clock", contentType = "header") {
@@ -224,16 +253,15 @@ fun WorldClockScreen(
             }
         }
 
+        // Animated Bouncy Selection Toolbar (Pic 3 Fix)
         AnimatedVisibility(
             visible = inSelectionMode,
             enter = fadeIn(spring()) +
-                slideInVertically(
-                    spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                ) { it },
+                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it } +
+                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy), initialScale = 0.85f),
             exit = fadeOut(spring()) +
-                slideOutVertically(
-                    spring(dampingRatio = Spring.DampingRatioNoBouncy)
-                ) { it },
+                slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
+                scaleOut(spring(), targetScale = 0.85f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -263,52 +291,80 @@ fun WorldClockScreen(
                 ) {
                     val allSelected = selectedCities.size == cities.size
 
-                    IconButton(onClick = {
-                        selectedCities = if (allSelected) {
-                            emptySet()
-                        } else {
-                            cities.map { it.zone }.toSet()
-                        }
-                    }) {
-                        Icon(
-                            if (allSelected) Icons.Rounded.Deselect
-                            else Icons.Rounded.SelectAll,
-                            contentDescription = "Select All"
-                        )
-                    }
-
-                    IconButton(onClick = {
-                        selectedCities.forEach { z ->
-                            cities.find { it.zone == z }?.let {
-                                if (it.pinnedAt == null) onTogglePin(it)
+                    ToolbarIconButton(
+                        onClick = {
+                            selectedCities = if (allSelected) {
+                                emptySet()
+                            } else {
+                                cities.map { it.zone }.toSet()
                             }
-                        }
-                        selectedCities = emptySet()
-                    }) {
-                        Icon(Icons.Rounded.PushPin, contentDescription = "Pin")
-                    }
+                        },
+                        icon = if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                        contentDescription = "Select All"
+                    )
 
-                    IconButton(onClick = {
-                        selectedCities.forEach { z ->
-                            cities.find { it.zone == z }?.let {
-                                if (it.pinnedAt != null) onTogglePin(it)
+                    ToolbarIconButton(
+                        onClick = {
+                            selectedCities.forEach { z ->
+                                cities.find { it.zone == z }?.let {
+                                    if (it.pinnedAt == null) onTogglePin(it)
+                                }
                             }
-                        }
-                        selectedCities = emptySet()
-                    }) {
-                        Icon(Icons.Outlined.PushPin, contentDescription = "Unpin")
-                    }
+                            selectedCities = emptySet()
+                        },
+                        icon = Icons.Rounded.PushPin,
+                        contentDescription = "Pin"
+                    )
 
-                    IconButton(onClick = { showBatchDeleteConfirm = true }) {
-                        Icon(
-                            Icons.Rounded.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+                    ToolbarIconButton(
+                        onClick = {
+                            selectedCities.forEach { z ->
+                                cities.find { it.zone == z }?.let {
+                                    if (it.pinnedAt != null) onTogglePin(it)
+                                }
+                            }
+                            selectedCities = emptySet()
+                        },
+                        icon = Icons.Outlined.PushPin,
+                        contentDescription = "Unpin"
+                    )
+
+                    ToolbarIconButton(
+                        onClick = { showBatchDeleteConfirm = true },
+                        icon = Icons.Rounded.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToolbarIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color = LocalContentColor.current
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.82f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "toolbarIconScale"
+    )
+
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint)
     }
 }
 
@@ -414,13 +470,11 @@ private fun CityDial(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val ghost = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Analog clock numbers: intermediate 450 weight
     val hourStyle = MaterialTheme.typography.headlineMedium.copy(
         color = ghost.copy(alpha = 0.45f),
         fontWeight = FontWeight(450)
     )
 
-    // City labels inside the analog clock
     val pillStyle = MaterialTheme.typography.labelMedium.copy(
         color = onAccent,
         fontWeight = FontWeight(450)
