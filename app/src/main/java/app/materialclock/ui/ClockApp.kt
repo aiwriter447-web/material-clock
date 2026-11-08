@@ -299,37 +299,35 @@ fun ClockApp(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             
-                            // 1. Scrolling Text Layer (Behind everything)
+                            // 1. Scrolling Text Layer (Expands naturally from the right)
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS,
                                 enter = fadeIn(),
                                 exit = fadeOut(),
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    // 24.dp end padding makes the marquee layout end exactly behind the center of the Settings icon
-                                    // 120.dp start padding ensures it stops scrolling before hitting the Alarms pill
-                                    .padding(start = 120.dp, end = 24.dp) 
+                                    // 110.dp start keeps it clear of the Alarms pill
+                                    // 52.dp end places the boundary exactly to the left of the Settings icon
+                                    .padding(start = 110.dp, end = 52.dp) 
                             ) {
                                 Text(
                                     text = marqueeText,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    textAlign = TextAlign.End, // Anchors the text to the right, letting it grow leftward
-                                    modifier = Modifier
-                                        // 12.dp end padding on the text itself prevents it from peeking out when stationary
-                                        .padding(end = 12.dp)
-                                        .basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            velocity = 30.dp
-                                        )
+                                    // Removed TextAlign.End. It naturally anchors to the right 
+                                    // because AnimatedVisibility is aligned to CenterEnd!
+                                    modifier = Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        velocity = 30.dp
+                                    )
                                 )
                             }
 
-                            // 2. Settings Icon Mask Layer (Front Right)
+                            // 2. Settings Icon Mask Layer
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface, // Solid color creates the masking effect!
+                                color = MaterialTheme.colorScheme.surface,
                                 modifier = Modifier.align(Alignment.CenterEnd)
                             ) {
                                 IconButton(onClick = { showSettings = true }) {
@@ -382,7 +380,7 @@ fun ClockApp(
                             }
                         }
                     },
-                    actions = {}, // Intentionally left empty! We moved the Settings icon into the title Box to achieve the overlap mask effect.
+                    actions = {}, 
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
