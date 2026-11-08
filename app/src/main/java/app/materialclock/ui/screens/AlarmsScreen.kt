@@ -8,13 +8,14 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -58,7 +59,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -89,12 +90,7 @@ import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.sheets.systemFirstDay
-import kotlinx.coroutines.delay
 import java.time.DayOfWeek
-import java.time.Duration
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -118,10 +114,9 @@ fun AlarmsScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
-    
+
     var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
 
-    // Ensure the space between the top "Alarms" capsule and the first group card matches the 10.dp item gap
     val adjustedContentPadding = remember(contentPadding, layoutDirection) {
         PaddingValues(
             top = contentPadding.calculateTopPadding() + 10.dp,
@@ -159,23 +154,57 @@ fun AlarmsScreen(
         selectedGroups = emptySet()
     }
 
+    // Custom Pill-Shaped Delete Dialog matching Pic 2
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBatchDeleteConfirm = false },
-            title = { Text("Delete Items") },
-            text = { Text("Are you sure you want to delete the selected ${selectedAlarms.size} alarms and ${selectedGroups.size} groups?") },
+            title = {
+                Text(
+                    text = "Delete Items?",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete the selected ${selectedAlarms.size} alarms and ${selectedGroups.size} groups?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
             confirmButton = {
-                TextButton(
+                Surface(
                     onClick = {
                         onDeleteSelected(selectedAlarms, selectedGroups)
                         selectedAlarms = emptySet()
                         selectedGroups = emptySet()
                         showBatchDeleteConfirm = false
-                    }
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                    },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.error,
+                    contentColor = Color.White
+                ) {
+                    Text(
+                        text = "Delete",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
+                    )
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showBatchDeleteConfirm = false }) { Text("Cancel") }
+                Surface(
+                    onClick = { showBatchDeleteConfirm = false },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    )
+                }
             }
         )
     }
@@ -220,18 +249,25 @@ fun AlarmsScreen(
             }
         }
 
+        // Animated Bouncy Selection Toolbar (Pic 3 Fix)
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn(spring()) + slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it },
-            exit = fadeOut(spring()) + slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it },
+            enter = fadeIn(spring()) +
+                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it } +
+                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy), initialScale = 0.85f),
+            exit = fadeOut(spring()) +
+                slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
+                scaleOut(spring(), targetScale = 0.85f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = 20.dp) 
+                .padding(bottom = 20.dp)
         ) {
             val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -249,44 +285,87 @@ fun AlarmsScreen(
                     modifier = Modifier.height(DOCK_HEIGHT),
                 ) {
                     val allSelected = selectedAlarms.size == alarms.size && selectedGroups.size == groups.size
-                    IconButton(onClick = {
-                        if (allSelected) {
+
+                    ToolbarIconButton(
+                        onClick = {
+                            if (allSelected) {
+                                selectedAlarms = emptySet()
+                                selectedGroups = emptySet()
+                            } else {
+                                selectedAlarms = alarms.map { it.id }.toSet()
+                                selectedGroups = groups.map { it.id }.toSet()
+                            }
+                        },
+                        icon = if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                        contentDescription = "Select All"
+                    )
+
+                    ToolbarIconButton(
+                        onClick = {
+                            onSetEnabledSelected(selectedAlarms, selectedGroups, true)
                             selectedAlarms = emptySet()
                             selectedGroups = emptySet()
-                        } else {
-                            selectedAlarms = alarms.map { it.id }.toSet()
-                            selectedGroups = groups.map { it.id }.toSet()
-                        }
-                    }) {
-                        Icon(if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll, contentDescription = "Select All")
-                    }
-                    IconButton(onClick = { 
-                        onSetEnabledSelected(selectedAlarms, selectedGroups, true) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Rounded.AlarmOn, contentDescription = "Turn On")
-                    }
-                    IconButton(onClick = { 
-                        onSetEnabledSelected(selectedAlarms, selectedGroups, false) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Rounded.AlarmOff, contentDescription = "Turn Off")
-                    }
-                    IconButton(onClick = { 
-                        onUngroupSelected(selectedAlarms, selectedGroups) 
-                        selectedAlarms = emptySet()
-                        selectedGroups = emptySet()
-                    }) {
-                        Icon(Icons.Rounded.GroupRemove, contentDescription = "Ungroup")
-                    }
-                    IconButton(onClick = { showBatchDeleteConfirm = true }) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                    }
+                        },
+                        icon = Icons.Rounded.AlarmOn,
+                        contentDescription = "Turn On"
+                    )
+
+                    ToolbarIconButton(
+                        onClick = {
+                            onSetEnabledSelected(selectedAlarms, selectedGroups, false)
+                            selectedAlarms = emptySet()
+                            selectedGroups = emptySet()
+                        },
+                        icon = Icons.Rounded.AlarmOff,
+                        contentDescription = "Turn Off"
+                    )
+
+                    ToolbarIconButton(
+                        onClick = {
+                            onUngroupSelected(selectedAlarms, selectedGroups)
+                            selectedAlarms = emptySet()
+                            selectedGroups = emptySet()
+                        },
+                        icon = Icons.Rounded.GroupRemove,
+                        contentDescription = "Ungroup"
+                    )
+
+                    ToolbarIconButton(
+                        onClick = { showBatchDeleteConfirm = true },
+                        icon = Icons.Rounded.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToolbarIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color = LocalContentColor.current
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.82f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        label = "toolbarIconScale"
+    )
+
+    IconButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint)
     }
 }
 
@@ -305,7 +384,9 @@ private fun GroupCardsSection(
     onToggleGroupSelect: (Long) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_SECTION_PADDING_H),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = GROUP_SECTION_PADDING_H),
         verticalArrangement = Arrangement.spacedBy(GROUP_CARD_GAP),
     ) {
         groups.chunked(2).forEach { pair ->
@@ -352,9 +433,10 @@ private fun GroupCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Match World Clock high bouncy spring press scale (0.90f)
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "groupScale"
     )
 
@@ -371,7 +453,7 @@ private fun GroupCard(
 
     val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessMediumLow), label = "iconBg")
     val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessMediumLow), label = "iconTint")
-    
+
     val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
     Surface(
@@ -399,20 +481,29 @@ private fun GroupCard(
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(
-                    contentAlignment = Alignment.Center, 
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    AnimatedContent(
+                        targetState = iconVector,
+                        transitionSpec = {
+                            (fadeIn(tween(200)) + scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy))) togetherWith
+                                (fadeOut(tween(150)) + scaleOut(tween(150)))
+                        },
+                        label = "groupIconAnim"
+                    ) { targetIcon ->
+                        Icon(
+                            imageVector = targetIcon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
-            
+
             Spacer(Modifier.width(10.dp))
-            
+
             Column(
                 verticalArrangement = Arrangement.Center
             ) {
@@ -467,9 +558,10 @@ private fun AlarmRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Match World Clock high bouncy spring press scale (0.90f)
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "rowScale"
     )
 
@@ -478,7 +570,7 @@ private fun AlarmRow(
 
     val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "rowContainer")
     val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "rowInk")
-    
+
     val outlineColor = MaterialTheme.colorScheme.outline
 
     val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
@@ -507,7 +599,9 @@ private fun AlarmRow(
             ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
@@ -616,7 +710,7 @@ private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color, enabled
 
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, letterSpacing = 2.5.sp), 
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, letterSpacing = 2.5.sp),
         maxLines = 1
     )
 }
