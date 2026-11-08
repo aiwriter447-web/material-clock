@@ -216,7 +216,7 @@ private fun Preferences.toSettings() = ClockSettings(
     ),
     theme = ThemeSettings(
         dynamicColor = this[booleanPreferencesKey("dynamicColor")] ?: true,
-        palette = enumOr(this[stringPreferencesKey("palette")], Palette.EXPRESSIVE),
+        palette = enumOr(this[stringPreferencesKey("palette")], Palette.GALAXIA),
         darkMode = enumOr(this[stringPreferencesKey("darkMode")], DarkMode.SYSTEM),
         amoledBlack = this[booleanPreferencesKey("amoled")] ?: false,
     ),
@@ -362,7 +362,7 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
         date = enumOr(o.optString("date"), DateMode.NONE),
         datePosition = enumOr(o.optString("datePos"), DatePosition.FOUR_THIRTY),
         colour = enumOr(o.optString("colour"), ColourSource.FOLLOW_APP),
-        palette = enumOr(o.optString("palette"), Palette.EXPRESSIVE),
+        palette = enumOr(o.optString("palette"), Palette.GALAXIA),
     )
 }.getOrDefault(WidgetConfig())
 
