@@ -54,6 +54,7 @@ import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -154,7 +155,6 @@ fun AlarmsScreen(
         selectedGroups = emptySet()
     }
 
-    // Custom Pill-Shaped Delete Dialog matching Pic 2
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBatchDeleteConfirm = false },
@@ -249,7 +249,6 @@ fun AlarmsScreen(
             }
         }
 
-        // Animated Bouncy Selection Toolbar (Pic 3 Fix)
         AnimatedVisibility(
             visible = inSelectionMode,
             enter = fadeIn(spring()) +
@@ -433,7 +432,6 @@ private fun GroupCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Match World Clock high bouncy spring press scale (0.90f)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -558,7 +556,6 @@ private fun AlarmRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Match World Clock high bouncy spring press scale (0.90f)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
