@@ -100,8 +100,8 @@ fun StopwatchScreen(
                 end = contentPadding.calculateEndPadding(layoutDirection)
             )
     ) {
-        // Problem B Fix: Shifted everything upwards by reducing the top spacer significantly
-        Spacer(Modifier.height(8.dp))
+        // Shifted numbers and icons downwards slightly for better reachability
+        Spacer(Modifier.height(32.dp))
 
         StackedDigits(
             parts = listOf(a, b, c),
@@ -110,10 +110,10 @@ fun StopwatchScreen(
             leading = Icons.Rounded.Timer,
             label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                 if (stopwatch.running) ", running" else ", stopped",
-            // Center alignment handled inherently by Column fillMaxWidth in StackedDigits
             modifier = Modifier.fillMaxWidth(),
         )
 
+        // Increased space between numbers and buttons for one-handed ergonomics
         Spacer(Modifier.height(STACK_GAP))
 
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -223,13 +223,11 @@ private fun StopwatchControls(
     }
 
     SubcomposeLayout(
-        // Removed the hardcoded horizontal padding to allow true centering
         Modifier.fillMaxWidth().height(ROW_HEIGHT),
     ) { constraints ->
         val full = constraints.maxWidth
         val h = ROW_HEIGHT.roundToPx()
 
-        // Natural width of the Single "Start" button
         val natural = subcompose("probe") {
             WidePill(
                 text = "Start",
@@ -242,11 +240,9 @@ private fun StopwatchControls(
             )
         }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
 
-        // Problem A Fix: Force the collapsed button to sit exactly in the middle of the screen
         val collapsedW = natural.coerceAtMost(full)
         val collapsedX = (full - collapsedW) / 2 
 
-        // When expanded, factor in 20.dp margin on left and right sides
         val expandedW = full - 40.dp.roundToPx() 
         val expandedX = 20.dp.roundToPx()
 
@@ -310,7 +306,8 @@ private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
 private val IDLE_PADDING_H = 48.dp
-private val STACK_GAP = 12.dp // Problem B Fix: Reduced gap above the Start button
+// Increased STACK_GAP to move buttons further down from the numbers for better thumb access
+private val STACK_GAP = 36.dp 
 private val READOUT_CAP = 56.dp
 private val GAP = 8.dp 
 private val ROW_HEIGHT = 64.dp
