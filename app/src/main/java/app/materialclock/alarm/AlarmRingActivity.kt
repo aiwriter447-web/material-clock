@@ -64,24 +64,21 @@ import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /* ───────────────────────────────────────────────
-   EXPRESSIVE ANIMATION CONFIGURATION
+   LIVING FLOW: FLUID ANIMATION CONFIGURATION
    ─────────────────────────────────────────────── */
 
-private const val EXIT_DURATION = 240L
+private const val EXIT_DURATION = 280L
 
-private val ExpressiveSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioMediumBouncy,
-    stiffness = Spring.StiffnessMedium
+// Smooth, liquid-like spread for layout and transitions
+private val FluidSpring = spring<Float>(
+    dampingRatio = 0.65f,
+    stiffness = 250f
 )
 
-private val SoftSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioLowBouncy,
-    stiffness = Spring.StiffnessLow
-)
-
-private val FastSpring = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMedium
+// Deep, tactile bounce mimicking soft material response
+private val JellySpring = spring<Float>(
+    dampingRatio = 0.45f,
+    stiffness = 550f
 )
 
 /* ───────────────────────────────────────────────
@@ -128,15 +125,10 @@ class AlarmRingActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        /* Lock screen support */
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-
         } else {
-
             @Suppress("DEPRECATION")
             window.addFlags(
                 android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
@@ -148,18 +140,9 @@ class AlarmRingActivity : ComponentActivity() {
         getSystemService<KeyguardManager>()
             ?.requestDismissKeyguard(this, null)
 
-        val id = intent.getLongExtra(
-            AlarmReceiver.EXTRA_ID,
-            -1L
-        )
-
-        val label = intent.getStringExtra(
-            EXTRA_LABEL
-        ).orEmpty()
-
+        val id = intent.getLongExtra(AlarmReceiver.EXTRA_ID, -1L)
+        val label = intent.getStringExtra(EXTRA_LABEL).orEmpty()
         val store = ClockStore(applicationContext)
-
-        /* Disable accidental back dismissal */
 
         onBackPressedDispatcher.addCallback(
             this,
@@ -171,50 +154,27 @@ class AlarmRingActivity : ComponentActivity() {
         setContent {
 
             val settings by store.settings
-                .collectAsStateWithLifecycle(
-                    initialValue = ClockSettings()
-                )
+                .collectAsStateWithLifecycle(initialValue = ClockSettings())
 
-            LaunchedEffect(
-                settings.alarms.volumeButtonsControlVolume
-            ) {
-                volumeButtonsControlVolume =
-                    settings.alarms.volumeButtonsControlVolume
+            LaunchedEffect(settings.alarms.volumeButtonsControlVolume) {
+                volumeButtonsControlVolume = settings.alarms.volumeButtonsControlVolume
             }
 
             ClockTheme(settings.theme) {
-
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-
                     ExpressiveRingingScreen(
                         label = label,
                         snoozeMinutes = settings.alarms.snoozeMinutes,
                         dismissMethod = settings.alarms.dismissMethod,
-
                         onSnooze = {
-
-                            sendBroadcast(
-                                action(
-                                    ClockActionReceiver.ACTION_SNOOZE,
-                                    id
-                                )
-                            )
-
+                            sendBroadcast(action(ClockActionReceiver.ACTION_SNOOZE, id))
                             finishAfterAnimation()
                         },
-
                         onDismiss = {
-
-                            sendBroadcast(
-                                action(
-                                    ClockActionReceiver.ACTION_DISMISS,
-                                    id
-                                )
-                            )
-
+                            sendBroadcast(action(ClockActionReceiver.ACTION_DISMISS, id))
                             finishAfterAnimation()
                         }
                     )
@@ -224,7 +184,6 @@ class AlarmRingActivity : ComponentActivity() {
     }
 
     private fun finishAfterAnimation() {
-
         lifecycleScope.launch {
             delay(EXIT_DURATION)
             if (!isFinishing && !isDestroyed) {
@@ -233,55 +192,25 @@ class AlarmRingActivity : ComponentActivity() {
         }
     }
 
-    private fun action(
-        name: String,
-        id: Long
-    ): Intent {
-
-        return Intent(
-            this,
-            ClockActionReceiver::class.java
-        )
+    private fun action(name: String, id: Long): Intent {
+        return Intent(this, ClockActionReceiver::class.java)
             .setPackage(packageName)
             .setAction(name)
-            .putExtra(
-                AlarmReceiver.EXTRA_ID,
-                id
-            )
+            .putExtra(AlarmReceiver.EXTRA_ID, id)
     }
 
     companion object {
-
         const val EXTRA_LABEL = "label"
 
-        fun intent(
-            context: Context,
-            id: Long,
-            label: String
-        ): PendingIntent {
-
+        fun intent(context: Context, id: Long, label: String): PendingIntent {
             return PendingIntent.getActivity(
                 context,
                 id.toInt(),
-                Intent(
-                    context,
-                    AlarmRingActivity::class.java
-                )
-                    .setFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    )
-                    .putExtra(
-                        AlarmReceiver.EXTRA_ID,
-                        id
-                    )
-                    .putExtra(
-                        EXTRA_LABEL,
-                        label
-                    ),
-
-                PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
+                Intent(context, AlarmRingActivity::class.java)
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    .putExtra(AlarmReceiver.EXTRA_ID, id)
+                    .putExtra(EXTRA_LABEL, label),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
     }
@@ -299,13 +228,9 @@ private fun ExpressiveRingingScreen(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit
 ) {
-
     val nowMillis by rememberWallTicker()
-
     val context = LocalContext.current
-
-    val is24Hour = android.text.format.DateFormat
-        .is24HourFormat(context)
+    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
 
     val time = remember(nowMillis) {
         Instant.ofEpochMilli(nowMillis)
@@ -313,17 +238,9 @@ private fun ExpressiveRingingScreen(
             .toLocalTime()
     }
 
-    var entered by remember {
-        mutableStateOf(false)
-    }
-
-    var exiting by remember {
-        mutableStateOf(false)
-    }
-
-    var actionTaken by remember {
-        mutableStateOf(false)
-    }
+    var entered by remember { mutableStateOf(false) }
+    var exiting by remember { mutableStateOf(false) }
+    var actionTaken by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         entered = true
@@ -335,19 +252,18 @@ private fun ExpressiveRingingScreen(
             entered -> 1f
             else -> 0f
         },
-        animationSpec = tween(
-            durationMillis = 220
-        ),
+        animationSpec = tween(durationMillis = 240, easing = LinearOutSlowInEasing),
         label = "screenAlpha"
     )
 
+    // LIVING FLOW: Organic zoom out on dismiss
     val screenScale by animateFloatAsState(
         targetValue = when {
-            exiting -> 0.94f
+            exiting -> 0.92f
             entered -> 1f
-            else -> 0.92f
+            else -> 0.90f
         },
-        animationSpec = ExpressiveSpring,
+        animationSpec = FluidSpring,
         label = "screenScale"
     )
 
@@ -376,11 +292,9 @@ private fun ExpressiveRingingScreen(
                 scaleY = screenScale
             }
     ) {
-
         AnimatedAmbientBackground()
 
         if (maxWidth > maxHeight) {
-
             ExpressiveLandscape(
                 label = label,
                 time = time,
@@ -390,9 +304,7 @@ private fun ExpressiveRingingScreen(
                 onSnooze = handleSnooze,
                 onDismiss = handleDismiss
             )
-
         } else {
-
             ExpressivePortrait(
                 label = label,
                 time = time,
@@ -412,19 +324,13 @@ private fun ExpressiveRingingScreen(
 
 @Composable
 private fun AnimatedAmbientBackground() {
-
-    val infinite = rememberInfiniteTransition(
-        label = "ambientAnimation"
-    )
+    val infinite = rememberInfiniteTransition(label = "ambientAnimation")
 
     val glowAlpha by infinite.animateFloat(
-        initialValue = 0.025f,
-        targetValue = 0.085f,
+        initialValue = 0.02f,
+        targetValue = 0.10f, // Slightly deeper glow for fluid feel
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 3200,
-                easing = FastOutSlowInEasing
-            ),
+            animation = tween(durationMillis = 3800, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "ambientGlow"
@@ -440,9 +346,7 @@ private fun AnimatedAmbientBackground() {
                     colors = listOf(
                         primary.copy(alpha = glowAlpha),
                         Color.Transparent,
-                        primary.copy(
-                            alpha = glowAlpha * 0.45f
-                        )
+                        primary.copy(alpha = glowAlpha * 0.50f)
                     )
                 )
             )
@@ -463,22 +367,14 @@ private fun ExpressivePortrait(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(
-                horizontal = 24.dp,
-                vertical = 36.dp
-            ),
+            .padding(horizontal = 24.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
-        AnimatedEntrance(
-            delayMillis = 0
-        ) {
-
+        AnimatedEntrance(delayMillis = 0) {
             Text(
                 text = label.ifBlank { "Alarm" },
                 style = MaterialTheme.typography.headlineMedium,
@@ -490,29 +386,15 @@ private fun ExpressivePortrait(
             )
         }
 
-        Spacer(
-            Modifier.height(24.dp)
-        )
+        Spacer(Modifier.height(24.dp))
 
-        AnimatedEntrance(
-            delayMillis = 90
-        ) {
-
-            ExpressiveClock(
-                time = time,
-                is24Hour = is24Hour,
-                compact = false
-            )
+        AnimatedEntrance(delayMillis = 90) {
+            ExpressiveClock(time = time, is24Hour = is24Hour, compact = false)
         }
 
-        Spacer(
-            Modifier.height(56.dp)
-        )
+        Spacer(Modifier.height(56.dp))
 
-        AnimatedEntrance(
-            delayMillis = 170
-        ) {
-
+        AnimatedEntrance(delayMillis = 170) {
             ExpressiveDismissControl(
                 dismissMethod = dismissMethod,
                 onDismiss = onDismiss,
@@ -521,14 +403,9 @@ private fun ExpressivePortrait(
             )
         }
 
-        Spacer(
-            Modifier.height(14.dp)
-        )
+        Spacer(Modifier.height(14.dp))
 
-        AnimatedEntrance(
-            delayMillis = 250
-        ) {
-
+        AnimatedEntrance(delayMillis = 250) {
             ExpressiveSnoozeButton(
                 snoozeMinutes = snoozeMinutes,
                 onSnooze = onSnooze,
@@ -553,27 +430,18 @@ private fun ExpressiveLandscape(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(
-                horizontal = 32.dp,
-                vertical = 20.dp
-            ),
+            .padding(horizontal = 32.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center
         ) {
-
-            AnimatedEntrance(
-                delayMillis = 0
-            ) {
-
+            AnimatedEntrance(delayMillis = 0) {
                 Text(
                     text = label.ifBlank { "Alarm" },
                     style = MaterialTheme.typography.headlineSmall,
@@ -583,36 +451,19 @@ private fun ExpressiveLandscape(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-
-            Spacer(
-                Modifier.height(12.dp)
-            )
-
-            AnimatedEntrance(
-                delayMillis = 90
-            ) {
-
-                ExpressiveClock(
-                    time = time,
-                    is24Hour = is24Hour,
-                    compact = true
-                )
+            Spacer(Modifier.height(12.dp))
+            AnimatedEntrance(delayMillis = 90) {
+                ExpressiveClock(time = time, is24Hour = is24Hour, compact = true)
             }
         }
 
-        Spacer(
-            Modifier.width(24.dp)
-        )
+        Spacer(Modifier.width(24.dp))
 
         Column(
             modifier = Modifier.weight(0.75f),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            AnimatedEntrance(
-                delayMillis = 170
-            ) {
-
+            AnimatedEntrance(delayMillis = 170) {
                 ExpressiveDismissControl(
                     dismissMethod = dismissMethod,
                     onDismiss = onDismiss,
@@ -620,11 +471,7 @@ private fun ExpressiveLandscape(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-
-            AnimatedEntrance(
-                delayMillis = 250
-            ) {
-
+            AnimatedEntrance(delayMillis = 250) {
                 ExpressiveSnoozeButton(
                     snoozeMinutes = snoozeMinutes,
                     onSnooze = onSnooze,
@@ -645,10 +492,7 @@ private fun AnimatedEntrance(
     delayMillis: Int,
     content: @Composable () -> Unit
 ) {
-
-    var visible by remember {
-        mutableStateOf(false)
-    }
+    var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         delay(delayMillis.toLong())
@@ -657,22 +501,20 @@ private fun AnimatedEntrance(
 
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = 350,
-            easing = FastOutSlowInEasing
-        ),
+        animationSpec = tween(durationMillis = 400, easing = EaseOutSine),
         label = "entranceAlpha"
     )
 
+    // LIVING FLOW: Elements drift in smoothly like rising bubbles
     val scale by animateFloatAsState(
-        targetValue = if (visible) 1f else 0.86f,
-        animationSpec = SoftSpring,
+        targetValue = if (visible) 1f else 0.85f,
+        animationSpec = FluidSpring,
         label = "entranceScale"
     )
 
     val translationY by animateFloatAsState(
-        targetValue = if (visible) 0f else 35f,
-        animationSpec = ExpressiveSpring,
+        targetValue = if (visible) 0f else 50f,
+        animationSpec = FluidSpring,
         label = "entranceTranslation"
     )
 
@@ -698,45 +540,27 @@ private fun ExpressiveClock(
     is24Hour: Boolean,
     compact: Boolean
 ) {
+    val hour = if (is24Hour) time.hour else (time.hour % 12).takeIf { it != 0 } ?: 12
+    val timeText = "%02d:%02d".format(hour, time.minute)
 
-    val hour = if (is24Hour) {
-        time.hour
-    } else {
-        (time.hour % 12).takeIf {
-            it != 0
-        } ?: 12
-    }
+    val infinite = rememberInfiniteTransition(label = "clockBreathing")
 
-    val timeText = "%02d:%02d".format(
-        hour,
-        time.minute
-    )
-
-    val infinite = rememberInfiniteTransition(
-        label = "clockBreathing"
-    )
-
+    // LIVING FLOW: Slower, more organic breathing cadence
     val breathingScale by infinite.animateFloat(
         initialValue = 1f,
-        targetValue = 1.025f,
+        targetValue = 1.03f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1900,
-                easing = FastOutSlowInEasing
-            ),
+            animation = tween(durationMillis = 2400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "clockScale"
     )
 
     val glowAlpha by infinite.animateFloat(
-        initialValue = 0.06f,
-        targetValue = 0.18f,
+        initialValue = 0.05f,
+        targetValue = 0.20f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1900,
-                easing = FastOutSlowInEasing
-            ),
+            animation = tween(durationMillis = 2400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "clockGlow"
@@ -751,7 +575,6 @@ private fun ExpressiveClock(
             scaleY = breathingScale
         }
     ) {
-
         Box(
             modifier = Modifier
                 .size(
@@ -761,9 +584,7 @@ private fun ExpressiveClock(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primary.copy(
-                                alpha = glowAlpha
-                            ),
+                            primary.copy(alpha = glowAlpha),
                             Color.Transparent
                         )
                     ),
@@ -775,7 +596,6 @@ private fun ExpressiveClock(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.Center
         ) {
-
             Text(
                 text = timeText,
                 fontSize = if (compact) 64.sp else 88.sp,
@@ -787,17 +607,9 @@ private fun ExpressiveClock(
             )
 
             if (!is24Hour) {
-
-                Spacer(
-                    Modifier.width(8.dp)
-                )
-
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (time.hour < 12) {
-                        "AM"
-                    } else {
-                        "PM"
-                    },
+                    text = if (time.hour < 12) "AM" else "PM",
                     fontSize = if (compact) 22.sp else 28.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -821,26 +633,9 @@ private fun ExpressiveDismissControl(
     height: Dp,
     modifier: Modifier = Modifier
 ) {
-
     when (dismissMethod) {
-
-        DismissMethod.TAP -> {
-
-            ExpressiveDismissButton(
-                onDismiss = onDismiss,
-                height = height,
-                modifier = modifier
-            )
-        }
-
-        DismissMethod.SWIPE -> {
-
-            ExpressiveSwipeToDismiss(
-                onDismiss = onDismiss,
-                height = height,
-                modifier = modifier
-            )
-        }
+        DismissMethod.TAP -> ExpressiveDismissButton(onDismiss, height, modifier)
+        DismissMethod.SWIPE -> ExpressiveSwipeToDismiss(onDismiss, height, modifier)
     }
 }
 
@@ -854,37 +649,30 @@ private fun ExpressiveDismissButton(
     height: Dp,
     modifier: Modifier = Modifier
 ) {
-
-    val interactionSource = remember {
-        MutableInteractionSource()
-    }
-
+    val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-
     val haptic = LocalHapticFeedback.current
-
-    var activated by remember {
-        mutableStateOf(false)
-    }
+    var activated by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "dismissPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.04f,
+        targetValue = 1.03f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "dismissPulseScale"
     )
 
+    // LIVING FLOW: Deep jelly squash on press
     val scale by animateFloatAsState(
         targetValue = when {
-            activated -> 0.96f
-            pressed -> 0.92f
+            activated -> 0.95f
+            pressed -> 0.88f // Deep squish
             else -> pulseScale
         },
-        animationSpec = ExpressiveSpring,
+        animationSpec = JellySpring,
         label = "dismissScale"
     )
 
@@ -894,7 +682,7 @@ private fun ExpressiveDismissButton(
         } else {
             MaterialTheme.colorScheme.tertiaryContainer
         },
-        animationSpec = tween(180),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f),
         label = "dismissBackground"
     )
 
@@ -904,20 +692,15 @@ private fun ExpressiveDismissButton(
         } else {
             MaterialTheme.colorScheme.onTertiaryContainer
         },
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f),
         label = "dismissContent"
     )
 
     Surface(
         onClick = {
-
             if (!activated) {
-
                 activated = true
-
-                haptic.performHapticFeedback(
-                    HapticFeedbackType.LongPress
-                )
-
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onDismiss()
             }
         },
@@ -932,23 +715,17 @@ private fun ExpressiveDismissButton(
         color = backgroundColor,
         interactionSource = interactionSource
     ) {
-
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Icon(
                 imageVector = Icons.Rounded.AlarmOff,
                 contentDescription = null,
                 tint = contentColor,
                 modifier = Modifier.size(28.dp)
             )
-
-            Spacer(
-                Modifier.width(12.dp)
-            )
-
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = "Dismiss",
                 style = MaterialTheme.typography.titleLarge,
@@ -970,37 +747,30 @@ private fun ExpressiveSnoozeButton(
     height: Dp,
     modifier: Modifier = Modifier
 ) {
-
-    val interactionSource = remember {
-        MutableInteractionSource()
-    }
-
+    val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-
     val haptic = LocalHapticFeedback.current
-
-    var activated by remember {
-        mutableStateOf(false)
-    }
+    var activated by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "snoozePulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.04f,
+        targetValue = 1.025f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "snoozePulseScale"
     )
 
+    // LIVING FLOW: Deep tactile squash
     val scale by animateFloatAsState(
         targetValue = when {
-            activated -> 0.96f
-            pressed -> 0.92f
+            activated -> 0.95f
+            pressed -> 0.88f // Deep squish
             else -> pulseScale
         },
-        animationSpec = ExpressiveSpring,
+        animationSpec = JellySpring,
         label = "snoozeScale"
     )
 
@@ -1010,21 +780,15 @@ private fun ExpressiveSnoozeButton(
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
-        animationSpec = tween(180),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f),
         label = "snoozeBackground"
     )
 
     Surface(
         onClick = {
-
             if (!activated) {
-
                 activated = true
-
-                haptic.performHapticFeedback(
-                    HapticFeedbackType.TextHandleMove
-                )
-
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onSnooze()
             }
         },
@@ -1037,29 +801,20 @@ private fun ExpressiveSnoozeButton(
             },
         shape = CircleShape,
         color = backgroundColor,
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         interactionSource = interactionSource
     ) {
-
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Icon(
                 imageVector = Icons.Rounded.Snooze,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(26.dp)
             )
-
-            Spacer(
-                Modifier.width(12.dp)
-            )
-
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = "Snooze $snoozeMinutes min",
                 style = MaterialTheme.typography.titleMedium,
@@ -1080,83 +835,50 @@ private fun ExpressiveSwipeToDismiss(
     height: Dp,
     modifier: Modifier = Modifier
 ) {
-
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-
     val scope = rememberCoroutineScope()
 
     val inset = 4.dp
-
     val handleSize = height - inset * 2
+    val handlePx = with(density) { handleSize.toPx() }
+    val insetPx = with(density) { inset.toPx() }
 
-    val handlePx = with(density) {
-        handleSize.toPx()
-    }
+    var trackWidth by remember { mutableFloatStateOf(0f) }
+    val maxOffset = (trackWidth - handlePx - insetPx * 2).coerceAtLeast(0f)
 
-    val insetPx = with(density) {
-        inset.toPx()
-    }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var dismissed by remember { mutableStateOf(false) }
+    var thresholdReached by remember { mutableStateOf(false) }
+    var springJob by remember { mutableStateOf<Job?>(null) }
 
-    var trackWidth by remember {
-        mutableFloatStateOf(0f)
-    }
-
-    val maxOffset = (
-        trackWidth - handlePx - insetPx * 2
-    ).coerceAtLeast(0f)
-
-    var dragOffset by remember {
-        mutableFloatStateOf(0f)
-    }
-
-    var dragging by remember {
-        mutableStateOf(false)
-    }
-
-    var dismissed by remember {
-        mutableStateOf(false)
-    }
-
-    var thresholdReached by remember {
-        mutableStateOf(false)
-    }
-
-    var springJob by remember {
-        mutableStateOf<Job?>(null)
-    }
-
-    val progress = if (maxOffset > 0f) {
-        (dragOffset / maxOffset).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val progress = if (maxOffset > 0f) (dragOffset / maxOffset).coerceIn(0f, 1f) else 0f
 
     val backgroundColor = lerp(
         MaterialTheme.colorScheme.surfaceVariant,
         MaterialTheme.colorScheme.primaryContainer,
         progress
     )
-
     val handleColor = lerp(
         MaterialTheme.colorScheme.tertiaryContainer,
         MaterialTheme.colorScheme.primary,
         progress
     )
-
     val handleContentColor = lerp(
         MaterialTheme.colorScheme.onTertiaryContainer,
         MaterialTheme.colorScheme.onPrimary,
         progress
     )
 
+    // LIVING FLOW: The handle squishes under the finger and pops on release
     val handleScale by animateFloatAsState(
         targetValue = when {
-            dismissed -> 1.08f
-            dragging -> 1.05f
+            dismissed -> 1.15f // Popping out effect when dismissed
+            dragging -> 0.88f // Squishing under tension
             else -> 1f
         },
-        animationSpec = ExpressiveSpring,
+        animationSpec = JellySpring,
         label = "swipeHandleScale"
     )
 
@@ -1165,7 +887,7 @@ private fun ExpressiveSwipeToDismiss(
         initialValue = 0f,
         targetValue = 12f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearOutSlowInEasing),
+            animation = tween(1200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Restart
         ),
         label = "hintOffset"
@@ -1175,16 +897,14 @@ private fun ExpressiveSwipeToDismiss(
         initialValue = 1f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearOutSlowInEasing),
+            animation = tween(1200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Restart
         ),
         label = "hintAlpha"
     )
 
     DisposableEffect(Unit) {
-        onDispose {
-            springJob?.cancel()
-        }
+        onDispose { springJob?.cancel() }
     }
 
     Box(
@@ -1192,23 +912,14 @@ private fun ExpressiveSwipeToDismiss(
             .height(height)
             .clip(CircleShape)
             .background(backgroundColor)
-            .onSizeChanged {
-                trackWidth = it.width.toFloat()
-            },
+            .onSizeChanged { trackWidth = it.width.toFloat() },
         contentAlignment = Alignment.CenterStart
     ) {
-
         Text(
-            text = if (thresholdReached) {
-                "Release to dismiss"
-            } else {
-                "Swipe to dismiss"
-            },
+            text = if (thresholdReached) "Release to dismiss" else "Swipe to dismiss",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                alpha = 1f - progress * 0.65f
-            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 1f - progress * 0.65f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1216,12 +927,7 @@ private fun ExpressiveSwipeToDismiss(
         Box(
             modifier = Modifier
                 .padding(start = inset)
-                .offset {
-                    IntOffset(
-                        dragOffset.roundToInt(),
-                        0
-                    )
-                }
+                .offset { IntOffset(dragOffset.roundToInt(), 0) }
                 .size(handleSize)
                 .graphicsLayer {
                     scaleX = handleScale
@@ -1232,90 +938,51 @@ private fun ExpressiveSwipeToDismiss(
                 .draggable(
                     orientation = Orientation.Horizontal,
                     enabled = !dismissed,
-
                     onDragStarted = {
-
                         springJob?.cancel()
                         springJob = null
-
                         dragging = true
                     },
-
                     state = rememberDraggableState { delta ->
-
                         if (!dismissed) {
+                            dragOffset = (dragOffset + delta).coerceIn(0f, maxOffset)
+                            val reached = maxOffset > 0f && dragOffset >= maxOffset * 0.7f
 
-                            dragOffset = (
-                                dragOffset + delta
-                            ).coerceIn(0f, maxOffset)
-
-                            val reached =
-                                maxOffset > 0f &&
-                                    dragOffset >= maxOffset * 0.7f
-
-                            if (
-                                reached &&
-                                !thresholdReached
-                            ) {
-
-                                haptic.performHapticFeedback(
-                                    HapticFeedbackType.LongPress
-                                )
+                            if (reached && !thresholdReached) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
-
                             thresholdReached = reached
                         }
                     },
-
                     onDragStopped = {
-
                         dragging = false
+                        if (dismissed) return@draggable
 
-                        if (dismissed) {
-                            return@draggable
-                        }
-
-                        val shouldDismiss =
-                            maxOffset > 0f &&
-                                dragOffset >= maxOffset * 0.7f
+                        val shouldDismiss = maxOffset > 0f && dragOffset >= maxOffset * 0.7f
 
                         if (shouldDismiss) {
-
                             dismissed = true
-
                             springJob?.cancel()
-
                             springJob = scope.launch {
-
-                                val animation = Animatable(
-                                    dragOffset
-                                )
-
+                                val animation = Animatable(dragOffset)
+                                // LIVING FLOW: Liquid snap to the end
                                 animation.animateTo(
                                     targetValue = maxOffset,
-                                    animationSpec = FastSpring
+                                    animationSpec = FluidSpring 
                                 ) {
                                     dragOffset = value
                                 }
-
                                 onDismiss()
                             }
-
                         } else {
-
                             thresholdReached = false
-
                             springJob?.cancel()
-
                             springJob = scope.launch {
-
-                                val animation = Animatable(
-                                    dragOffset
-                                )
-
+                                val animation = Animatable(dragOffset)
+                                // LIVING FLOW: Smooth liquid return to the start
                                 animation.animateTo(
                                     targetValue = 0f,
-                                    animationSpec = SoftSpring
+                                    animationSpec = FluidSpring 
                                 ) {
                                     dragOffset = value
                                 }
@@ -1325,13 +992,10 @@ private fun ExpressiveSwipeToDismiss(
                 ),
             contentAlignment = Alignment.Center
         ) {
-
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = "Swipe to dismiss",
-                tint = handleContentColor.copy(
-                    alpha = if (dragging || dismissed) 1f else hintAlpha
-                ),
+                tint = handleContentColor.copy(alpha = if (dragging || dismissed) 1f else hintAlpha),
                 modifier = Modifier
                     .size(34.dp)
                     .offset(x = if (dragging || dismissed) 0.dp else hintOffset.dp)
