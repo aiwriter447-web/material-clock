@@ -58,13 +58,11 @@ class ClockStore(private val context: Context) {
 
     suspend fun putAlarms(list: List<Alarm>) {
         context.prefs.edit { it[KEY_ALARMS] = encodeAlarms(list) }
-        // Keep the Alarm widget in step with the app's alarms.
         app.materialclock.widget.AlarmWidgetProvider.refreshAllNow(context)
     }
 
     suspend fun putCities(list: List<WorldCity>) {
         context.prefs.edit { it[KEY_CITIES] = encodeCities(list) }
-        // Keep the World Clock widget in step with the app's city list.
         app.materialclock.widget.WorldClockWidgetProvider.refreshAllNow(context)
     }
 
@@ -129,7 +127,6 @@ class ClockStore(private val context: Context) {
 
     suspend fun update(block: (ClockSettings) -> ClockSettings) {
         context.prefs.edit { p -> p.writeSettings(block(p.toSettings())) }
-        // Theme, palette or home zone may have changed: redraw the widgets.
         app.materialclock.widget.ClockWidgetProvider.refreshAllNow(context)
         app.materialclock.widget.WorldClockWidgetProvider.refreshAllNow(context)
         app.materialclock.widget.AlarmWidgetProvider.refreshAllNow(context)
@@ -147,18 +144,12 @@ class ClockStore(private val context: Context) {
         val KEY_PRESETS = stringPreferencesKey("timerPresets")
         val KEY_NEXT_ID = longPreferencesKey("nextId")
 
-        /**
-         * What a fresh install starts with: two groups and four alarms. They are only used while
-         * nothing has been saved; the moment the user adds, changes or deletes anything, their own
-         * list is what is stored, and these are never brought back.
-         */
         val SEED_GROUPS = listOf(
             AlarmGroup(1, "Morning"),
             AlarmGroup(2, "Night"),
         )
 
         val SEED_ALARMS = listOf(
-            // Monday to Saturday, on.
             Alarm(
                 1, LocalTime.of(4, 30), "Gym",
                 setOf(
@@ -167,15 +158,12 @@ class ClockStore(private val context: Context) {
                 ),
                 enabled = true, groupId = 1,
             ),
-            // Every day, off.
             Alarm(2, LocalTime.of(21, 30), "Sleep", DayOfWeek.entries.toSet(), enabled = false, groupId = 2),
-            // Monday, Wednesday, Friday and Sunday, off.
             Alarm(
                 3, LocalTime.of(11, 0), "Medication",
                 setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY, DayOfWeek.SUNDAY),
                 enabled = false,
             ),
-            // Every day except Thursday, on.
             Alarm(
                 4, LocalTime.of(8, 30), "Gardening",
                 DayOfWeek.entries.filter { it != DayOfWeek.THURSDAY }.toSet(),
@@ -216,7 +204,7 @@ private fun Preferences.toSettings() = ClockSettings(
     ),
     theme = ThemeSettings(
         dynamicColor = this[booleanPreferencesKey("dynamicColor")] ?: true,
-        palette = enumOr(this[stringPreferencesKey("palette")], Palette.GALAXIA),
+        palette = enumOr(this[stringPreferencesKey("palette")], Palette.EXPRESSIVE),
         darkMode = enumOr(this[stringPreferencesKey("darkMode")], DarkMode.SYSTEM),
         amoledBlack = this[booleanPreferencesKey("amoled")] ?: false,
     ),
@@ -362,7 +350,7 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
         date = enumOr(o.optString("date"), DateMode.NONE),
         datePosition = enumOr(o.optString("datePos"), DatePosition.FOUR_THIRTY),
         colour = enumOr(o.optString("colour"), ColourSource.FOLLOW_APP),
-        palette = enumOr(o.optString("palette"), Palette.GALAXIA),
+        palette = enumOr(o.optString("palette"), Palette.EXPRESSIVE),
     )
 }.getOrDefault(WidgetConfig())
 
@@ -469,7 +457,7 @@ private val SEED_PRESETS = listOf(
     TimerPreset(id = 4L, name = "Nap", totalSeconds = 30 * 60),
     TimerPreset(id = 5L, name = "Workout", totalSeconds = 45 * 60),
     TimerPreset(id = 6L, name = "Deep Work", totalSeconds = 50 * 60),
-    TimerPreset(id = 7L, name = "Study", totalSeconds = 60 * 60),      // 1 hour
-    TimerPreset(id = 8L, name = "Sport", totalSeconds = 2 * 60 * 60),   // 2 hours
-    TimerPreset(id = 9L, name = "Sleep", totalSeconds = 6 * 60 * 60),   // 6 hours
+    TimerPreset(id = 7L, name = "Study", totalSeconds = 60 * 60),
+    TimerPreset(id = 8L, name = "Sport", totalSeconds = 2 * 60 * 60),
+    TimerPreset(id = 9L, name = "Sleep", totalSeconds = 6 * 60 * 60),
 )
