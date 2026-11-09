@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -237,24 +239,33 @@ fun AlarmEditSheet(
         )
     }
 
+    // LIVING FLOW: Color Morphing & Psychology Fix
+    // लाइट मोड के लिए बहुत कोमल (Pastel) रंग, और डार्क मोड के लिए चमकते हुए (Vibrant) रंग
     val isDark = isSystemInDarkTheme()
-    val customDeleteBgColor = if (isDark) Color(0xFFEF5350) else Color(0xFFD32F2F)
-    val customDeleteContentColor = if (isDark) Color(0xFF121212) else Color(0xFFFFFFFF)
     
-    val customCancelBgColor = if (isDark) Color(0xFF424242) else Color(0xFFE0E0E0)
-    val customCancelContentColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF121212)
+    val targetDeleteBgColor = if (isDark) Color(0xFFFF5252) else Color(0xFFFFEBEE)
+    val targetDeleteContentColor = if (isDark) Color(0xFF310000) else Color(0xFFC62828)
+    val customDeleteBgColor by animateColorAsState(targetDeleteBgColor, spring(stiffness = Spring.StiffnessLow), label = "delBg")
+    val customDeleteContentColor by animateColorAsState(targetDeleteContentColor, spring(stiffness = Spring.StiffnessLow), label = "delFg")
+    
+    val targetCancelBgColor = if (isDark) Color(0xFF757575) else Color(0xFFF5F5F5)
+    val targetCancelContentColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF424242)
+    val customCancelBgColor by animateColorAsState(targetCancelBgColor, spring(stiffness = Spring.StiffnessLow), label = "canBg")
+    val customCancelContentColor by animateColorAsState(targetCancelContentColor, spring(stiffness = Spring.StiffnessLow), label = "canFg")
+
+    // LIVING FLOW: Global Physics Spec for Buttons
+    val fluidSpringSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f)
 
     ModalBottomSheet(
         onDismissRequest = { scope.launch { sheetState.hide(); onDismiss() } },
         sheetState = sheetState,
     ) {
-        // डंडा (Drag Handle) हिलने का फिक्स: LazyColumn को हटाकर स्टेबल Column + verticalScroll लगाया गया
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding() // सेफ एरिया 
-                .imePadding()            // कीबोर्ड आने पर स्मूथली ऊपर खिसकेगा
-                .verticalScroll(rememberScrollState()) // बिना किसी झटके के स्क्रॉलिंग
+                .navigationBarsPadding() 
+                .imePadding()
+                .verticalScroll(rememberScrollState()) 
         ) {
             Spacer(Modifier.height(16.dp)) 
             
@@ -267,8 +278,9 @@ fun AlarmEditSheet(
                 shape = RoundedCornerShape(36.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
-                    // अधूरे किनारों का फिक्स: bottom = 24.dp लगाकर इसे हवा में उठाया गया है
                     .padding(start = 8.dp, end = 8.dp, bottom = 24.dp) 
+                    // LIVING FLOW: Fluid Content Sizing (कंटेनर पानी की तरह अपनी जगह बनाएगा)
+                    .animateContentSize(spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow))
             ) {
                 Column(
                     modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
@@ -328,23 +340,19 @@ fun AlarmEditSheet(
                             val isPressed by interactionSource.collectIsPressedAsState()
                             val isChecked = day in days
 
-                            val pressScale by animateFloatAsState(
-                                targetValue = if (isPressed) 0.85f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                                label = "dayTogglePressScale"
-                            )
-                            
-                            val selectionScale by animateFloatAsState(
-                                targetValue = if (isChecked) 1.05f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                label = "dayToggleSelectionScale"
+                            // LIVING FLOW: Tactile Breathing (जैविक स्प्रिंग बाउंस)
+                            val dayScale by animateFloatAsState(
+                                targetValue = if (isPressed) 0.75f else if (isChecked) 1.05f else 1f,
+                                animationSpec = fluidSpringSpec,
+                                label = "dayToggleScale"
                             )
 
                             val targetContainer = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
                             val targetContent = if (isChecked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
-                            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "dayBg")
-                            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessMediumLow), label = "dayFg")
+                            // LIVING FLOW: Color Morphing
+                            val containerColor by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessLow), label = "dayBg")
+                            val contentColor by animateColorAsState(targetContent, spring(stiffness = Spring.StiffnessLow), label = "dayFg")
 
                             Surface(
                                 onClick = { 
@@ -358,8 +366,8 @@ fun AlarmEditSheet(
                                 modifier = Modifier
                                     .size(44.dp) 
                                     .graphicsLayer {
-                                        scaleX = pressScale * selectionScale
-                                        scaleY = pressScale * selectionScale
+                                        scaleX = dayScale
+                                        scaleY = dayScale
                                     }
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -400,7 +408,8 @@ fun AlarmEditSheet(
                         selectedId = groupId,
                         onSelect = { groupId = it },
                         onCreateGroup = { name -> onCreateGroup(name); pendingNewGroupName = name },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        fluidSpringSpec = fluidSpringSpec // Pass the fluid spring down
                     )
 
                     Row(
@@ -410,9 +419,11 @@ fun AlarmEditSheet(
                     ) {
                         val soundInteraction = remember { MutableInteractionSource() }
                         val isSoundPressed by soundInteraction.collectIsPressedAsState()
+                        
+                        // LIVING FLOW: Button Breathing
                         val soundScale by animateFloatAsState(
-                            targetValue = if (isSoundPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            targetValue = if (isSoundPressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
                             label = "soundScale"
                         )
 
@@ -455,11 +466,13 @@ fun AlarmEditSheet(
                             )
                         }
 
+                        // LIVING FLOW: Organic Haptic Resonance (घटती हुई प्राकृतिक वेव)
                         val vibrateAnim = remember { Animatable(0f) }
                         LaunchedEffect(vibrate) {
                             if (vibrate) {
-                                vibrateAnim.animateTo(15f, spring(dampingRatio = 0.2f, stiffness = Spring.StiffnessHigh))
-                                vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+                                vibrateAnim.animateTo(12f, spring(dampingRatio = 0.2f, stiffness = 500f))
+                                vibrateAnim.animateTo(-12f, spring(dampingRatio = 0.3f, stiffness = 400f))
+                                vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = 300f))
                             }
                         }
 
@@ -490,9 +503,11 @@ fun AlarmEditSheet(
                         if (onDelete != null) {
                             val deleteInteraction = remember { MutableInteractionSource() }
                             val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                            
+                            // LIVING FLOW: Deep Tactile Press
                             val deleteScale by animateFloatAsState(
-                                targetValue = if (isDeletePressed) 0.90f else 1f,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                                targetValue = if (isDeletePressed) 0.85f else 1f,
+                                animationSpec = fluidSpringSpec,
                                 label = "deleteScale"
                             )
 
@@ -518,9 +533,10 @@ fun AlarmEditSheet(
 
                         val cancelInteraction = remember { MutableInteractionSource() }
                         val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                        
                         val cancelScale by animateFloatAsState(
-                            targetValue = if (isCancelPressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            targetValue = if (isCancelPressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
                             label = "cancelScale"
                         )
 
@@ -545,9 +561,10 @@ fun AlarmEditSheet(
 
                         val saveInteraction = remember { MutableInteractionSource() }
                         val isSavePressed by saveInteraction.collectIsPressedAsState()
+                        
                         val saveScale by animateFloatAsState(
-                            targetValue = if (isSavePressed) 0.95f else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+                            targetValue = if (isSavePressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
                             label = "saveScale"
                         )
 
@@ -732,9 +749,11 @@ private fun WheelPicker(
             val baseStyle = if (isAmPm) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium
             val textStyle = baseStyle.copy(fontWeight = fontWeight)
 
+            // LIVING FLOW: Liquid Scroll Scale
             val scale by animateFloatAsState(
                 targetValue = if (isSelected) 1.05f else 0.85f, 
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                // बहुत ही सॉफ्ट स्प्रिंग ताकि नंबर एक बुलबुले की तरह बड़े हों
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
             
@@ -764,7 +783,8 @@ private fun GroupPicker(
     selectedId: Long?,
     onSelect: (Long?) -> Unit,
     onCreateGroup: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fluidSpringSpec: androidx.compose.animation.core.SpringSpec<Float> // LIVING FLOW parameter
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
@@ -773,9 +793,10 @@ private fun GroupPicker(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // LIVING FLOW: Deep tactile press
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = fluidSpringSpec,
         label = "groupPickerScale"
     )
 
