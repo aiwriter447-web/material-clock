@@ -1,6 +1,7 @@
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -14,6 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -130,14 +132,14 @@ fun WorldClockScreen(
         selectedCities = emptySet()
     }
 
-    // Custom Pill-Shaped Delete Dialog matching Pic 2
+    // Fixed Clean Title Batch Delete Dialog
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBatchDeleteConfirm = false },
             title = {
                 Text(
                     text = "Delete Cities?",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.headlineSmall
                 )
             },
             text = {
@@ -159,7 +161,7 @@ fun WorldClockScreen(
                 ) {
                     Text(
                         text = "Delete",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
                     )
@@ -253,15 +255,15 @@ fun WorldClockScreen(
             }
         }
 
-        // Animated Bouncy Selection Toolbar (Pic 3 Fix)
+        // Fluid Selection Toolbar
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn(spring()) +
-                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it } +
-                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy), initialScale = 0.85f),
+            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it } +
+                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), initialScale = 0.88f),
             exit = fadeOut(spring()) +
                 slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
-                scaleOut(spring(), targetScale = 0.85f),
+                scaleOut(spring(), targetScale = 0.88f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -351,8 +353,8 @@ private fun ToolbarIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.82f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.80f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
         label = "toolbarIconScale"
     )
 
@@ -590,6 +592,7 @@ private fun CityRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow Fluid Spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(
@@ -619,19 +622,19 @@ private fun CityRow(
 
     val containerColor by animateColorAsState(
         targetContainer,
-        spring(stiffness = Spring.StiffnessMediumLow),
+        spring(stiffness = Spring.StiffnessLow),
         label = "containerColor"
     )
 
     val contentColor by animateColorAsState(
         targetContent,
-        spring(stiffness = Spring.StiffnessMediumLow),
+        spring(stiffness = Spring.StiffnessLow),
         label = "contentColor"
     )
 
     val timeTextColor by animateColorAsState(
         targetTimeColor,
-        spring(stiffness = Spring.StiffnessMediumLow),
+        spring(stiffness = Spring.StiffnessLow),
         label = "timeTextColor"
     )
 
@@ -653,13 +656,13 @@ private fun CityRow(
 
     val badgeBg by animateColorAsState(
         targetBadgeBg,
-        spring(stiffness = Spring.StiffnessMediumLow),
+        spring(stiffness = Spring.StiffnessLow),
         label = "badgeBg"
     )
 
     val badgeTint by animateColorAsState(
         targetBadgeTint,
-        spring(stiffness = Spring.StiffnessMediumLow),
+        spring(stiffness = Spring.StiffnessLow),
         label = "badgeTint"
     )
 
@@ -732,16 +735,26 @@ private fun CityRow(
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (night) {
-                            Icons.Outlined.Bedtime
-                        } else {
-                            Icons.Outlined.LightMode
+                    // Sun/Moon Horizon Animated Icon Transition
+                    AnimatedContent(
+                        targetState = night,
+                        transitionSpec = {
+                            (fadeIn(tween(220)) + scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy))) togetherWith
+                                (fadeOut(tween(140)) + scaleOut(tween(140)))
                         },
-                        contentDescription = if (night) "night" else "daytime",
-                        tint = badgeTint,
-                        modifier = Modifier.size(26.dp),
-                    )
+                        label = "sunMoonAnim"
+                    ) { isNightTime ->
+                        Icon(
+                            imageVector = if (isNightTime) {
+                                Icons.Outlined.Bedtime
+                            } else {
+                                Icons.Outlined.LightMode
+                            },
+                            contentDescription = if (isNightTime) "night" else "daytime",
+                            tint = badgeTint,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
                 }
             }
 
