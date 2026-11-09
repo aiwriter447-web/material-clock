@@ -40,15 +40,6 @@ import androidx.compose.ui.unit.dp
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 
-/**
- * Create, rename and delete alarm groups from one place, rather than only ever able to make one
- * from inside a single alarm's own edit sheet. Reached from the Alarms tab's own settings sheet.
- *
- * Deleting a group here asks first — see [DeleteGroupDialog] — because unlike deleting an alarm,
- * where the thing you tapped delete on is the thing that goes away, deleting a group quietly moves
- * every alarm inside it rather than deleting them, which is exactly the kind of side effect a
- * confirmation is for.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmGroupsSheet(
@@ -172,9 +163,7 @@ private fun NameGroupDialog(
 }
 
 /**
- * [alarmCount] is what makes this dialog say something the person actually needs to know rather
- * than a generic "are you sure": it is the difference between deleting an empty label and quietly
- * un-grouping a dozen alarms.
+ * Fixed Clean Title Delete Confirmation Dialog
  */
 @Composable
 private fun DeleteGroupDialog(
@@ -188,7 +177,7 @@ private fun DeleteGroupDialog(
         title = {
             Text(
                 text = "Delete \"${group.name}\"?",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
@@ -212,7 +201,7 @@ private fun DeleteGroupDialog(
             ) {
                 Text(
                     text = "Delete",
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = Color.White,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
                 )
