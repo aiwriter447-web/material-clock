@@ -1,6 +1,7 @@
 package app.materialclock.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -423,6 +424,7 @@ fun ClockDock(
         val button0Rect = buttonBounds[0]
         val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
 
+        // Fluid Motion: Liquid Pill Indicator Slide
         val pillAnimatedX by animateFloatAsState(
             targetValue = pillRelativeX,
             animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
@@ -462,15 +464,12 @@ fun ClockDock(
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
                     
-                    // --- ANIMATION STATE ---
                     val iconRotation = remember { Animatable(0f) }
 
-                    // Trigger micro-animations on selection
                     LaunchedEffect(isSelected) {
                         if (isSelected) {
                             when (destination) {
                                 Tab.ALARMS -> {
-                                    // Wiggle like a ringing alarm
                                     iconRotation.animateTo(15f, tween(50))
                                     iconRotation.animateTo(-15f, tween(100))
                                     iconRotation.animateTo(15f, tween(100))
@@ -478,32 +477,36 @@ fun ClockDock(
                                     iconRotation.animateTo(0f, tween(50))
                                 }
                                 Tab.WORLD -> {
-                                    // Spin the globe 360 degrees
                                     iconRotation.snapTo(0f)
                                     iconRotation.animateTo(360f, tween(600, easing = FastOutSlowInEasing))
                                 }
                                 Tab.TIMERS -> {
-                                    // Flip the hourglass 180 degrees
                                     iconRotation.snapTo(0f)
                                     iconRotation.animateTo(180f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
                                 }
                                 Tab.STOPWATCH -> {
-                                    // Quick tick like a stopwatch hand
                                     iconRotation.animateTo(-15f, tween(100))
                                     iconRotation.animateTo(15f, tween(100))
                                     iconRotation.animateTo(0f, tween(100))
                                 }
                             }
                         } else {
-                            // Reset gracefully when unselected
                             iconRotation.animateTo(0f, tween(300))
                         }
                     }
 
+                    // Fluid Motion: Spongy Tap Scale
                     val tabScale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.90f else 1f,
+                        targetValue = if (isPressed) 0.85f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
                         label = "tabScale"
+                    )
+
+                    // Fluid Motion: Smooth Color Blend for Selected Text/Icon
+                    val contentColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                        animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
+                        label = "contentColorBlend"
                     )
 
                     Box(
@@ -548,28 +551,27 @@ fun ClockDock(
                             }
                             
                             val icon = if (isSelected) activeIcon else inactiveIcon
-                            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
 
                             Icon(
                                 imageVector = icon,
                                 contentDescription = destination.label,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    // --- APPLY ROTATION HERE ---
                                     .graphicsLayer {
                                         rotationZ = iconRotation.value
                                     },
                                 tint = contentColor
                             )
 
+                            // Fluid Motion: Bouncy Text Expansion
                             AnimatedVisibility(
                                 visible = isSelected,
                                 enter = expandHorizontally(
-                                    animationSpec = tween(300, easing = LinearOutSlowInEasing)
-                                ),
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+                                ) + fadeIn(animationSpec = tween(150)),
                                 exit = shrinkHorizontally(
-                                    animationSpec = tween(300, easing = FastOutLinearInEasing)
-                                ),
+                                    animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                ) + fadeOut(animationSpec = tween(150)),
                             ) {
                                 Text(
                                     text = destination.label,
