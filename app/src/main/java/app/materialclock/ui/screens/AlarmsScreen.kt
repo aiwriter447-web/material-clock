@@ -155,13 +155,14 @@ fun AlarmsScreen(
         selectedGroups = emptySet()
     }
 
+    // Fixed Clean Title Batch Delete Dialog
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBatchDeleteConfirm = false },
             title = {
                 Text(
                     text = "Delete Items?",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.headlineSmall
                 )
             },
             text = {
@@ -184,7 +185,7 @@ fun AlarmsScreen(
                 ) {
                     Text(
                         text = "Delete",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
                     )
@@ -249,14 +250,15 @@ fun AlarmsScreen(
             }
         }
 
+        // Fluid Animated Floating Toolbar
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn(spring()) +
-                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy)) { it } +
-                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy), initialScale = 0.85f),
+            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it } +
+                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), initialScale = 0.88f),
             exit = fadeOut(spring()) +
                 slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
-                scaleOut(spring(), targetScale = 0.85f),
+                scaleOut(spring(), targetScale = 0.88f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -351,8 +353,8 @@ private fun ToolbarIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.82f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.80f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
         label = "toolbarIconScale"
     )
 
@@ -432,6 +434,7 @@ private fun GroupCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow Fluid Spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -441,16 +444,16 @@ private fun GroupCard(
     val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "groupContainer")
-    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "groupInk")
+    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessLow), label = "groupContainer")
+    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessLow), label = "groupInk")
 
     val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
 
     val targetIconBackground = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
     val targetIconTint = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessMediumLow), label = "iconBg")
-    val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessMediumLow), label = "iconTint")
+    val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessLow), label = "iconBg")
+    val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessLow), label = "iconTint")
 
     val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
@@ -485,8 +488,8 @@ private fun GroupCard(
                     AnimatedContent(
                         targetState = iconVector,
                         transitionSpec = {
-                            (fadeIn(tween(200)) + scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy))) togetherWith
-                                (fadeOut(tween(150)) + scaleOut(tween(150)))
+                            (fadeIn(tween(220)) + scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy))) togetherWith
+                                (fadeOut(tween(140)) + scaleOut(tween(140)))
                         },
                         label = "groupIconAnim"
                     ) { targetIcon ->
@@ -556,17 +559,25 @@ private fun AlarmRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow Tile Press & Fluid Scale Response
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "rowScale"
     )
 
+    // Fluid Breath Time Text Scale
+    val timeBreathScale by animateFloatAsState(
+        targetValue = if (enabled) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "timeBreathScale"
+    )
+
     val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
     val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessMediumLow), label = "rowContainer")
-    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessMediumLow), label = "rowInk")
+    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessLow), label = "rowContainer")
+    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessLow), label = "rowInk")
 
     val outlineColor = MaterialTheme.colorScheme.outline
 
@@ -602,7 +613,12 @@ private fun AlarmRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        scaleX = timeBreathScale
+                        scaleY = timeBreathScale
+                    },
                 verticalArrangement = Arrangement.Top,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
