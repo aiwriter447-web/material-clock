@@ -102,14 +102,17 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
+    // Living Flow: Fluid Screen Transition
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
-            (fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.92f)) togetherWith
-            (fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.92f)) using
-            SizeTransform(clip = false)
+            (fadeIn(spring(stiffness = Spring.StiffnessLow)) + 
+             scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), initialScale = 0.85f)) togetherWith
+            (fadeOut(spring(stiffness = Spring.StiffnessLow)) + 
+             scaleOut(spring(stiffness = Spring.StiffnessLow), targetScale = 0.85f)) using
+            SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) })
         },
-        label = "timer-state",
+        label = "timer-fluid-state",
         modifier = modifier.fillMaxSize(),
     ) { running ->
         if (running && timer != null) {
@@ -171,9 +174,10 @@ private fun SetTimer(
     val scope = rememberCoroutineScope()
     var isStarting by remember { mutableStateOf(false) }
 
+    // Living Flow: Breathing Colon
     val colonColor by animateColorAsState(
-        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+        animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
         label = "colonBulbColor"
     )
 
@@ -278,7 +282,7 @@ private fun SetTimer(
                     scope.launch {
                         repeat(6) { onBackspace() }
                         val digits = "%02d%02d%02d".format(hours, mins, secs)
-                        digits.forEach { onDigit(it) } // Fixed parameter
+                        digits.forEach { onDigit(it) }
                         onStart()
                         delay(600) 
                         isStarting = false
@@ -333,17 +337,18 @@ private fun InfiniteWheelPicker(
             val actualValue = (index % count) + range.first
             val isSelected by remember { derivedStateOf { listState.firstVisibleItemIndex == index } }
 
-            val targetScale = if (isSelected) 1f else 0.65f
+            val targetScale = if (isSelected) 1f else 0.60f
+            // Living Flow: Smooth scaling for wheel items
             val animatedScale by animateFloatAsState(
                 targetValue = targetScale,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow),
                 label = "scaleAnim"
             )
 
             val targetColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
             val animatedColor by animateColorAsState(
                 targetValue = targetColor,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
                 label = "colorAnim"
             )
 
@@ -409,9 +414,10 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow: Soft jelly bounce for preset chips
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "presetChipScale"
     )
 
@@ -469,18 +475,21 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow: Organic bouncy start button
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && armed) 0.92f else 1f,
+        targetValue = if (isPressed && armed) 0.90f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "startScale"
     )
 
     val containerColor by animateColorAsState(
         if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "startContainer"
     )
     val contentColor by animateColorAsState(
         if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "startContent"
     )
 
@@ -572,6 +581,7 @@ private fun RunningTimer(
         Spacer(Modifier.weight(0.7f))
 
         Box(contentAlignment = Alignment.Center) {
+            // Living Flow: Fluid wave entrance
             val waveAmplitude by animateFloatAsState(
                 targetValue = if (running) 1f else 0f,
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -580,7 +590,7 @@ private fun RunningTimer(
 
             val waveSpeedFactor by animateFloatAsState(
                 targetValue = if (running) 1f else 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
                 label = "waveSpeedFactor"
             )
 
@@ -670,17 +680,20 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow: Jelly button press
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
+        targetValue = if (isPressed) 0.88f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "pauseResumeScale"
     )
     val containerColor by animateColorAsState(
         if (running) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "pauseResumeContainer"
     )
     val contentColor by animateColorAsState(
         if (running) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "pauseResumeContent"
     )
 
@@ -701,8 +714,8 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         AnimatedContent(
             targetState = running,
             transitionSpec = {
-                fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                    fadeOut(spring(stiffness = Spring.StiffnessMediumLow))
+                fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
+                    fadeOut(spring(stiffness = Spring.StiffnessLow))
             },
             label = "pauseResumeLabel"
         ) { isRunning ->
@@ -739,8 +752,9 @@ private fun AnimatedPillButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Living Flow: Soft pill response
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
+        targetValue = if (isPressed) 0.88f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "pillButtonScale"
     )
