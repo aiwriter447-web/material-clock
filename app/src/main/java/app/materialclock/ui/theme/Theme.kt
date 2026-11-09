@@ -24,7 +24,7 @@ import app.materialclock.data.ThemeSettings
 
 @Composable
 fun ClockTheme(
-    settings: ThemeSettings = ThemeSettings(palette = Palette.GALAXIA), // GALAXIA set as default fallback parameter
+    settings: ThemeSettings = ThemeSettings(),
     content: @Composable () -> Unit,
 ) {
     val dark = when (settings.darkMode) {
