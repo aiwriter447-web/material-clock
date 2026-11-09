@@ -100,7 +100,6 @@ fun StopwatchScreen(
                 end = contentPadding.calculateEndPadding(layoutDirection)
             )
     ) {
-        // Shifted numbers and icons downwards slightly for better reachability
         Spacer(Modifier.height(32.dp))
 
         StackedDigits(
@@ -113,7 +112,6 @@ fun StopwatchScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        // Increased space between numbers and buttons for one-handed ergonomics
         Spacer(Modifier.height(STACK_GAP))
 
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -176,30 +174,36 @@ private fun StopwatchControls(
 ) {
     val expanded = !idle
 
+    // LIVING FLOW: Fluid, organic spring physics for expansion (like liquid spreading)
     val expand by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.65f, // More fluid and slightly bouncy at the edges
+            stiffness = 250f      // Softer, non-robotic stretch
         ),
         label = "expand",
     )
+    
+    // Smooth alpha fade for text content
     val label by animateFloatAsState(
         targetValue = if (expanded) 0f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = 0.8f, 
+            stiffness = 300f
         ),
         label = "label",
     )
+    
+    // LIVING FLOW: Flowy separation for the trio of buttons
     val split by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.6f, 
+            stiffness = 200f
         ),
         label = "split",
     )
+    
     val e = expand.coerceIn(0f, 1f)
 
     val startStop: @Composable (Boolean) -> Unit = { compact ->
@@ -306,7 +310,6 @@ private const val SPLIT_MS = 150
 private const val LABEL_FADE_MS = 70
 
 private val IDLE_PADDING_H = 48.dp
-// Increased STACK_GAP to move buttons further down from the numbers for better thumb access
 private val STACK_GAP = 36.dp 
 private val READOUT_CAP = 56.dp
 private val GAP = 8.dp 
@@ -326,9 +329,13 @@ private fun LapRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // LIVING FLOW: Deep, organic scale press effect mimicking soft material response
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+        targetValue = if (isPressed) 0.94f else 1f, // Squishes slightly more on press
+        animationSpec = spring(
+            dampingRatio = 0.5f,  // Very bouncy return
+            stiffness = 500f      // Snappy physics
+        ),
         label = "lapScale"
     )
 
@@ -338,9 +345,10 @@ private fun LapRow(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
+    // LIVING FLOW: Smooth color morphing without aggressive jumping
     val timeColor by animateColorAsState(
         targetValue = targetTimeColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow),
         label = "timeColor"
     )
 
