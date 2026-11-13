@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.FloatingActionButton
@@ -56,7 +55,6 @@ import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 
 // --- 100% UNTOUCHED ICONS (Shape guaranteed) ---
 
@@ -426,15 +424,15 @@ fun ClockDock(
         val button0Rect = buttonBounds[0]
         val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
 
-        // Fluid Motion: Liquid Pill Indicator Slide
+        // Fluid Motion: Liquid Pill Indicator Slide (More bouncy & responsive)
         val pillAnimatedX by animateFloatAsState(
             targetValue = pillRelativeX,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
             label = "pillX",
         )
         val pillAnimatedWidth by animateFloatAsState(
             targetValue = targetRect?.width ?: 0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
             label = "pillWidth",
         )
         val pillColor = MaterialTheme.colorScheme.primary
@@ -497,7 +495,7 @@ fun ClockDock(
                         }
                     }
 
-                    // Fluid Motion: Spongy Tap Scale
+                    // Fluid Motion: Spongy Tap Scale (0.85f for distinct liquid feel)
                     val tabScale by animateFloatAsState(
                         targetValue = if (isPressed) 0.85f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
@@ -599,8 +597,12 @@ fun FloatingAddButton(
     onClick: () -> Unit, 
     modifier: Modifier = Modifier
 ) {
-    val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
-    val grow by animateFloatAsState(if (visible) 1f else 0f, spec, label = "addGrow")
+    // Fluid Motion: Smooth Spring Grow Animation
+    val grow by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f, 
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow), 
+        label = "addGrow"
+    )
 
     val glyph by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -608,15 +610,17 @@ fun FloatingAddButton(
         label = "addGlyph",
     )
 
+    // Fluid Motion: Bouncy Rotation
     val rotation by animateFloatAsState(
-        targetValue = if (visible) 0f else -90f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        targetValue = if (visible) 0f else -180f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "addRotate"
     )
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Fluid Motion: Spongy FAB Press
     val pressScale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
@@ -630,8 +634,10 @@ fun FloatingAddButton(
         interactionSource = interactionSource,
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        shape = RoundedCornerShape(lerp(FAB_SIZE / 2, FAB_CORNER, grow)),
+        // Fully Circle Shape
+        shape = CircleShape,
         modifier = modifier
+            // Matched to the dock's inner height (56.dp) for consistent premium sizing
             .size(FAB_SIZE)
             .graphicsLayer { 
                 scaleX = grow * pressScale
@@ -654,5 +660,4 @@ fun FloatingAddButton(
 }
 
 val DOCK_HEIGHT = 72.dp
-private val FAB_SIZE = DOCK_HEIGHT
-private val FAB_CORNER = 24.dp
+private val FAB_SIZE = 56.dp // Changed from 72.dp to match the dock inner bar perfectly
