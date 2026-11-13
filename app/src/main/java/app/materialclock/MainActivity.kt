@@ -2,9 +2,6 @@ package app.materialclock
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.SystemClock
-import android.view.View
-import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,13 +11,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import app.materialclock.alarm.Notifications
 import app.materialclock.ui.ClockViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import app.materialclock.ui.ClockApp
 import app.materialclock.widget.WidgetRefresh
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -44,15 +42,22 @@ class MainActivity : ComponentActivity() {
     private val clockViewModel: ClockViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // LIVING FLOW: Modern Splash Screen API handles the transition smoothly.
+        // It holds the OS splash screen until the ViewModel's data is fully loaded.
+        val splashScreen = installSplashScreen()
+        
         super.onCreate(savedInstanceState)
 
-        // Preserve original edge-to-edge functionality
         enableEdgeToEdge()
 
         // Handle initial intent from notification, widget, or Screensaver settings
         handleIntent(intent)
 
-        holdFirstFrameUntilLoaded()
+        // Keep the splash screen visible until data is ready to prevent blank flashes
+        // and allow the ClockApp's smooth enter animation to trigger perfectly.
+        splashScreen.setKeepOnScreenCondition {
+            !clockViewModel.isLoaded.value
+        }
 
         setContent {
             key(openCount) {
@@ -76,36 +81,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Keeps the first frame back until the saved settings have been read (at most 0.35 s).
-     *
-     * Until then the screen is an empty page in the app's default colours, and the page would flash
-     * on screen and then be replaced. Waiting a few milliseconds for the data, with the system's
-     * own start-up screen still showing, avoids that flash and makes the opening look like one
-     * smooth movement.
-     */
-    private fun holdFirstFrameUntilLoaded() {
-        val content = findViewById<View>(android.R.id.content)
-        val started = SystemClock.uptimeMillis()
-        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                val ready = clockViewModel.isLoaded.value || SystemClock.uptimeMillis() - started > 350
-                if (ready) content.viewTreeObserver.removeOnPreDrawListener(this)
-                return ready
-            }
-        })
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        // Preserve original intent handling
         setIntent(intent)
 
         // Extract the requested tab and Screensaver settings signal
         val newTab = extractStartTab(intent)
-        val shouldOpenScreensaver =
-            intent.getBooleanExtra("OPEN_SCREENSAVER", false)
+        val shouldOpenScreensaver = intent.getBooleanExtra("OPEN_SCREENSAVER", false)
 
         // Rebuild ClockApp when a specific tab or Screensaver is requested
         if (newTab != null || shouldOpenScreensaver) {
@@ -124,18 +107,11 @@ class MainActivity : ComponentActivity() {
      * - Opening Screensaver settings directly
      */
     private fun handleIntent(intent: Intent?) {
-
-        // Preserve original tab extraction
         startTab = extractStartTab(intent)
-
-        // Check whether Screensaver settings should open directly
-        openScreensaver =
-            intent?.getBooleanExtra("OPEN_SCREENSAVER", false) ?: false
+        openScreensaver = intent?.getBooleanExtra("OPEN_SCREENSAVER", false) ?: false
     }
 
     /**
-     * Preserve original helper function.
-     *
      * Extracts the requested tab from notifications or widgets.
      */
     private fun extractStartTab(intent: Intent?): String? {
