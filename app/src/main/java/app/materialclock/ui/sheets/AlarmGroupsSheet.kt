@@ -1,7 +1,13 @@
+
 package app.materialclock.ui.sheets
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +31,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,10 +40,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
+
+private val DeleteButtonColor = Color(0xFFB3261E)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +81,7 @@ fun AlarmGroupsSheet(
 
             groups.forEach { group ->
                 val count = alarms.count { it.groupId == group.id }
+
                 ListItem(
                     headlineContent = { Text(group.name) },
                     supportingContent = {
@@ -81,24 +90,45 @@ fun AlarmGroupsSheet(
                     trailingContent = {
                         Row {
                             IconButton(onClick = { renaming = group }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = "Rename ${group.name}")
+                                Icon(
+                                    Icons.Outlined.Edit,
+                                    contentDescription = "Rename ${group.name}"
+                                )
                             }
                             IconButton(onClick = { deleting = group }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = "Delete ${group.name}")
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = "Delete ${group.name}"
+                                )
                             }
                         }
                     },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent
+                    ),
                 )
             }
 
             ListItem(
-                headlineContent = { Text("Add group", color = MaterialTheme.colorScheme.primary) },
-                leadingContent = {
-                    Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                headlineContent = {
+                    Text(
+                        "Add group",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().clickable { creating = true },
+                leadingContent = {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { creating = true },
             )
         }
     }
@@ -107,7 +137,10 @@ fun AlarmGroupsSheet(
         NameGroupDialog(
             title = "New group",
             initial = "",
-            onConfirm = { name -> onAdd(name); creating = false },
+            onConfirm = { name ->
+                onAdd(name)
+                creating = false
+            },
             onDismiss = { creating = false },
         )
     }
@@ -116,7 +149,10 @@ fun AlarmGroupsSheet(
         NameGroupDialog(
             title = "Rename group",
             initial = group.name,
-            onConfirm = { name -> onRename(group.id, name); renaming = null },
+            onConfirm = { name ->
+                onRename(group.id, name)
+                renaming = null
+            },
             onDismiss = { renaming = null },
         )
     }
@@ -125,7 +161,10 @@ fun AlarmGroupsSheet(
         DeleteGroupDialog(
             group = group,
             alarmCount = alarms.count { it.groupId == group.id },
-            onConfirm = { onDelete(group.id); deleting = null },
+            onConfirm = {
+                onDelete(group.id)
+                deleting = null
+            },
             onDismiss = { deleting = null },
         )
     }
@@ -138,7 +177,10 @@ private fun NameGroupDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var name by rememberSaveable(initial) { mutableStateOf(initial) }
+    var name by rememberSaveable(initial) {
+        mutableStateOf(initial)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -154,17 +196,22 @@ private fun NameGroupDialog(
         },
         confirmButton = {
             Button(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
+                onClick = {
+                    if (name.isNotBlank()) onConfirm(name.trim())
+                },
                 enabled = name.isNotBlank(),
-            ) { Text("Save") }
+            ) {
+                Text("Save")
+            }
         },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
     )
 }
 
-/**
- * Fixed Clean Title Delete Confirmation Dialog
- */
 @Composable
 private fun DeleteGroupDialog(
     group: AlarmGroup,
@@ -193,35 +240,71 @@ private fun DeleteGroupDialog(
             )
         },
         confirmButton = {
-            Surface(
+            DialogActionButton(
+                text = "Delete",
+                backgroundColor = DeleteButtonColor,
+                textColor = Color.White,
+                border = null,
                 onClick = onConfirm,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.error,
-                contentColor = Color.White
-            ) {
-                Text(
-                    text = "Delete",
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
-                )
-            }
+            )
         },
         dismissButton = {
-            Surface(
+            DialogActionButton(
+                text = "Cancel",
+                backgroundColor = Color.Transparent,
+                textColor = MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(
+                    1.5.dp,
+                    MaterialTheme.colorScheme.outline
+                ),
                 onClick = onDismiss,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-                )
-            }
+            )
         },
     )
+}
+
+@Composable
+private fun DialogActionButton(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color,
+    border: BorderStroke?,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "${text}ButtonScale"
+    )
+
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = backgroundColor,
+        contentColor = textColor,
+        border = border,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = textColor,
+            modifier = Modifier.padding(
+                horizontal = 24.dp,
+                vertical = 10.dp
+            )
+        )
+    }
 }
