@@ -116,7 +116,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.compose.ui.tooling.preview)
 
-    // Icons & DataStore Direct Libraries
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation(libs.androidx.graphics.shapes)
