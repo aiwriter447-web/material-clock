@@ -239,8 +239,7 @@ fun AlarmEditSheet(
         )
     }
 
-    // LIVING FLOW: Color Morphing & Psychology Fix
-    // लाइट मोड के लिए बहुत कोमल (Pastel) रंग, और डार्क मोड के लिए चमकते हुए (Vibrant) रंग
+    
     val isDark = isSystemInDarkTheme()
     
     val targetDeleteBgColor = if (isDark) Color(0xFFFF5252) else Color(0xFFFFEBEE)
@@ -340,7 +339,7 @@ fun AlarmEditSheet(
                             val isPressed by interactionSource.collectIsPressedAsState()
                             val isChecked = day in days
 
-                            // LIVING FLOW: Tactile Breathing (जैविक स्प्रिंग बाउंस)
+                           
                             val dayScale by animateFloatAsState(
                                 targetValue = if (isPressed) 0.75f else if (isChecked) 1.05f else 1f,
                                 animationSpec = fluidSpringSpec,
