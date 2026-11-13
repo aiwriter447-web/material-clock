@@ -1,3 +1,4 @@
+
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -907,6 +908,14 @@ private fun CityRow(
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
+                border = if (night) {
+                    BorderStroke(
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                } else {
+                    null
+                },
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
