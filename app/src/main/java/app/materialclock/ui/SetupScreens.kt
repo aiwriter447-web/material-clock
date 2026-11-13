@@ -3,6 +3,8 @@ package app.materialclock.ui
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
@@ -43,10 +45,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.materialclock.data.DarkMode
+import app.materialclock.data.ThemeSettings
+import app.materialclock.ui.theme.ClockTheme
 
 /** The things the app needs before it opens, in the order they are asked. */
 enum class SetupStep(val number: Int) {
@@ -72,7 +78,24 @@ private const val SETUP_STEP_COUNT = 3
  * default alarm sound.
  */
 @Composable
-fun SetupScreen(step: SetupStep, onSoundChosen: (String?) -> Unit) {
+fun SetupScreen(step: SetupStep, theme: ThemeSettings, onSoundChosen: (String?) -> Unit) {
+    // These first-run pages follow the phone's own dark / light mode, whatever the app's Dark mode
+    // setting has been left at: nothing has been chosen in the app yet at this point, and an old
+    // "Light" there would otherwise keep the page light on a dark phone. The system value is read
+    // straight from the system's resources, so it is right even though the activity handles
+    // dark-mode changes itself instead of restarting. Reading LocalConfiguration is only what
+    // makes this recompute when the mode changes.
+    @Suppress("UNUSED_VARIABLE")
+    val trigger = LocalConfiguration.current
+    val systemDark = (Resources.getSystem().configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+        Configuration.UI_MODE_NIGHT_YES
+    ClockTheme(theme.copy(darkMode = if (systemDark) DarkMode.DARK else DarkMode.LIGHT)) {
+        SetupContent(step, onSoundChosen)
+    }
+}
+
+@Composable
+private fun SetupContent(step: SetupStep, onSoundChosen: (String?) -> Unit) {
     val ctx = LocalContext.current
 
     when (step) {
