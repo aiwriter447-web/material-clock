@@ -424,7 +424,7 @@ fun ClockDock(
         val button0Rect = buttonBounds[0]
         val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
 
-        // Fluid Motion: Liquid Pill Indicator Slide (More bouncy & responsive)
+        // Fluid Motion: Liquid Pill Indicator Slide (Bouncy & responsive)
         val pillAnimatedX by animateFloatAsState(
             targetValue = pillRelativeX,
             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -495,7 +495,7 @@ fun ClockDock(
                         }
                     }
 
-                    // Fluid Motion: Spongy Tap Scale (0.85f for distinct liquid feel)
+                    // Fluid Motion: Spongy Tap Scale
                     val tabScale by animateFloatAsState(
                         targetValue = if (isPressed) 0.85f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
@@ -634,10 +634,8 @@ fun FloatingAddButton(
         interactionSource = interactionSource,
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        // Fully Circle Shape
         shape = CircleShape,
         modifier = modifier
-            // Matched to the dock's inner height (56.dp) for consistent premium sizing
             .size(FAB_SIZE)
             .graphicsLayer { 
                 scaleX = grow * pressScale
@@ -648,7 +646,7 @@ fun FloatingAddButton(
             imageVector = Icons.Rounded.Add,
             contentDescription = label,
             modifier = Modifier
-                .size(28.dp)
+                .size(FAB_ICON_SIZE)
                 .graphicsLayer {
                     scaleX = glyph
                     scaleY = glyph
@@ -660,4 +658,5 @@ fun FloatingAddButton(
 }
 
 val DOCK_HEIGHT = 72.dp
-private val FAB_SIZE = 56.dp // Changed from 72.dp to match the dock inner bar perfectly
+private val FAB_SIZE = 73.dp // 30% bigger than 56.dp
+private val FAB_ICON_SIZE = 36.dp // 30% bigger than 28.dp
