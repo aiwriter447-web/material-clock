@@ -1,3 +1,4 @@
+
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -778,11 +779,12 @@ private fun CityRow(
         label = "timeTextColor"
     )
 
+    // Night icon now uses the primary theme colors in both modes.
     val targetBadgeBg =
         if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else if (night) {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.primaryContainer
         } else {
             MaterialTheme.colorScheme.secondaryContainer
         }
@@ -791,7 +793,7 @@ private fun CityRow(
         if (isSelected) {
             MaterialTheme.colorScheme.onPrimary
         } else if (night) {
-            MaterialTheme.colorScheme.onSurfaceVariant
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSecondaryContainer
         }
@@ -907,14 +909,6 @@ private fun CityRow(
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
-                border = if (night) {
-                    BorderStroke(
-                        width = 1.5.dp,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                } else {
-                    null
-                },
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
