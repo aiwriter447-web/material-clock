@@ -1,3 +1,4 @@
+
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -98,6 +99,9 @@ import kotlin.math.sin
 
 private const val ROW_HEIGHT_DP = 98
 
+// Same delete color in light mode and dark mode.
+private val WorldClockDeleteColor = Color(0xFFB3261E)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldClockScreen(
@@ -113,16 +117,24 @@ fun WorldClockScreen(
     modifier: Modifier = Modifier,
 ) {
     val use24h = when (settings.hourFormat) {
-        HourFormat.SYSTEM -> android.text.format.DateFormat.is24HourFormat(LocalContext.current)
+        HourFormat.SYSTEM ->
+            android.text.format.DateFormat.is24HourFormat(LocalContext.current)
+
         HourFormat.H12 -> false
         HourFormat.H24 -> true
     }
 
     val measurer = rememberTextMeasurer()
 
-    var selectedCities by remember { mutableStateOf(emptySet<ZoneId>()) }
+    var selectedCities by remember {
+        mutableStateOf(emptySet<ZoneId>())
+    }
+
     val inSelectionMode = selectedCities.isNotEmpty()
-    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+
+    var showBatchDeleteConfirm by remember {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(inSelectionMode) {
         onSelectionChange(inSelectionMode)
@@ -132,10 +144,12 @@ fun WorldClockScreen(
         selectedCities = emptySet()
     }
 
-    // Fixed Clean Title Batch Delete Dialog
+    // Living Flow: clear, consistent delete confirmation.
     if (showBatchDeleteConfirm) {
         AlertDialog(
-            onDismissRequest = { showBatchDeleteConfirm = false },
+            onDismissRequest = {
+                showBatchDeleteConfirm = false
+            },
             title = {
                 Text(
                     text = "Delete Cities?",
@@ -156,30 +170,47 @@ fun WorldClockScreen(
                         showBatchDeleteConfirm = false
                     },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.error,
-                    contentColor = Color.White
+                    color = WorldClockDeleteColor,
+                    contentColor = Color.White,
+                    shadowElevation = 1.dp
                 ) {
                     Text(
                         text = "Delete",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(
+                            horizontal = 24.dp,
+                            vertical = 11.dp
+                        )
                     )
                 }
             },
             dismissButton = {
+                // Transparent Cancel: visible outline, no filled background.
                 Surface(
-                    onClick = { showBatchDeleteConfirm = false },
+                    onClick = {
+                        showBatchDeleteConfirm = false
+                    },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    color = Color.Transparent,
+                    border = BorderStroke(
+                        width = 1.25.dp,
+                        color = MaterialTheme.colorScheme.outline
+                    ),
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Text(
                         text = "Cancel",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(
+                            horizontal = 22.dp,
+                            vertical = 11.dp
+                        )
                     )
                 }
             }
@@ -192,7 +223,10 @@ fun WorldClockScreen(
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item(key = "main-clock", contentType = "header") {
+            item(
+                key = "main-clock",
+                contentType = "header"
+            ) {
                 Crossfade(
                     targetState = settings.style,
                     animationSpec = tween(durationMillis = 500),
@@ -232,7 +266,11 @@ fun WorldClockScreen(
                 }
             }
 
-            items(cities, key = { it.zone.id }, contentType = { "city" }) { city ->
+            items(
+                items = cities,
+                key = { it.zone.id },
+                contentType = { "city" }
+            ) { city ->
                 val isSelected = city.zone in selectedCities
 
                 CityRow(
@@ -244,32 +282,58 @@ fun WorldClockScreen(
                     isSelected = isSelected,
                     inSelectionMode = inSelectionMode,
                     onToggleSelect = {
-                        selectedCities = if (isSelected) {
-                            selectedCities - city.zone
-                        } else {
-                            selectedCities + city.zone
-                        }
+                        selectedCities =
+                            if (isSelected) {
+                                selectedCities - city.zone
+                            } else {
+                                selectedCities + city.zone
+                            }
                     },
                     modifier = Modifier.animateItem(),
                 )
             }
         }
 
-        // Fluid Selection Toolbar
+        // Fluid selection toolbar.
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it } +
-                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), initialScale = 0.88f),
-            exit = fadeOut(spring()) +
-                slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
-                scaleOut(spring(), targetScale = 0.88f),
+            enter =
+                fadeIn(
+                    spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy
+                    )
+                ) +
+                slideInVertically(
+                    spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) { it } +
+                scaleIn(
+                    spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    initialScale = 0.88f
+                ),
+            exit =
+                fadeOut(spring()) +
+                slideOutVertically(
+                    spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy
+                    )
+                ) { it } +
+                scaleOut(
+                    spring(),
+                    targetScale = 0.88f
+                ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = 20.dp)
         ) {
-            val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            val dark =
+                MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
             Row(
                 modifier = Modifier
@@ -282,8 +346,10 @@ fun WorldClockScreen(
                     expanded = true,
                     colors = if (dark) {
                         FloatingToolbarDefaults.standardFloatingToolbarColors(
-                            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            toolbarContainerColor =
+                                MaterialTheme.colorScheme.surfaceContainerHighest,
+                            toolbarContentColor =
+                                MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         FloatingToolbarDefaults.vibrantFloatingToolbarColors()
@@ -291,25 +357,33 @@ fun WorldClockScreen(
                     expandedShadowElevation = 6.dp,
                     modifier = Modifier.height(DOCK_HEIGHT),
                 ) {
-                    val allSelected = selectedCities.size == cities.size
+                    val allSelected =
+                        selectedCities.size == cities.size
 
                     ToolbarIconButton(
                         onClick = {
-                            selectedCities = if (allSelected) {
-                                emptySet()
-                            } else {
-                                cities.map { it.zone }.toSet()
-                            }
+                            selectedCities =
+                                if (allSelected) {
+                                    emptySet()
+                                } else {
+                                    cities.map { it.zone }.toSet()
+                                }
                         },
-                        icon = if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                        icon = if (allSelected) {
+                            Icons.Rounded.Deselect
+                        } else {
+                            Icons.Rounded.SelectAll
+                        },
                         contentDescription = "Select All"
                     )
 
                     ToolbarIconButton(
                         onClick = {
-                            selectedCities.forEach { z ->
-                                cities.find { it.zone == z }?.let {
-                                    if (it.pinnedAt == null) onTogglePin(it)
+                            selectedCities.forEach { zone ->
+                                cities.find { it.zone == zone }?.let {
+                                    if (it.pinnedAt == null) {
+                                        onTogglePin(it)
+                                    }
                                 }
                             }
                             selectedCities = emptySet()
@@ -320,9 +394,11 @@ fun WorldClockScreen(
 
                     ToolbarIconButton(
                         onClick = {
-                            selectedCities.forEach { z ->
-                                cities.find { it.zone == z }?.let {
-                                    if (it.pinnedAt != null) onTogglePin(it)
+                            selectedCities.forEach { zone ->
+                                cities.find { it.zone == zone }?.let {
+                                    if (it.pinnedAt != null) {
+                                        onTogglePin(it)
+                                    }
                                 }
                             }
                             selectedCities = emptySet()
@@ -332,10 +408,12 @@ fun WorldClockScreen(
                     )
 
                     ToolbarIconButton(
-                        onClick = { showBatchDeleteConfirm = true },
+                        onClick = {
+                            showBatchDeleteConfirm = true
+                        },
                         icon = Icons.Rounded.Delete,
                         contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = WorldClockDeleteColor
                     )
                 }
             }
@@ -350,11 +428,18 @@ private fun ToolbarIconButton(
     contentDescription: String,
     tint: Color = LocalContentColor.current
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.80f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "toolbarIconScale"
     )
 
@@ -366,7 +451,11 @@ private fun ToolbarIconButton(
             scaleY = scale
         }
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint)
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint
+        )
     }
 }
 
@@ -384,16 +473,30 @@ private fun HomeDigitalClock(
     val hour = if (use24h) {
         local.hour
     } else {
-        ((local.hour % 12).takeIf { it != 0 } ?: 12)
+        (local.hour % 12).takeIf { it != 0 } ?: 12
     }
 
     val meridiem = if (local.hour < 12) "AM" else "PM"
     val ink = MaterialTheme.colorScheme.onSurface
 
     val timeText = buildString {
-        append(String.format(Locale.getDefault(), "%02d:%02d", hour, local.minute))
+        append(
+            String.format(
+                Locale.getDefault(),
+                "%02d:%02d",
+                hour,
+                local.minute
+            )
+        )
+
         if (showSeconds) {
-            append(String.format(Locale.getDefault(), ":%02d", local.second))
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    ":%02d",
+                    local.second
+                )
+            )
         }
     }
 
@@ -439,7 +542,9 @@ private fun HomeDigitalClock(
                     color = ink,
                     maxLines = 1,
                     softWrap = false,
-                    modifier = Modifier.padding(bottom = amPmBottomPadding)
+                    modifier = Modifier.padding(
+                        bottom = amPmBottomPadding
+                    )
                 )
             }
         }
@@ -447,7 +552,9 @@ private fun HomeDigitalClock(
         Spacer(Modifier.height(16.dp))
 
         val formatter = remember(home) {
-            DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy").withZone(home)
+            DateTimeFormatter
+                .ofPattern("EEEE, d MMMM yyyy")
+                .withZone(home)
         }
 
         Text(
@@ -495,16 +602,27 @@ private fun CityDial(
 
     Canvas(modifier) {
         val radius = size.minDimension / 2f
-        val centerPoint = Offset(size.width / 2f, size.height / 2f)
+        val centerPoint = Offset(
+            size.width / 2f,
+            size.height / 2f
+        )
 
-        drawCircle(face, radius = radius, center = centerPoint)
+        drawCircle(
+            face,
+            radius = radius,
+            center = centerPoint
+        )
 
         for (i in 0 until 12) {
-            val angle = (i / 12f) * 2f * PI.toFloat() - PI.toFloat() / 2f
+            val angle =
+                (i / 12f) * 2f * PI.toFloat() -
+                    PI.toFloat() / 2f
 
             val position = Offset(
-                x = centerPoint.x + cos(angle) * (radius - 44.dp.toPx()),
-                y = centerPoint.y + sin(angle) * (radius - 44.dp.toPx())
+                x = centerPoint.x +
+                    cos(angle) * (radius - 44.dp.toPx()),
+                y = centerPoint.y +
+                    sin(angle) * (radius - 44.dp.toPx())
             )
 
             val measuredText = hourLabels[i]
@@ -513,8 +631,10 @@ private fun CityDial(
                 drawText(
                     textLayoutResult = measuredText,
                     topLeft = Offset(
-                        x = position.x - measuredText.size.width / 2f,
-                        y = position.y - measuredText.size.height / 2f
+                        x = position.x -
+                            measuredText.size.width / 2f,
+                        y = position.y -
+                            measuredText.size.height / 2f
                     )
                 )
             } else {
@@ -528,7 +648,9 @@ private fun CityDial(
 
         cities.forEach { city ->
             val local = city.timeAt(nowUtcMillis)
-            val hours12 = (local.hour % 12) + local.minute / 60f
+            val hours12 =
+                (local.hour % 12) + local.minute / 60f
+
             val angle = hours12 / 12f * 360f - 90f
             val rad = angle * PI.toFloat() / 180f
             val lineLength = radius - 62.dp.toPx()
@@ -545,16 +667,26 @@ private fun CityDial(
                 strokeWidth = 2.dp.toPx()
             )
 
-            val measuredCityText = measurer.measure(city.city, pillStyle)
+            val measuredCityText =
+                measurer.measure(city.city, pillStyle)
+
             val padH = 7.dp.toPx()
             val w = measuredCityText.size.width + padH * 2
             val h = measuredCityText.size.height + 5.dp.toPx()
-            val flip = if (angle.mod(360f) in 90f..270f) 180f else 0f
 
-            rotate(degrees = angle + flip, pivot = tip) {
+            val flip =
+                if (angle.mod(360f) in 90f..270f) 180f else 0f
+
+            rotate(
+                degrees = angle + flip,
+                pivot = tip
+            ) {
                 drawRoundRect(
                     color = accent,
-                    topLeft = Offset(tip.x - w / 2f, tip.y - h / 2f),
+                    topLeft = Offset(
+                        tip.x - w / 2f,
+                        tip.y - h / 2f
+                    ),
                     size = Size(w, h),
                     cornerRadius = CornerRadius(h / 2f)
                 )
@@ -569,7 +701,11 @@ private fun CityDial(
             }
         }
 
-        drawCircle(accent, radius = 7.dp.toPx(), center = centerPoint)
+        drawCircle(
+            accent,
+            radius = 7.dp.toPx(),
+            center = centerPoint
+        )
     }
 }
 
@@ -589,10 +725,12 @@ private fun CityRow(
     val local = city.timeAt(nowUtcMillis)
     val night = city.isNight(nowUtcMillis)
 
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Living Flow Fluid Spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = spring(
@@ -602,23 +740,26 @@ private fun CityRow(
         label = "cityRowScale"
     )
 
-    val targetContainer = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
+    val targetContainer =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
 
-    val targetContent = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+    val targetContent =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
 
-    val targetTimeColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    val targetTimeColor =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.primary
+        }
 
     val containerColor by animateColorAsState(
         targetContainer,
@@ -638,21 +779,23 @@ private fun CityRow(
         label = "timeTextColor"
     )
 
-    val targetBadgeBg = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else if (night) {
-        MaterialTheme.colorScheme.surfaceContainerHighest
-    } else {
-        MaterialTheme.colorScheme.secondaryContainer
-    }
+    val targetBadgeBg =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else if (night) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        }
 
-    val targetBadgeTint = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else if (night) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    }
+    val targetBadgeTint =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else if (night) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        }
 
     val badgeBg by animateColorAsState(
         targetBadgeBg,
@@ -668,22 +811,45 @@ private fun CityRow(
 
     val timeOnly = buildString {
         if (use24h) {
-            append(String.format(Locale.getDefault(), "%02d:%02d", local.hour, local.minute))
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    local.hour,
+                    local.minute
+                )
+            )
         } else {
-            val h = (local.hour % 12).takeIf { it != 0 } ?: 12
-            append(String.format(Locale.getDefault(), "%02d:%02d", h, local.minute))
+            val h =
+                (local.hour % 12).takeIf { it != 0 } ?: 12
+
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    h,
+                    local.minute
+                )
+            )
         }
 
         if (showSeconds) {
-            append(String.format(Locale.getDefault(), ":%02d", local.second))
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    ":%02d",
+                    local.second
+                )
+            )
         }
     }
 
-    val amPmString = if (!use24h) {
-        if (local.hour < 12) "am" else "pm"
-    } else {
-        ""
-    }
+    val amPmString =
+        if (!use24h) {
+            if (local.hour < 12) "am" else "pm"
+        } else {
+            ""
+        }
 
     val inst = Instant.ofEpochMilli(nowUtcMillis)
 
@@ -691,17 +857,20 @@ private fun CityRow(
         city.zone.rules.getOffset(inst).totalSeconds -
             home.rules.getOffset(inst).totalSeconds
 
-    val diffString = if (diffSeconds == 0) {
-        "Local Time Zone"
-    } else {
-        val totalMins = kotlin.math.abs(diffSeconds) / 60
-        val h = totalMins / 60
-        val m = totalMins % 60
-        val dir = if (diffSeconds > 0) "Ahead" else "Behind"
-        val hStr = if (h > 0) "$h hours " else ""
-        val mStr = if (m > 0) "$m Minutes " else ""
-        "${hStr}${mStr}$dir"
-    }
+    val diffString =
+        if (diffSeconds == 0) {
+            "Local Time Zone"
+        } else {
+            val totalMins = kotlin.math.abs(diffSeconds) / 60
+            val h = totalMins / 60
+            val m = totalMins % 60
+            val dir = if (diffSeconds > 0) "Ahead" else "Behind"
+
+            val hStr = if (h > 0) "$h hours " else ""
+            val mStr = if (m > 0) "$m Minutes " else ""
+
+            "${hStr}${mStr}$dir"
+        }
 
     Surface(
         color = containerColor,
@@ -718,15 +887,22 @@ private fun CityRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
-                    if (inSelectionMode) onToggleSelect()
+                    if (inSelectionMode) {
+                        onToggleSelect()
+                    }
                 },
-                onLongClick = { onToggleSelect() }
+                onLongClick = {
+                    onToggleSelect()
+                }
             )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(
+                    horizontal = 20.dp,
+                    vertical = 8.dp
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
@@ -735,12 +911,21 @@ private fun CityRow(
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    // Sun/Moon Horizon Animated Icon Transition
                     AnimatedContent(
                         targetState = night,
                         transitionSpec = {
-                            (fadeIn(tween(220)) + scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy))) togetherWith
-                                (fadeOut(tween(140)) + scaleOut(tween(140)))
+                            (
+                                fadeIn(tween(220)) +
+                                scaleIn(
+                                    spring(
+                                        dampingRatio =
+                                            Spring.DampingRatioMediumBouncy
+                                    )
+                                )
+                            ) togetherWith (
+                                fadeOut(tween(140)) +
+                                scaleOut(tween(140))
+                            )
                         },
                         label = "sunMoonAnim"
                     ) { isNightTime ->
@@ -750,7 +935,11 @@ private fun CityRow(
                             } else {
                                 Icons.Outlined.LightMode
                             },
-                            contentDescription = if (isNightTime) "night" else "daytime",
+                            contentDescription = if (isNightTime) {
+                                "night"
+                            } else {
+                                "daytime"
+                            },
                             tint = badgeTint,
                             modifier = Modifier.size(26.dp),
                         )
@@ -761,7 +950,10 @@ private fun CityRow(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 16.dp, end = 8.dp),
+                    .padding(
+                        start = 16.dp,
+                        end = 8.dp
+                    ),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
