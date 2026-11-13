@@ -117,9 +117,10 @@ import kotlinx.coroutines.launch
 private val DOCK_CLEARANCE = 20.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
 
-private fun <T> smoothTransitionSpec() = tween<T>(
-    durationMillis = 400,
-    easing = FastOutSlowInEasing
+// LIVING FLOW: Fluid, organic spring physics for all transitions
+private fun <T> fluidSpringSpec() = spring<T>(
+    dampingRatio = 0.85f,
+    stiffness = 200f
 )
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
@@ -271,18 +272,20 @@ fun ClockApp(
         val marqueeText = remember(targetTab, alarmsNow, minuteTick) {
             if (targetTab == Tab.ALARMS) {
                 val now = java.time.ZonedDateTime.now()
-                val next = alarmsNow.mapNotNull { it.nextFire(now) }.minOrNull()
+                // Only consider enabled alarms
+                val next = alarmsNow.filter { it.enabled }.mapNotNull { it.nextFire(now) }.minOrNull()
                 if (next == null) {
-                    "All alarms are off"
+                    "" // Hide completely if all alarms are off
                 } else {
                     val d = java.time.Duration.between(now, next)
                     val days = d.toDays()
                     val hours = d.toHours() % 24
                     val minutes = d.toMinutes() % 60
+                    
                     val parts = buildList {
-                        if (days > 0) add(if (days == 1L) "$days Day" else "$days Days")
-                        if (hours > 0) add(if (hours == 1L) "$hours Hour" else "$hours Hours")
-                        if (minutes > 0) add(if (minutes == 1L) "$minutes Minute" else "$minutes Minutes")
+                        if (days > 0) add(if (days == 1L) "1 Day" else "$days Days")
+                        if (hours > 0) add(if (hours == 1L) "1 Hour" else "$hours Hours")
+                        if (minutes > 0) add(if (minutes == 1L) "1 Minute" else "$minutes Minutes")
                     }
                     if (parts.isEmpty()) "Alarm in less than a minute"
                     else "Alarm in ${parts.joinToString(" ")}"
@@ -297,61 +300,25 @@ fun ClockApp(
             topBar = {
                 TopAppBar(
                     title = {
-                        Box(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             
-                            AnimatedVisibility(
-                                visible = targetTab == Tab.ALARMS,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(start = 110.dp, end = 52.dp) 
-                            ) {
-                                Text(
-                                    text = marqueeText,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        animationMode = MarqueeAnimationMode.Immediately,
-                                        velocity = 30.dp,
-                                        initialDelayMillis = 0 
-                                    )
-                                )
-                            }
-
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            ) {
-                                IconButton(onClick = { showSettings = true }) {
-                                    Icon(
-                                        Icons.Rounded.Settings,
-                                        contentDescription = "${currentTab.label} settings",
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-
+                            // 1. Alarms Pill (Left)
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.align(Alignment.CenterStart)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
                                     transitionSpec = {
                                         (slideInVertically(
-                                            animationSpec = smoothTransitionSpec()
-                                        ) { height -> height / 2 } + fadeIn(animationSpec = smoothTransitionSpec())) togetherWith
+                                            animationSpec = fluidSpringSpec()
+                                        ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
                                             (slideOutVertically(
-                                                animationSpec = smoothTransitionSpec()
-                                            ) { height -> -height / 2 } + fadeOut(animationSpec = smoothTransitionSpec()))
+                                                animationSpec = fluidSpringSpec()
+                                            ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
                                     },
                                     label = "TopBarTitleAnim"
                                 ) { tab ->
@@ -367,9 +334,48 @@ fun ClockApp(
                                     )
                                 }
                             }
+                            
+                            // 2. Flexible Center Area (Perfectly centers short text, clips long text cleanly at the edges)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AnimatedVisibility(
+                                    visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
+                                    enter = fadeIn(animationSpec = tween(400)),
+                                    exit = fadeOut(animationSpec = tween(200))
+                                ) {
+                                    Text(
+                                        text = marqueeText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth() // Ensures it takes the full flexible space to trigger marquee correctly
+                                            .basicMarquee(
+                                                iterations = Int.MAX_VALUE,
+                                                animationMode = MarqueeAnimationMode.Immediately,
+                                                velocity = 30.dp,
+                                                initialDelayMillis = 0
+                                            )
+                                    )
+                                }
+                            }
+
+                            // 3. Settings Icon (Right)
+                            IconButton(onClick = { showSettings = true }) {
+                                Icon(
+                                    Icons.Rounded.Settings,
+                                    contentDescription = "${currentTab.label} settings",
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
                     },
-                    actions = {}, 
+                    actions = {}, // Intentionally empty so the Row takes the full width and handles icon placement
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -406,8 +412,8 @@ fun ClockApp(
             AnimatedVisibility(
                 visible = initialLaunch,
                 enter = slideInVertically(
-                    initialOffsetY = { it / 6 },
-                    animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+                    initialOffsetY = { it / 8 },
+                    animationSpec = fluidSpringSpec()
                 ) + fadeIn(animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -432,7 +438,7 @@ fun ClockApp(
                                             pagerState.currentPageOffsetFraction
                                     val absOffset = kotlin.math.abs(pageOffset)
                                     alpha = 1f - (absOffset * 0.4f).coerceIn(0f, 1f)
-                                    val scale = 1f - (absOffset * 0.08f).coerceIn(0f, 1f)
+                                    val scale = 1f - (absOffset * 0.04f).coerceIn(0f, 1f)
                                     scaleX = scale
                                     scaleY = scale
                                 }
@@ -534,15 +540,15 @@ fun ClockApp(
 
                     AnimatedVisibility(
                         visible = !selectionActive,
-                        enter = fadeIn(animationSpec = smoothTransitionSpec()) +
+                        enter = fadeIn(animationSpec = fluidSpringSpec()) +
                             slideInVertically(
                                 initialOffsetY = { it / 4 },
-                                animationSpec = smoothTransitionSpec()
+                                animationSpec = fluidSpringSpec()
                             ),
-                        exit = fadeOut(animationSpec = smoothTransitionSpec()) +
+                        exit = fadeOut(animationSpec = fluidSpringSpec()) +
                             slideOutVertically(
                                 targetOffsetY = { it / 4 },
-                                animationSpec = smoothTransitionSpec()
+                                animationSpec = fluidSpringSpec()
                             ),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -556,7 +562,7 @@ fun ClockApp(
                                 scope.launch {
                                     pagerState.animateScrollToPage(
                                         page = Tab.entries.indexOf(selectedTab),
-                                        animationSpec = smoothTransitionSpec()
+                                        animationSpec = fluidSpringSpec()
                                     )
                                 }
                             },
