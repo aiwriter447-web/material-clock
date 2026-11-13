@@ -1,4 +1,3 @@
-
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
