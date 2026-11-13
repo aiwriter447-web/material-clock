@@ -1,3 +1,4 @@
+
 package app.materialclock.ui.screens
 
 import androidx.activity.compose.BackHandler
@@ -93,6 +94,9 @@ import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.sheets.systemFirstDay
 import java.time.DayOfWeek
 
+// Consistent delete color for BOTH light and dark themes.
+private val AlarmDeleteColor = Color(0xFFB3261E)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AlarmsScreen(
@@ -116,7 +120,9 @@ fun AlarmsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
 
-    var is24Hour by remember { mutableStateOf(android.text.format.DateFormat.is24HourFormat(context)) }
+    var is24Hour by remember {
+        mutableStateOf(android.text.format.DateFormat.is24HourFormat(context))
+    }
 
     val adjustedContentPadding = remember(contentPadding, layoutDirection) {
         PaddingValues(
@@ -133,17 +139,24 @@ fun AlarmsScreen(
                 is24Hour = android.text.format.DateFormat.is24HourFormat(context)
             }
         }
+
         lifecycleOwner.lifecycle.addObserver(observer)
+
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    val byGroup = remember(alarms) { alarms.groupBy { it.groupId } }
+    val byGroup = remember(alarms) {
+        alarms.groupBy { it.groupId }
+    }
 
     var selectedAlarms by remember { mutableStateOf(emptySet<Long>()) }
     var selectedGroups by remember { mutableStateOf(emptySet<Long>()) }
-    val inSelectionMode = selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
+
+    val inSelectionMode =
+        selectedAlarms.isNotEmpty() || selectedGroups.isNotEmpty()
+
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(inSelectionMode) {
@@ -155,10 +168,12 @@ fun AlarmsScreen(
         selectedGroups = emptySet()
     }
 
-    // Fixed Clean Title Batch Delete Dialog
+    // Living Flow: polished batch-delete confirmation.
     if (showBatchDeleteConfirm) {
         AlertDialog(
-            onDismissRequest = { showBatchDeleteConfirm = false },
+            onDismissRequest = {
+                showBatchDeleteConfirm = false
+            },
             title = {
                 Text(
                     text = "Delete Items?",
@@ -180,30 +195,47 @@ fun AlarmsScreen(
                         showBatchDeleteConfirm = false
                     },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.error,
-                    contentColor = Color.White
+                    color = AlarmDeleteColor,
+                    contentColor = Color.White,
+                    shadowElevation = 1.dp
                 ) {
                     Text(
                         text = "Delete",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(
+                            horizontal = 24.dp,
+                            vertical = 11.dp
+                        )
                     )
                 }
             },
             dismissButton = {
+                // Transparent Cancel button with a stronger visible outline.
                 Surface(
-                    onClick = { showBatchDeleteConfirm = false },
+                    onClick = {
+                        showBatchDeleteConfirm = false
+                    },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    color = Color.Transparent,
+                    border = BorderStroke(
+                        width = 1.25.dp,
+                        color = MaterialTheme.colorScheme.outline
+                    ),
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Text(
                         text = "Cancel",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(
+                            horizontal = 22.dp,
+                            vertical = 11.dp
+                        )
                     )
                 }
             }
@@ -211,13 +243,17 @@ fun AlarmsScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = adjustedContentPadding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (groups.isNotEmpty()) {
-                item(key = "group-cards", contentType = "groups") {
+                item(
+                    key = "group-cards",
+                    contentType = "groups"
+                ) {
                     GroupCardsSection(
                         groups = groups,
                         byGroup = byGroup,
@@ -225,13 +261,23 @@ fun AlarmsScreen(
                         inSelectionMode = inSelectionMode,
                         onToggleGroup = onToggleGroup,
                         onToggleGroupSelect = { groupId ->
-                            selectedGroups = if (groupId in selectedGroups) selectedGroups - groupId else selectedGroups + groupId
+                            selectedGroups =
+                                if (groupId in selectedGroups) {
+                                    selectedGroups - groupId
+                                } else {
+                                    selectedGroups + groupId
+                                }
                         }
                     )
                 }
             }
 
-            items(alarms, key = { it.id }, contentType = { "alarm" }) { alarm ->
+            items(
+                items = alarms,
+                key = { it.id },
+                contentType = { "alarm" }
+            ) { alarm ->
+
                 val isSelected = alarm.id in selectedAlarms
 
                 AlarmRow(
@@ -240,31 +286,62 @@ fun AlarmsScreen(
                     is24Hour = is24Hour,
                     isSelected = isSelected,
                     inSelectionMode = inSelectionMode,
-                    onToggle = { onToggle(alarm.id) },
-                    onEdit = { onEdit(alarm) },
+                    onToggle = {
+                        onToggle(alarm.id)
+                    },
+                    onEdit = {
+                        onEdit(alarm)
+                    },
                     onToggleSelect = {
-                        selectedAlarms = if (isSelected) selectedAlarms - alarm.id else selectedAlarms + alarm.id
+                        selectedAlarms =
+                            if (isSelected) {
+                                selectedAlarms - alarm.id
+                            } else {
+                                selectedAlarms + alarm.id
+                            }
                     },
                     modifier = Modifier.animateItem()
                 )
             }
         }
 
-        // Fluid Animated Floating Toolbar
+        // Fluid Animated Floating Toolbar.
         AnimatedVisibility(
             visible = inSelectionMode,
-            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                slideInVertically(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it } +
-                scaleIn(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), initialScale = 0.88f),
-            exit = fadeOut(spring()) +
-                slideOutVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy)) { it } +
-                scaleOut(spring(), targetScale = 0.88f),
+            enter =
+                fadeIn(
+                    spring(dampingRatio = Spring.DampingRatioLowBouncy)
+                ) +
+                slideInVertically(
+                    spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) { it } +
+                scaleIn(
+                    spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    initialScale = 0.88f
+                ),
+            exit =
+                fadeOut(spring()) +
+                slideOutVertically(
+                    spring(dampingRatio = Spring.DampingRatioNoBouncy)
+                ) { it } +
+                scaleOut(
+                    spring(),
+                    targetScale = 0.88f
+                ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = 20.dp)
         ) {
-            val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            val dark =
+                MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -276,8 +353,10 @@ fun AlarmsScreen(
                     expanded = true,
                     colors = if (dark) {
                         FloatingToolbarDefaults.standardFloatingToolbarColors(
-                            toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            toolbarContainerColor =
+                                MaterialTheme.colorScheme.surfaceContainerHighest,
+                            toolbarContentColor =
+                                MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         FloatingToolbarDefaults.vibrantFloatingToolbarColors()
@@ -285,7 +364,9 @@ fun AlarmsScreen(
                     expandedShadowElevation = 6.dp,
                     modifier = Modifier.height(DOCK_HEIGHT),
                 ) {
-                    val allSelected = selectedAlarms.size == alarms.size && selectedGroups.size == groups.size
+                    val allSelected =
+                        selectedAlarms.size == alarms.size &&
+                        selectedGroups.size == groups.size
 
                     ToolbarIconButton(
                         onClick = {
@@ -297,13 +378,21 @@ fun AlarmsScreen(
                                 selectedGroups = groups.map { it.id }.toSet()
                             }
                         },
-                        icon = if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                        icon = if (allSelected) {
+                            Icons.Rounded.Deselect
+                        } else {
+                            Icons.Rounded.SelectAll
+                        },
                         contentDescription = "Select All"
                     )
 
                     ToolbarIconButton(
                         onClick = {
-                            onSetEnabledSelected(selectedAlarms, selectedGroups, true)
+                            onSetEnabledSelected(
+                                selectedAlarms,
+                                selectedGroups,
+                                true
+                            )
                             selectedAlarms = emptySet()
                             selectedGroups = emptySet()
                         },
@@ -313,7 +402,11 @@ fun AlarmsScreen(
 
                     ToolbarIconButton(
                         onClick = {
-                            onSetEnabledSelected(selectedAlarms, selectedGroups, false)
+                            onSetEnabledSelected(
+                                selectedAlarms,
+                                selectedGroups,
+                                false
+                            )
                             selectedAlarms = emptySet()
                             selectedGroups = emptySet()
                         },
@@ -323,7 +416,10 @@ fun AlarmsScreen(
 
                     ToolbarIconButton(
                         onClick = {
-                            onUngroupSelected(selectedAlarms, selectedGroups)
+                            onUngroupSelected(
+                                selectedAlarms,
+                                selectedGroups
+                            )
                             selectedAlarms = emptySet()
                             selectedGroups = emptySet()
                         },
@@ -332,10 +428,12 @@ fun AlarmsScreen(
                     )
 
                     ToolbarIconButton(
-                        onClick = { showBatchDeleteConfirm = true },
+                        onClick = {
+                            showBatchDeleteConfirm = true
+                        },
                         icon = Icons.Rounded.Delete,
                         contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = AlarmDeleteColor
                     )
                 }
             }
@@ -352,9 +450,13 @@ private fun ToolbarIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.80f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "toolbarIconScale"
     )
 
@@ -366,7 +468,11 @@ private fun ToolbarIconButton(
             scaleY = scale
         }
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint)
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint
+        )
     }
 }
 
@@ -400,6 +506,7 @@ private fun GroupCardsSection(
                     val isSelected = group.id in selectedGroups
                     val armedCount = groupAlarms.count { it.enabled }
                     val unarmedCount = groupAlarms.size - armedCount
+
                     GroupCard(
                         group = group,
                         armedCount = armedCount,
@@ -407,12 +514,19 @@ private fun GroupCardsSection(
                         checked = groupAlarms.any { it.enabled },
                         isSelected = isSelected,
                         inSelectionMode = inSelectionMode,
-                        onToggle = { onToggleGroup(group.id, it) },
-                        onToggleSelect = { onToggleGroupSelect(group.id) },
+                        onToggle = {
+                            onToggleGroup(group.id, it)
+                        },
+                        onToggleSelect = {
+                            onToggleGroupSelect(group.id)
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
+
+                if (pair.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
             }
         }
     }
@@ -434,28 +548,76 @@ private fun GroupCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Living Flow Fluid Spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioHighBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "groupScale"
     )
 
-    val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (checked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val targetContainer =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else if (checked) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
 
-    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessLow), label = "groupContainer")
-    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessLow), label = "groupInk")
+    val targetInk =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else if (checked) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
-    val titleFontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
+    val container by animateColorAsState(
+        targetValue = targetContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "groupContainer"
+    )
 
-    val targetIconBackground = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val targetIconTint = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val ink by animateColorAsState(
+        targetValue = targetInk,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "groupInk"
+    )
 
-    val iconBackground by animateColorAsState(targetIconBackground, spring(stiffness = Spring.StiffnessLow), label = "iconBg")
-    val iconTint by animateColorAsState(targetIconTint, spring(stiffness = Spring.StiffnessLow), label = "iconTint")
+    val titleFontWeight =
+        if (checked) FontWeight.SemiBold else FontWeight.Normal
 
-    val iconVector = if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
+    val targetIconBackground =
+        if (checked) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
+
+    val targetIconTint =
+        if (checked) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+    val iconBackground by animateColorAsState(
+        targetValue = targetIconBackground,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "iconBg"
+    )
+
+    val iconTint by animateColorAsState(
+        targetValue = targetIconTint,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "iconTint"
+    )
+
+    val iconVector =
+        if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
     Surface(
         color = container,
@@ -468,8 +630,16 @@ private fun GroupCard(
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = { if (inSelectionMode) onToggleSelect() else onToggle(!checked) },
-                onLongClick = { onToggleSelect() }
+                onClick = {
+                    if (inSelectionMode) {
+                        onToggleSelect()
+                    } else {
+                        onToggle(!checked)
+                    }
+                },
+                onLongClick = {
+                    onToggleSelect()
+                }
             ),
     ) {
         Row(
@@ -488,8 +658,18 @@ private fun GroupCard(
                     AnimatedContent(
                         targetState = iconVector,
                         transitionSpec = {
-                            (fadeIn(tween(220)) + scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy))) togetherWith
-                                (fadeOut(tween(140)) + scaleOut(tween(140)))
+                            (
+                                fadeIn(tween(220)) +
+                                scaleIn(
+                                    spring(
+                                        dampingRatio =
+                                            Spring.DampingRatioMediumBouncy
+                                    )
+                                )
+                            ) togetherWith (
+                                fadeOut(tween(140)) +
+                                scaleOut(tween(140))
+                            )
                         },
                         label = "groupIconAnim"
                     ) { targetIcon ->
@@ -510,30 +690,64 @@ private fun GroupCard(
             ) {
                 Text(
                     text = group.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = titleFontWeight),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = titleFontWeight
+                    ),
                     color = ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+
                 Spacer(Modifier.height(2.dp))
-                GroupCount(armed = armedCount, unarmed = unarmedCount, ink = ink)
+
+                GroupCount(
+                    armed = armedCount,
+                    unarmed = unarmedCount,
+                    ink = ink
+                )
             }
         }
     }
 }
 
 @Composable
-private fun GroupCount(armed: Int, unarmed: Int, ink: Color) {
+private fun GroupCount(
+    armed: Int,
+    unarmed: Int,
+    ink: Color
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.Alarm, contentDescription = "On Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(14.dp))
+        Icon(
+            Icons.Rounded.Alarm,
+            contentDescription = "On Alarms",
+            tint = ink.copy(alpha = 0.75f),
+            modifier = Modifier.size(14.dp)
+        )
+
         Spacer(Modifier.width(3.dp))
-        Text(armed.toString(), style = MaterialTheme.typography.labelMedium, color = ink)
+
+        Text(
+            armed.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = ink
+        )
 
         Spacer(Modifier.width(8.dp))
 
-        Icon(Icons.Rounded.AlarmOff, contentDescription = "Off Alarms", tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(14.dp))
+        Icon(
+            Icons.Rounded.AlarmOff,
+            contentDescription = "Off Alarms",
+            tint = ink.copy(alpha = 0.75f),
+            modifier = Modifier.size(14.dp)
+        )
+
         Spacer(Modifier.width(3.dp))
-        Text(unarmed.toString(), style = MaterialTheme.typography.labelMedium, color = ink)
+
+        Text(
+            unarmed.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = ink
+        )
     }
 }
 
@@ -556,39 +770,77 @@ private fun AlarmRow(
     modifier: Modifier = Modifier
 ) {
     val enabled = alarm.enabled
+
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Living Flow Tile Press & Fluid Scale Response
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioHighBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "rowScale"
     )
 
-    // Fluid Breath Time Text Scale
     val timeBreathScale by animateFloatAsState(
         targetValue = if (enabled) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "timeBreathScale"
     )
 
-    val targetContainer = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
-    val targetInk = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val targetContainer =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else if (enabled) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
 
-    val container by animateColorAsState(targetContainer, spring(stiffness = Spring.StiffnessLow), label = "rowContainer")
-    val ink by animateColorAsState(targetInk, spring(stiffness = Spring.StiffnessLow), label = "rowInk")
+    val targetInk =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else if (enabled) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+    val container by animateColorAsState(
+        targetValue = targetContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "rowContainer"
+    )
+
+    val ink by animateColorAsState(
+        targetValue = targetInk,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "rowInk"
+    )
 
     val outlineColor = MaterialTheme.colorScheme.outline
 
-    val hour12 = (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
-    val meridiem = if (alarm.time.hour < 12) "AM" else "PM"
+    val hour12 =
+        (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
 
-    val displayLabel = if (alarm.label.isNotBlank()) alarm.label else " "
-    val labelColor = if (alarm.label.isNotBlank()) ink else Color.Transparent
+    val meridiem =
+        if (alarm.time.hour < 12) "AM" else "PM"
 
-    val timeFontWeight = if (enabled) FontWeight.Medium else FontWeight.Normal
-    val titleFontWeight = if (enabled) FontWeight.SemiBold else FontWeight.Normal
+    val displayLabel =
+        if (alarm.label.isNotBlank()) alarm.label else " "
+
+    val labelColor =
+        if (alarm.label.isNotBlank()) ink else Color.Transparent
+
+    val timeFontWeight =
+        if (enabled) FontWeight.Medium else FontWeight.Normal
+
+    val titleFontWeight =
+        if (enabled) FontWeight.SemiBold else FontWeight.Normal
 
     Surface(
         color = container,
@@ -602,14 +854,25 @@ private fun AlarmRow(
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = { if (inSelectionMode) onToggleSelect() else onEdit() },
-                onLongClick = { onToggleSelect() }
+                onClick = {
+                    if (inSelectionMode) {
+                        onToggleSelect()
+                    } else {
+                        onEdit()
+                    }
+                },
+                onLongClick = {
+                    onToggleSelect()
+                }
             ),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = ROW_VERTICAL_PADDING),
+                .padding(
+                    horizontal = ROW_HORIZONTAL_PADDING,
+                    vertical = ROW_VERTICAL_PADDING
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
@@ -624,14 +887,18 @@ private fun AlarmRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = displayLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = titleFontWeight),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = titleFontWeight
+                        ),
                         color = labelColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+
                     if (alarm.pinnedAt != null) {
                         Spacer(Modifier.width(6.dp))
+
                         Icon(
                             imageVector = Icons.Rounded.PushPin,
                             contentDescription = "Pinned",
@@ -643,23 +910,39 @@ private fun AlarmRow(
 
                 Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
-                val timeStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = timeFontWeight, fontFeatureSettings = "tnum")
-                val amPmStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = timeFontWeight)
+                val timeStyle =
+                    MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = timeFontWeight,
+                        fontFeatureSettings = "tnum"
+                    )
+
+                val amPmStyle =
+                    MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = timeFontWeight
+                    )
 
                 if (is24Hour) {
                     Text(
-                        text = "%02d:%02d".format(alarm.time.hour, alarm.time.minute),
+                        text = "%02d:%02d".format(
+                            alarm.time.hour,
+                            alarm.time.minute
+                        ),
                         style = timeStyle,
                         color = ink
                     )
                 } else {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = "%02d:%02d".format(hour12, alarm.time.minute),
+                            text = "%02d:%02d".format(
+                                hour12,
+                                alarm.time.minute
+                            ),
                             style = timeStyle,
                             color = ink
                         )
+
                         Spacer(modifier = Modifier.width(6.dp))
+
                         Text(
                             text = meridiem,
                             style = amPmStyle,
@@ -676,11 +959,20 @@ private fun AlarmRow(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top,
             ) {
-                DayLetters(alarm = alarm, order = order, ink = ink, enabled = enabled)
+                DayLetters(
+                    alarm = alarm,
+                    order = order,
+                    ink = ink,
+                    enabled = enabled
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
+
                 Switch(
                     checked = enabled,
-                    onCheckedChange = { if (!inSelectionMode) onToggle() },
+                    onCheckedChange = {
+                        if (!inSelectionMode) onToggle()
+                    },
                     enabled = !inSelectionMode,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = container,
@@ -703,16 +995,36 @@ private fun AlarmRow(
 }
 
 @Composable
-private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color, enabled: Boolean) {
-    val text = remember(alarm.days, alarm.isOneShot, order, ink, enabled) {
+private fun DayLetters(
+    alarm: Alarm,
+    order: List<DayOfWeek>,
+    ink: Color,
+    enabled: Boolean
+) {
+    val text = remember(
+        alarm.days,
+        alarm.isOneShot,
+        order,
+        ink,
+        enabled
+    ) {
         buildAnnotatedString {
             order.forEach { day ->
                 val active = !alarm.isOneShot && day in alarm.days
                 val isBold = enabled && active
+
                 withStyle(
                     SpanStyle(
-                        fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
-                        color = if (active) ink else ink.copy(alpha = 0.30f),
+                        fontWeight = if (isBold) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Normal
+                        },
+                        color = if (active) {
+                            ink
+                        } else {
+                            ink.copy(alpha = 0.30f)
+                        },
                     )
                 ) {
                     append(day.name.take(1) + " ")
@@ -723,7 +1035,10 @@ private fun DayLetters(alarm: Alarm, order: List<DayOfWeek>, ink: Color, enabled
 
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, letterSpacing = 2.5.sp),
+        style = MaterialTheme.typography.bodyLarge.copy(
+            fontSize = 17.sp,
+            letterSpacing = 2.5.sp
+        ),
         maxLines = 1
     )
 }
