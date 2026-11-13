@@ -200,6 +200,7 @@ fun ClockApp(
         if (setupStep != null) {
             SetupScreen(
                 step = setupStep,
+                theme = settings.theme,
                 onSoundChosen = { uri ->
                     vm.updateSettings {
                         it.copy(alarms = it.alarms.copy(defaultSoundUri = uri, soundChosen = true))
@@ -300,15 +301,53 @@ fun ClockApp(
             topBar = {
                 TopAppBar(
                     title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             
-                            // 1. Alarms Pill (Left)
+                            AnimatedVisibility(
+                                visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
+                                enter = fadeIn(animationSpec = tween(400)),
+                                exit = fadeOut(animationSpec = tween(200)),
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(start = 110.dp, end = 52.dp) 
+                            ) {
+                                Text(
+                                    text = marqueeText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    textAlign = TextAlign.Center, 
+                                    modifier = Modifier
+                                        .fillMaxWidth() 
+                                        .basicMarquee(
+                                            iterations = Int.MAX_VALUE,
+                                            animationMode = MarqueeAnimationMode.Immediately,
+                                            velocity = 30.dp,
+                                            initialDelayMillis = 0 
+                                        )
+                                )
+                            }
+
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                IconButton(onClick = { showSettings = true }) {
+                                    Icon(
+                                        Icons.Rounded.Settings,
+                                        contentDescription = "${currentTab.label} settings",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.align(Alignment.CenterStart)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
@@ -334,48 +373,9 @@ fun ClockApp(
                                     )
                                 }
                             }
-                            
-                            // 2. Flexible Center Area (Perfectly centers short text, clips long text cleanly at the edges)
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AnimatedVisibility(
-                                    visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
-                                    enter = fadeIn(animationSpec = tween(400)),
-                                    exit = fadeOut(animationSpec = tween(200))
-                                ) {
-                                    Text(
-                                        text = marqueeText,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .fillMaxWidth() // Ensures it takes the full flexible space to trigger marquee correctly
-                                            .basicMarquee(
-                                                iterations = Int.MAX_VALUE,
-                                                animationMode = MarqueeAnimationMode.Immediately,
-                                                velocity = 30.dp,
-                                                initialDelayMillis = 0
-                                            )
-                                    )
-                                }
-                            }
-
-                            // 3. Settings Icon (Right)
-                            IconButton(onClick = { showSettings = true }) {
-                                Icon(
-                                    Icons.Rounded.Settings,
-                                    contentDescription = "${currentTab.label} settings",
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
                         }
                     },
-                    actions = {}, // Intentionally empty so the Row takes the full width and handles icon placement
+                    actions = {}, 
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -594,9 +594,8 @@ fun ClockApp(
                             }
                         },
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
+                            .align(Alignment.BottomCenter)
                             .padding(
-                                end = 16.dp,
                                 bottom = padding.calculateBottomPadding() +
                                     dockHeight + DOCK_CLEARANCE + 12.dp,
                             ),
