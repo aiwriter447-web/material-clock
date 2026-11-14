@@ -1,5 +1,7 @@
 package app.materialclock.ui.screens
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -685,6 +687,7 @@ private fun GroupCard(
             Spacer(Modifier.width(10.dp))
 
             Column(
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
@@ -865,6 +868,12 @@ private fun AlarmRow(
                 }
             ),
     ) {
+        BoxWithConstraints {
+        val fontScale = LocalDensity.current.fontScale
+        val rowInner = maxWidth - ROW_HORIZONTAL_PADDING * 2
+        val timeNeed = (if (is24Hour) 95f else 130f) * fontScale
+        val daysAvail = rowInner.value - timeNeed - 16f
+        val daysScale = (daysAvail / (152f * fontScale)).coerceIn(0.55f, 1f)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -927,7 +936,9 @@ private fun AlarmRow(
                             alarm.time.minute
                         ),
                         style = timeStyle,
-                        color = ink
+                        color = ink,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 } else {
                     Row(verticalAlignment = Alignment.Bottom) {
@@ -937,7 +948,9 @@ private fun AlarmRow(
                                 alarm.time.minute
                             ),
                             style = timeStyle,
-                            color = ink
+                            color = ink,
+                            maxLines = 1,
+                            softWrap = false
                         )
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -946,6 +959,8 @@ private fun AlarmRow(
                             text = meridiem,
                             style = amPmStyle,
                             color = ink,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
@@ -962,7 +977,8 @@ private fun AlarmRow(
                     alarm = alarm,
                     order = order,
                     ink = ink,
-                    enabled = enabled
+                    enabled = enabled,
+                    scale = daysScale
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -990,6 +1006,7 @@ private fun AlarmRow(
                 )
             }
         }
+        }
     }
 }
 
@@ -998,7 +1015,8 @@ private fun DayLetters(
     alarm: Alarm,
     order: List<DayOfWeek>,
     ink: Color,
-    enabled: Boolean
+    enabled: Boolean,
+    scale: Float = 1f
 ) {
     val text = remember(
         alarm.days,
@@ -1035,9 +1053,10 @@ private fun DayLetters(
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
-            fontSize = 17.sp,
-            letterSpacing = 2.5.sp
+            fontSize = (17f * scale).sp,
+            letterSpacing = (2.5f * scale).sp
         ),
-        maxLines = 1
+        maxLines = 1,
+        softWrap = false
     )
 }
