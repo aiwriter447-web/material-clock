@@ -19,6 +19,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -415,10 +417,19 @@ fun ClockDock(
 ) {
     val selectedIndex = destinations.indexOf(selected).takeIf { it >= 0 } ?: 0
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.BottomCenter,
     ) {
+        // Narrow screens get tighter tabs, and if even that cannot fit the selected tab's name
+        // (very small screen or very large font) the name is dropped and only the icon shows.
+        val fontScale = LocalDensity.current.fontScale
+        val tabPad = if (maxWidth < 360.dp) 10.dp else 16.dp
+        val labelWidth = (selected.label.length * 8.5f * fontScale).dp
+        val neededWidth = (destinations.size - 1) * (24.dp + tabPad * 2) +
+            (24.dp + 8.dp + labelWidth + tabPad * 2) + 16.dp
+        val showLabel = neededWidth <= maxWidth - 8.dp
+
         val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
         val targetRect = buttonBounds[selectedIndex]
         val button0Rect = buttonBounds[0]
@@ -525,7 +536,7 @@ fun ClockDock(
                             .onGloballyPositioned { coords ->
                                 buttonBounds[index] = coords.boundsInParent()
                             }
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = tabPad),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
@@ -565,7 +576,7 @@ fun ClockDock(
 
                             // Fluid Motion: Bouncy Text Expansion
                             AnimatedVisibility(
-                                visible = isSelected,
+                                visible = isSelected && showLabel,
                                 enter = expandHorizontally(
                                     animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
                                 ) + fadeIn(animationSpec = tween(150)),
@@ -579,7 +590,9 @@ fun ClockDock(
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                     ),
-                                    color = contentColor
+                                    color = contentColor,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
