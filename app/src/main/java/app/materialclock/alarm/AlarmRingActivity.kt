@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -367,9 +369,19 @@ private fun ExpressivePortrait(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val availH = maxHeight - 72.dp
+    val sizeScale = (availH / 520.dp).coerceIn(0.6f, 1f)
+    val dismissH = (availH * 0.18f).coerceIn(64.dp, 96.dp)
+    val snoozeH = (availH * 0.14f).coerceIn(56.dp, 72.dp)
+    val bigGap = (availH * 0.10f).coerceIn(16.dp, 56.dp)
+    val fullHeight = maxHeight
+    val clockWidth = maxWidth - 48.dp
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .heightIn(min = fullHeight)
             .padding(horizontal = 24.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -389,16 +401,22 @@ private fun ExpressivePortrait(
         Spacer(Modifier.height(24.dp))
 
         AnimatedEntrance(delayMillis = 90) {
-            ExpressiveClock(time = time, is24Hour = is24Hour, compact = false)
+            ExpressiveClock(
+                time = time,
+                is24Hour = is24Hour,
+                compact = false,
+                sizeScale = sizeScale,
+                widthLimit = clockWidth
+            )
         }
 
-        Spacer(Modifier.height(56.dp))
+        Spacer(Modifier.height(bigGap))
 
         AnimatedEntrance(delayMillis = 170) {
             ExpressiveDismissControl(
                 dismissMethod = dismissMethod,
                 onDismiss = onDismiss,
-                height = 96.dp,
+                height = dismissH,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -409,10 +427,11 @@ private fun ExpressivePortrait(
             ExpressiveSnoozeButton(
                 snoozeMinutes = snoozeMinutes,
                 onSnooze = onSnooze,
-                height = 72.dp,
+                height = snoozeH,
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
     }
 }
 
@@ -430,9 +449,17 @@ private fun ExpressiveLandscape(
     onSnooze: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val dismissH = (maxHeight * 0.30f).coerceIn(56.dp, 76.dp)
+    val snoozeH = (maxHeight * 0.20f).coerceIn(48.dp, 60.dp)
+    val sizeScale = (maxHeight / 320.dp).coerceIn(0.6f, 1f)
+    val clockWidth = (maxWidth - 88.dp) * 0.57f
+    val fullHeight = maxHeight
     Row(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .heightIn(min = fullHeight)
             .padding(horizontal = 32.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -453,7 +480,13 @@ private fun ExpressiveLandscape(
             }
             Spacer(Modifier.height(12.dp))
             AnimatedEntrance(delayMillis = 90) {
-                ExpressiveClock(time = time, is24Hour = is24Hour, compact = true)
+                ExpressiveClock(
+                    time = time,
+                    is24Hour = is24Hour,
+                    compact = true,
+                    sizeScale = sizeScale,
+                    widthLimit = clockWidth
+                )
             }
         }
 
@@ -467,7 +500,7 @@ private fun ExpressiveLandscape(
                 ExpressiveDismissControl(
                     dismissMethod = dismissMethod,
                     onDismiss = onDismiss,
-                    height = 76.dp,
+                    height = dismissH,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -475,11 +508,12 @@ private fun ExpressiveLandscape(
                 ExpressiveSnoozeButton(
                     snoozeMinutes = snoozeMinutes,
                     onSnooze = onSnooze,
-                    height = 60.dp,
+                    height = snoozeH,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         }
+    }
     }
 }
 
@@ -538,10 +572,24 @@ private fun AnimatedEntrance(
 private fun ExpressiveClock(
     time: LocalTime,
     is24Hour: Boolean,
-    compact: Boolean
+    compact: Boolean,
+    sizeScale: Float = 1f,
+    widthLimit: Dp = Dp.Unspecified
 ) {
     val hour = if (is24Hour) time.hour else (time.hour % 12).takeIf { it != 0 } ?: 12
     val timeText = "%02d:%02d".format(hour, time.minute)
+
+    // Shrinks the whole clock (digits, AM/PM, glow) so it always fits the width and height.
+    val baseSp = if (compact) 64f else 88f
+    val fontScale = LocalDensity.current.fontScale
+    val units = 2.9f + if (is24Hour) 0f else 0.45f
+    val fitSp = if (widthLimit != Dp.Unspecified) {
+        (widthLimit.value - 12f) / (fontScale * units)
+    } else {
+        baseSp * sizeScale
+    }
+    val timeSp = minOf(baseSp * sizeScale, fitSp).coerceAtLeast(36f)
+    val k = timeSp / baseSp
 
     val infinite = rememberInfiniteTransition(label = "clockBreathing")
 
@@ -578,8 +626,8 @@ private fun ExpressiveClock(
         Box(
             modifier = Modifier
                 .size(
-                    width = if (compact) 180.dp else 250.dp,
-                    height = if (compact) 80.dp else 120.dp
+                    width = (if (compact) 180.dp else 250.dp) * k,
+                    height = (if (compact) 80.dp else 120.dp) * k
                 )
                 .background(
                     brush = Brush.radialGradient(
@@ -598,7 +646,7 @@ private fun ExpressiveClock(
         ) {
             Text(
                 text = timeText,
-                fontSize = if (compact) 64.sp else 88.sp,
+                fontSize = timeSp.sp,
                 fontWeight = FontWeight.Medium,
                 color = primary,
                 maxLines = 1,
@@ -610,7 +658,7 @@ private fun ExpressiveClock(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = if (time.hour < 12) "AM" else "PM",
-                    fontSize = if (compact) 22.sp else 28.sp,
+                    fontSize = ((if (compact) 22f else 28f) * k).sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
