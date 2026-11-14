@@ -32,6 +32,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -499,12 +503,19 @@ private fun HomeDigitalClock(
         }
     }
 
-    val timeFontSize = if (showSeconds) 52.sp else 76.sp
-    val amPmFontSize = if (showSeconds) 24.sp else 32.sp
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    val baseTime = if (showSeconds) 52f else 76f
+    val baseAmPm = if (showSeconds) 24f else 32f
+    val fontScale = LocalDensity.current.fontScale
+    val units = timeText.length * 0.6f + if (use24h) 0f else 0.5f
+    val fitSp = (maxWidth.value - 16f) / (fontScale * units)
+    val shrink = (minOf(baseTime, fitSp) / baseTime).coerceIn(0.4f, 1f)
+    val timeFontSize = (baseTime * shrink).sp
+    val amPmFontSize = (baseAmPm * shrink).sp
     val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(top = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -561,8 +572,12 @@ private fun HomeDigitalClock(
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight(450)
             ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
+    }
     }
 }
 
@@ -878,7 +893,7 @@ private fun CityRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .height(ROW_HEIGHT_DP.dp)
+            .heightIn(min = ROW_HEIGHT_DP.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
