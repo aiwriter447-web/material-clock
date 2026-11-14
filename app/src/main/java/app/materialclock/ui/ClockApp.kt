@@ -114,7 +114,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.launch
 
-private val DOCK_CLEARANCE = 20.dp
+private val DOCK_CLEARANCE = 6.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
 
 // LIVING FLOW: Fluid, organic spring physics for all transitions
