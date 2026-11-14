@@ -426,8 +426,9 @@ fun ClockDock(
         val fontScale = LocalDensity.current.fontScale
         val tabPad = if (maxWidth < 360.dp) 10.dp else 16.dp
         val labelWidth = (selected.label.length * 8.5f * fontScale).dp
-        val neededWidth = (destinations.size - 1) * (24.dp + tabPad * 2) +
-            (24.dp + 8.dp + labelWidth + tabPad * 2) + 16.dp
+        val otherTabsWidth = (24.dp + tabPad * 2) * (destinations.size - 1)
+        val selectedTabWidth = 24.dp + 8.dp + labelWidth + tabPad * 2
+        val neededWidth = otherTabsWidth + selectedTabWidth + 16.dp
         val showLabel = neededWidth <= maxWidth - 8.dp
 
         val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
