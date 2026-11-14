@@ -21,6 +21,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -190,14 +195,15 @@ private fun SetTimer(
         label = "colonBulbColor"
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val setTop = contentPadding.calculateTopPadding()
+        val setBottom = contentPadding.calculateBottomPadding() + 16.dp
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding() + 16.dp
-                ),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(top = setTop, bottom = setBottom)
+                .heightIn(min = (maxHeight - setTop - setBottom).coerceAtLeast(0.dp)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             
@@ -213,15 +219,15 @@ private fun SetTimer(
                 val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text("Hours", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                    Text("Hours", style = labelStyle, color = color, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text("Minutes", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                    Text("Minutes", style = labelStyle, color = color, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text("Seconds", style = labelStyle, color = color, textAlign = TextAlign.Center)
+                    Text("Seconds", style = labelStyle, color = color, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
 
@@ -435,7 +441,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .width(100.dp) 
-            .height(56.dp) 
+            .heightIn(min = 56.dp) 
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -566,9 +572,13 @@ private fun RunningTimer(
     val refStyle = ClockFace.numerals(capHeight = 62.dp, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
     val strokeWidthPx = with(density) { 18.dp.toPx() }
 
-    val capHeight = remember(hasHours, density, refStyle) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val availH = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding()
+    val ringSize = minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 190.dp).coerceAtLeast(160.dp)
+
+    val capHeight = remember(hasHours, density, refStyle, ringSize) {
         with(density) {
-            val maxTextWidth = RING_SIZE_DP.dp * 0.62f
+            val maxTextWidth = ringSize * 0.62f
             val ref = 62.dp
             val worstCase = if (hasHours) "88:88:88" else "88:88"
             val measured = measurer.measure(worstCase, refStyle).size.width.toDp()
@@ -603,7 +613,7 @@ private fun RunningTimer(
 
             CircularWavyProgressIndicator(
                 progress = { timer.fractionLeft(nowElapsedMillis) },
-                modifier = Modifier.size(RING_SIZE_DP.dp),
+                modifier = Modifier.size(ringSize),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 stroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
@@ -679,6 +689,7 @@ private fun RunningTimer(
         )
 
         Spacer(Modifier.height(32.dp))
+    }
     }
 }
 
