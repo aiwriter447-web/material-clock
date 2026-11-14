@@ -17,6 +17,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -125,8 +127,13 @@ fun StopwatchScreen(
 
     val layoutDirection = LocalLayoutDirection.current
 
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    val availH = maxHeight - contentPadding.calculateTopPadding()
+    val readoutCap = minOf(READOUT_CAP, availH * 0.10f).coerceAtLeast(32.dp)
+    val topGap = minOf(32.dp, availH * 0.04f)
+    val stackGap = minOf(STACK_GAP, availH * 0.045f)
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(
                 top = contentPadding.calculateTopPadding(),
@@ -134,7 +141,7 @@ fun StopwatchScreen(
                 end = contentPadding.calculateEndPadding(layoutDirection)
             )
     ) {
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(topGap))
 
         FluidEntrance(delayMillis = 0) {
             LivingStopwatchReadout(
@@ -142,11 +149,12 @@ fun StopwatchScreen(
                 running = stopwatch.running,
                 label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                     if (stopwatch.running) ", running" else ", stopped",
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                cap = readoutCap
             )
         }
 
-        Spacer(Modifier.height(STACK_GAP))
+        Spacer(Modifier.height(stackGap))
 
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
             FluidEntrance(delayMillis = 80) {
@@ -206,6 +214,7 @@ fun StopwatchScreen(
             }
         }
     }
+    }
 }
 
 /* ───────────────────────────────────────────────
@@ -259,7 +268,8 @@ private fun LivingStopwatchReadout(
     parts: List<String>,
     running: Boolean,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cap: Dp = READOUT_CAP
 ) {
     val infinite = rememberInfiniteTransition(label = "stopwatchLivingPulse")
 
@@ -292,7 +302,7 @@ private fun LivingStopwatchReadout(
     ) {
         Box(
             modifier = Modifier
-                .size(width = 240.dp, height = 220.dp)
+                .size(width = cap * 4.3f, height = cap * 3.9f)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
@@ -306,7 +316,7 @@ private fun LivingStopwatchReadout(
 
         StackedDigits(
             parts = parts,
-            capHeight = READOUT_CAP,
+            capHeight = cap,
             color = primary,
             leading = Icons.Rounded.Timer,
             label = label,
@@ -643,12 +653,14 @@ private fun LapRow(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = timeColor,
+                maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 "$tm:$ts.$tcs",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
     }
