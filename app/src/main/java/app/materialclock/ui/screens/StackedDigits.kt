@@ -54,12 +54,14 @@ fun StackedDigits(
     leading: ImageVector? = null,
     label: String? = null,
 ) {
+    // Everything below scales with capHeight so smaller screens can shrink the readout evenly.
+    val k = capHeight / REFERENCE_CAP
     // Problem A Fix: The invisible inset (ROW_INK_INSET) that was pushing the layout to the right
     // is now counter-balanced by adding padding to the END, forcing true center alignment.
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(end = ROW_INK_INSET) // Counter-balance for the leading separator cell
+            .padding(end = ROW_INK_INSET * k) // Counter-balance for the leading separator cell
             .then(
                 if (label != null) {
                     Modifier.clearAndSetSemantics { contentDescription = label }
@@ -68,7 +70,7 @@ fun StackedDigits(
                 }
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(30.dp), // Problem B: Reduced from 35 to 30 to compress height
+        verticalArrangement = Arrangement.spacedBy(30.dp * k), // Problem B: Reduced from 35 to 30 to compress height
     ) {
         parts.forEachIndexed { i, part ->
             DigitRow(
@@ -99,9 +101,10 @@ fun DigitRow(
     leading: ImageVector? = null,
     separator: Boolean = false,
 ) {
+    val k = capHeight / REFERENCE_CAP
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         // The separator's own tabular cell, the same advance as a digit cell.
-        Box(Modifier.width(SEPARATOR_CELL_DP.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.width((SEPARATOR_CELL_DP * k).dp), contentAlignment = Alignment.Center) {
             when {
                 leading != null -> androidx.compose.material3.Icon(
                     leading,
@@ -110,7 +113,7 @@ fun DigitRow(
                     // Problem B Fix: 96% of capHeight for the icon so numbers stand out
                     modifier = Modifier.size(capHeight * 0.96f), 
                 )
-                separator -> ColonDots(color, capHeight)
+                separator -> ColonDots(color, capHeight, k)
             }
         }
         Numerals(
@@ -126,6 +129,9 @@ fun DigitRow(
 
 /** Measured: 18 dp dots with their centres 40.8 dp apart, so 22.8 dp of clear space between. */
 private const val SEPARATOR_CELL_DP = 67.2f
+
+/** The capHeight the constants in this file were measured at; other sizes scale from it. */
+private val REFERENCE_CAP = 56.dp
 private val DOT_DIAMETER = 13.dp // Made smaller to match visual weight
 
 /**
@@ -140,12 +146,12 @@ private val DOT_DIAMETER = 13.dp // Made smaller to match visual weight
 val ROW_INK_INSET: Dp = (SEPARATOR_CELL_DP.dp - DOT_DIAMETER) / 2
 
 @Composable
-private fun ColonDots(color: Color, capHeight: Dp) {
+private fun ColonDots(color: Color, capHeight: Dp, k: Float = 1f) {
     // Dynamically adjust dot spacing so it looks balanced relative to the slightly smaller numbers
     val spacing = (capHeight.value * 0.45f).dp 
     Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         repeat(2) {
-            Surface(color = color, shape = CircleShape, modifier = Modifier.size(DOT_DIAMETER)) {}
+            Surface(color = color, shape = CircleShape, modifier = Modifier.size(DOT_DIAMETER * k)) {}
         }
     }
 }
