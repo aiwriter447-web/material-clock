@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -132,31 +133,8 @@ fun StopwatchScreen(
     val readoutCap = minOf(READOUT_CAP, availH * 0.10f).coerceAtLeast(32.dp)
     val topGap = minOf(32.dp, availH * 0.04f)
     val stackGap = minOf(STACK_GAP, availH * 0.045f)
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(
-                top = contentPadding.calculateTopPadding(),
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection)
-            )
-    ) {
-        Spacer(Modifier.height(topGap))
-
-        FluidEntrance(delayMillis = 0) {
-            LivingStopwatchReadout(
-                parts = listOf(a, b, c),
-                running = stopwatch.running,
-                label = "Stopwatch, $a minutes $b seconds $c hundredths" +
-                    if (stopwatch.running) ", running" else ", stopped",
-                modifier = Modifier.fillMaxWidth(),
-                cap = readoutCap
-            )
-        }
-
-        Spacer(Modifier.height(stackGap))
-
-        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+    val controlsAndLaps: @Composable (Modifier) -> Unit = { mod ->
+        Column(modifier = mod) {
             FluidEntrance(delayMillis = 80) {
                 StopwatchControls(
                     idle = !stopwatch.running && elapsed.isZero,
@@ -213,6 +191,66 @@ fun StopwatchScreen(
                 }
             }
         }
+    }
+    val wide = maxWidth > maxHeight
+    val wideCap = minOf(READOUT_CAP, (availH - 16.dp) * 0.2f).coerceAtLeast(28.dp)
+
+    if (wide) {
+        // Landscape / wide: digits on the left, buttons and laps on the right.
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    top = contentPadding.calculateTopPadding(),
+                    start = contentPadding.calculateStartPadding(layoutDirection),
+                    end = contentPadding.calculateEndPadding(layoutDirection)
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                FluidEntrance(delayMillis = 0) {
+                    LivingStopwatchReadout(
+                        parts = listOf(a, b, c),
+                        running = stopwatch.running,
+                        label = "Stopwatch, $a minutes $b seconds $c hundredths" +
+                            if (stopwatch.running) ", running" else ", stopped",
+                        modifier = Modifier.fillMaxWidth(),
+                        cap = wideCap
+                    )
+                }
+            }
+            controlsAndLaps(Modifier.weight(1f).fillMaxHeight())
+        }
+    } else {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                top = contentPadding.calculateTopPadding(),
+                start = contentPadding.calculateStartPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection)
+            )
+    ) {
+        Spacer(Modifier.height(topGap))
+
+        FluidEntrance(delayMillis = 0) {
+            LivingStopwatchReadout(
+                parts = listOf(a, b, c),
+                running = stopwatch.running,
+                label = "Stopwatch, $a minutes $b seconds $c hundredths" +
+                    if (stopwatch.running) ", running" else ", stopped",
+                modifier = Modifier.fillMaxWidth(),
+                cap = readoutCap
+            )
+        }
+
+        Spacer(Modifier.height(stackGap))
+
+        controlsAndLaps(Modifier.fillMaxWidth().weight(1f))
+    }
     }
     }
 }
