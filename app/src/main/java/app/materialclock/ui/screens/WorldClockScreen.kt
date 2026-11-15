@@ -1,5 +1,6 @@
 package app.materialclock.ui.screens
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyListScope
@@ -303,11 +304,11 @@ fun WorldClockScreen(
             Row(modifier = Modifier.fillMaxSize()) {
                 BoxWithConstraints(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.9f)
                         .fillMaxHeight()
                         .padding(
                             top = contentPadding.calculateTopPadding(),
-                            bottom = contentPadding.calculateBottomPadding()
+                            bottom = 16.dp
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -315,7 +316,7 @@ fun WorldClockScreen(
                     headerBlock(dial)
                 }
                 LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    modifier = Modifier.weight(1.1f).fillMaxHeight(),
                     contentPadding = PaddingValues(
                         top = contentPadding.calculateTopPadding(),
                         bottom = contentPadding.calculateBottomPadding(),
@@ -938,7 +939,7 @@ private fun CityRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .heightIn(min = ROW_HEIGHT_DP.dp)
+            .heightIn(min = if (LocalConfiguration.current.screenHeightDp < 480) 76.dp else ROW_HEIGHT_DP.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1044,8 +1045,13 @@ private fun CityRow(
                     }
                 }
 
+                val compactRows = LocalConfiguration.current.screenHeightDp < 480
                 Text(
-                    text = "${city.country.ifBlank { city.region }} |",
+                    text = if (compactRows) {
+                        "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}"
+                    } else {
+                        "${city.country.ifBlank { city.region }} |"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isSelected) {
                         contentColor
@@ -1068,19 +1074,21 @@ private fun CityRow(
                     modifier = Modifier.basicMarquee()
                 )
 
-                Text(
-                    text = "${city.utcCode(nowUtcMillis)} |",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFeatureSettings = "tnum"
-                    ),
-                    color = if (isSelected) {
-                        contentColor
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (!compactRows) {
+                    Text(
+                        text = "${city.utcCode(nowUtcMillis)} |",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFeatureSettings = "tnum"
+                        ),
+                        color = if (isSelected) {
+                            contentColor
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Column(
