@@ -19,6 +19,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -414,12 +416,13 @@ fun ClockDock(
     selected: Tab,
     onSelect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
+    vertical: Boolean = false,
 ) {
     val selectedIndex = destinations.indexOf(selected).takeIf { it >= 0 } ?: 0
 
     BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.BottomCenter,
+        modifier = if (vertical) modifier else modifier.fillMaxWidth(),
+        contentAlignment = if (vertical) Alignment.Center else Alignment.BottomCenter,
     ) {
         // Narrow screens get tighter tabs, and if even that cannot fit the selected tab's name
         // (very small screen or very large font) the name is dropped and only the icon shows.
@@ -429,7 +432,9 @@ fun ClockDock(
         val otherTabsWidth = (24.dp + tabPad * 2) * (destinations.size - 1)
         val selectedTabWidth = 24.dp + 8.dp + labelWidth + tabPad * 2
         val neededWidth = otherTabsWidth + selectedTabWidth + 16.dp
-        val showLabel = neededWidth <= maxWidth - 8.dp
+        val showLabel = !vertical && neededWidth <= maxWidth - 8.dp
+        // In the side rail every tab is a square; on very short screens they get a bit smaller.
+        val itemH = if (vertical && maxHeight < 300.dp) 44.dp else 56.dp
 
         val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
         val targetRect = buttonBounds[selectedIndex]
@@ -447,6 +452,17 @@ fun ClockDock(
             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
             label = "pillWidth",
         )
+        val pillRelativeY = (targetRect?.top ?: 0f) - (button0Rect?.top ?: 0f)
+        val pillAnimatedY by animateFloatAsState(
+            targetValue = pillRelativeY,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+            label = "pillY",
+        )
+        val pillAnimatedHeight by animateFloatAsState(
+            targetValue = targetRect?.height ?: 0f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+            label = "pillHeight",
+        )
         val pillColor = MaterialTheme.colorScheme.primary
 
         Surface(
@@ -455,22 +471,7 @@ fun ClockDock(
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             shadowElevation = 6.dp,
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .height(56.dp)
-                    .drawBehind {
-                        if (pillAnimatedWidth > 0f) {
-                            drawRoundRect(
-                                color = pillColor,
-                                topLeft = Offset(pillAnimatedX, 0f),
-                                size = Size(pillAnimatedWidth, size.height),
-                                cornerRadius = CornerRadius(size.height / 2f),
-                            )
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            val tabs: @Composable () -> Unit = {
                 destinations.forEachIndexed { index, destination ->
                     val isSelected = destination == selected
                     val interactionSource = remember { MutableInteractionSource() }
@@ -523,7 +524,10 @@ fun ClockDock(
 
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
+                            .then(
+                                if (vertical) Modifier.fillMaxWidth().height(itemH)
+                                else Modifier.fillMaxHeight()
+                            )
                             .clip(CircleShape)
                             .graphicsLayer {
                                 scaleX = tabScale
@@ -537,7 +541,7 @@ fun ClockDock(
                             .onGloballyPositioned { coords ->
                                 buttonBounds[index] = coords.boundsInParent()
                             }
-                            .padding(horizontal = tabPad),
+                            .padding(horizontal = if (vertical) 0.dp else tabPad),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
@@ -598,6 +602,45 @@ fun ClockDock(
                             }
                         }
                     }
+                }
+            }
+            if (vertical) {
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .width(56.dp)
+                        .drawBehind {
+                            if (pillAnimatedHeight > 0f) {
+                                drawRoundRect(
+                                    color = pillColor,
+                                    topLeft = Offset(0f, pillAnimatedY),
+                                    size = Size(size.width, pillAnimatedHeight),
+                                    cornerRadius = CornerRadius(size.width / 2f),
+                                )
+                            }
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    tabs()
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .height(56.dp)
+                        .drawBehind {
+                            if (pillAnimatedWidth > 0f) {
+                                drawRoundRect(
+                                    color = pillColor,
+                                    topLeft = Offset(pillAnimatedX, 0f),
+                                    size = Size(pillAnimatedWidth, size.height),
+                                    cornerRadius = CornerRadius(size.height / 2f),
+                                )
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    tabs()
                 }
             }
         }
