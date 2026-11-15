@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -198,17 +199,7 @@ private fun SetTimer(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val setTop = contentPadding.calculateTopPadding()
         val setBottom = contentPadding.calculateBottomPadding() + 16.dp
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(top = setTop, bottom = setBottom)
-                .heightIn(min = (maxHeight - setTop - setBottom).coerceAtLeast(0.dp)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            
-            Spacer(Modifier.weight(0.12f)) 
-
+        val wheelsBlock: @Composable () -> Unit = {
             // LABELS
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -276,8 +267,8 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.weight(0.14f)) 
-
+        }
+        val presetsBlock: @Composable () -> Unit = {
             PresetGrid(presets, onStartPreset, onEditPreset)
             
             Spacer(Modifier.height(12.dp))
@@ -288,9 +279,9 @@ private fun SetTimer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
 
-            Spacer(Modifier.height(24.dp)) 
-
-            Box(modifier = Modifier.padding(horizontal = 48.dp).fillMaxWidth()) {
+        }
+        val startBlock: @Composable (Int) -> Unit = { pad ->
+            Box(modifier = Modifier.padding(horizontal = pad.dp).fillMaxWidth()) {
                 AnimatedStartButton(armed = armed && !isStarting, onClick = {
                     if (isStarting) return@AnimatedStartButton 
                     isStarting = true
@@ -304,8 +295,63 @@ private fun SetTimer(
                     }
                 })
             }
-            
+        }
+
+        if (maxWidth > maxHeight) {
+            // Landscape / wide: wheels on the left, presets and Start on the right.
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = setTop, bottom = setBottom, start = 16.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    wheelsBlock()
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    presetsBlock()
+                    Spacer(Modifier.height(16.dp))
+                    startBlock(24)
+                }
+            }
+        } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(top = setTop, bottom = setBottom)
+                .heightIn(min = (maxHeight - setTop - setBottom).coerceAtLeast(0.dp)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+
+            Spacer(Modifier.weight(0.12f))
+
+            wheelsBlock()
+
+            Spacer(Modifier.weight(0.14f))
+
+            presetsBlock()
+
+            Spacer(Modifier.height(24.dp))
+
+            startBlock(48)
+
             Spacer(Modifier.weight(0.10f))
+        }
         }
     }
 }
@@ -431,379 +477,4 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
 
     // Premium physical touch dampening
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
-        label = "presetChipScale"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(percent = 50), 
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        modifier = Modifier
-            .width(100.dp) 
-            .heightIn(min = 56.dp) 
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = preset.name,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.basicMarquee(
-                    iterations = Int.MAX_VALUE,
-                    velocity = 30.dp
-                )
-            )
-            Spacer(Modifier.height(1.dp))
-            Text(
-                text = timeLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.basicMarquee(
-                    iterations = Int.MAX_VALUE,
-                    velocity = 30.dp
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && armed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
-        label = "startScale"
-    )
-
-    val containerColor by animateColorAsState(
-        if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "startContainer"
-    )
-    val contentColor by animateColorAsState(
-        if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "startContent"
-    )
-
-    Surface(
-        onClick = onClick,
-        enabled = armed,
-        interactionSource = interactionSource,
-        shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(72.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Start", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-        }
-    }
-}
-
-/* ── Running View ───────────────────────────────────────────────────────────────────────────────────── */
-
-@Composable
-private fun RunningTimer(
-    timer: ClockTimer,
-    nowElapsedMillis: Long,
-    onPauseResume: () -> Unit,
-    onAddTen: () -> Unit,
-    onCancel: () -> Unit,
-    contentPadding: PaddingValues
-) {
-    val remaining = timer.remaining(nowElapsedMillis)
-    val secs = remaining.seconds
-    val hasHours = secs >= 3600
-    val text = if (hasHours) {
-        "%d:%02d:%02d".format(secs / 3600, (secs % 3600) / 60, secs % 60)
-    } else {
-        "%02d:%02d".format((secs % 3600) / 60, secs % 60)
-    }
-    val running = timer.state == TimerState.RUNNING
-    val scope = rememberCoroutineScope()
-    var isCanceling by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-    val is24Hour = remember(context) { android.text.format.DateFormat.is24HourFormat(context) }
-
-    val targetTime = remember(remaining) { java.time.LocalDateTime.now().plusSeconds(remaining.seconds) }
-    val targetFormatter = remember(is24Hour) {
-        if (is24Hour) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        else java.time.format.DateTimeFormatter.ofPattern("h:mm a")
-    }
-    val targetString = targetTime.format(targetFormatter).lowercase()
-
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    
-    val refStyle = ClockFace.numerals(capHeight = 62.dp, width = ClockFace.TIMER_WIDTH, weight = ClockFace.TIMER_WEIGHT, slashedZero = true)
-    val strokeWidthPx = with(density) { 18.dp.toPx() }
-
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    val availH = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding()
-    val ringSize = minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 190.dp).coerceAtLeast(160.dp)
-
-    val capHeight = remember(hasHours, density, refStyle, ringSize) {
-        with(density) {
-            val maxTextWidth = ringSize * 0.62f
-            val ref = 62.dp
-            val worstCase = if (hasHours) "88:88:88" else "88:88"
-            val measured = measurer.measure(worstCase, refStyle).size.width.toDp()
-            if (measured <= maxTextWidth) ref else ref * (maxTextWidth / measured)
-        }
-    }
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(
-                top = contentPadding.calculateTopPadding(),
-                bottom = contentPadding.calculateBottomPadding()
-            )
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.weight(0.7f))
-
-        Box(contentAlignment = Alignment.Center) {
-            val waveAmplitude by animateFloatAsState(
-                targetValue = if (running) 1f else 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                label = "waveAmplitude"
-            )
-
-            val waveSpeedFactor by animateFloatAsState(
-                targetValue = if (running) 1f else 0f,
-                animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-                label = "waveSpeedFactor"
-            )
-
-            CircularWavyProgressIndicator(
-                progress = { timer.fractionLeft(nowElapsedMillis) },
-                modifier = Modifier.size(ringSize),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                stroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
-                trackStroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
-                gapSize = 10.dp,
-                wavelength = 76.dp,
-                amplitude = { waveAmplitude },
-                waveSpeed = (28.dp * waveSpeedFactor),
-            )
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Numerals(
-                    text = text,
-                    capHeight = capHeight,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    width = ClockFace.TIMER_WIDTH,
-                    weight = ClockFace.TIMER_WEIGHT,
-                    slashedZero = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Rounded.NotificationsActive,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        targetString,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.clearAndSetSemantics {
-                            contentDescription = "Ends at $targetString"
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.weight(0.8f))
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.weight(1f)) {
-                PauseResumeButton(running = running, onClick = onPauseResume)
-            }
-            Box(Modifier.weight(1f)) {
-                AnimatedPillButton(
-                    text = "+10s",
-                    icon = Icons.Rounded.Add,
-                    onClick = onAddTen,
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        AnimatedPillButton(
-            text = "Cancel",
-            icon = Icons.Rounded.Close,
-            onClick = {
-                if (isCanceling) return@AnimatedPillButton 
-                isCanceling = true
-                scope.launch {
-                    onCancel()
-                    delay(500)
-                    isCanceling = false
-                }
-            },
-            container = MaterialTheme.colorScheme.surfaceContainer,
-            content = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(Modifier.height(32.dp))
-    }
-    }
-}
-
-@Composable
-private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
-        label = "pauseResumeScale"
-    )
-    val containerColor by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "pauseResumeContainer"
-    )
-    val contentColor by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "pauseResumeContent"
-    )
-
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(72.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-    ) {
-        AnimatedContent(
-            targetState = running,
-            transitionSpec = {
-                val slideSpec = spring<IntOffset>(dampingRatio = 0.9f, stiffness = Spring.StiffnessLow)
-                val fadeSpec = tween<Float>(durationMillis = 300)
-                if (targetState) {
-                    (slideInVertically(slideSpec) { it / 2 } + fadeIn(fadeSpec)) togetherWith
-                        (slideOutVertically(slideSpec) { -it / 2 } + fadeOut(fadeSpec))
-                } else {
-                    (slideInVertically(slideSpec) { -it / 2 } + fadeIn(fadeSpec)) togetherWith
-                        (slideOutVertically(slideSpec) { it / 2 } + fadeOut(fadeSpec))
-                }
-            },
-            label = "pauseResumeLabel"
-        ) { isRunning ->
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clearAndSetSemantics {
-                    contentDescription = if (isRunning) "Pause timer" else "Resume timer"
-                }
-            ) {
-                Icon(
-                    if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (isRunning) "Pause" else "Resume",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AnimatedPillButton(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    container: Color,
-    content: Color
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
-        label = "pillButtonScale"
-    )
-
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        shape = CircleShape,
-        color = container,
-        contentColor = content,
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(72.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clearAndSetSemantics { contentDescription = "$text button" }
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        }
-    }
-}
+        targetValu
