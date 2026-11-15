@@ -44,6 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.IntOffset
@@ -372,8 +377,8 @@ private fun ExpressivePortrait(
     BoxWithConstraints(Modifier.fillMaxSize()) {
     val availH = maxHeight - 72.dp
     val sizeScale = (availH / 520.dp).coerceIn(0.6f, 1f)
-    val dismissH = (availH * 0.18f).coerceIn(64.dp, 96.dp)
-    val snoozeH = (availH * 0.14f).coerceIn(56.dp, 72.dp)
+    val dismissH = (availH * 0.13f).coerceIn(56.dp, 72.dp)
+    val snoozeH = (availH * 0.10f).coerceIn(48.dp, 60.dp)
     val bigGap = (availH * 0.10f).coerceIn(16.dp, 56.dp)
     val fullHeight = maxHeight
     val clockWidth = maxWidth - 48.dp
@@ -417,7 +422,7 @@ private fun ExpressivePortrait(
                 dismissMethod = dismissMethod,
                 onDismiss = onDismiss,
                 height = dismissH,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(0.82f).widthIn(max = 320.dp)
             )
         }
 
@@ -428,7 +433,7 @@ private fun ExpressivePortrait(
                 snoozeMinutes = snoozeMinutes,
                 onSnooze = onSnooze,
                 height = snoozeH,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(0.82f).widthIn(max = 320.dp)
             )
         }
     }
@@ -450,8 +455,8 @@ private fun ExpressiveLandscape(
     onDismiss: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-    val dismissH = (maxHeight * 0.30f).coerceIn(56.dp, 76.dp)
-    val snoozeH = (maxHeight * 0.20f).coerceIn(48.dp, 60.dp)
+    val dismissH = (maxHeight * 0.20f).coerceIn(52.dp, 64.dp)
+    val snoozeH = (maxHeight * 0.15f).coerceIn(44.dp, 52.dp)
     val sizeScale = (maxHeight / 320.dp).coerceIn(0.6f, 1f)
     val clockWidth = (maxWidth - 88.dp) * 0.57f
     val fullHeight = maxHeight
@@ -465,7 +470,7 @@ private fun ExpressiveLandscape(
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             AnimatedEntrance(delayMillis = 0) {
@@ -494,6 +499,7 @@ private fun ExpressiveLandscape(
 
         Column(
             modifier = Modifier.weight(0.75f),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AnimatedEntrance(delayMillis = 170) {
@@ -501,7 +507,7 @@ private fun ExpressiveLandscape(
                     dismissMethod = dismissMethod,
                     onDismiss = onDismiss,
                     height = dismissH,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 300.dp)
                 )
             }
             AnimatedEntrance(delayMillis = 250) {
@@ -509,7 +515,7 @@ private fun ExpressiveLandscape(
                     snoozeMinutes = snoozeMinutes,
                     onSnooze = onSnooze,
                     height = snoozeH,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 300.dp)
                 )
             }
         }
@@ -614,6 +620,16 @@ private fun ExpressiveClock(
         label = "clockGlow"
     )
 
+    val ringPhase by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "clockRings"
+    )
+
     val primary = MaterialTheme.colorScheme.primary
 
     Box(
@@ -623,6 +639,27 @@ private fun ExpressiveClock(
             scaleY = breathingScale
         }
     ) {
+        // Soft rings spread outwards from the time, like a sound wave, over and over.
+        Box(
+            modifier = Modifier
+                .size(
+                    width = (if (compact) 180.dp else 250.dp) * k * 1.6f,
+                    height = (if (compact) 80.dp else 120.dp) * k * 1.9f
+                )
+                .drawBehind {
+                    listOf(ringPhase, (ringPhase + 0.5f) % 1f).forEach { phase ->
+                        val scale = 0.5f + 0.5f * phase
+                        val w = size.width * scale
+                        val h = size.height * scale
+                        drawOval(
+                            color = primary.copy(alpha = (1f - phase) * 0.22f),
+                            topLeft = Offset((size.width - w) / 2f, (size.height - h) / 2f),
+                            size = Size(w, h),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    }
+                }
+        )
         Box(
             modifier = Modifier
                 .size(
