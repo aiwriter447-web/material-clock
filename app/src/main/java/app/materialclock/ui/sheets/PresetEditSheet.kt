@@ -20,6 +20,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -65,6 +71,9 @@ fun PresetEditSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 36.dp),
         ) {
@@ -114,10 +123,11 @@ fun PresetEditSheet(
             // Reset, Cancel, and Save buttons all styled cleanly as pill/rounded buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
+                    modifier = Modifier.weight(1f),
                     onClick = resetToInitial,
                     enabled = name != initial.name || mins != (initial.totalSeconds / 60),
                     shape = CircleShape,
@@ -127,12 +137,19 @@ fun PresetEditSheet(
                     Text(
                         text = "Reset",
                         style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)
                     )
                 }
-                
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                Row(
+                    modifier = Modifier.weight(2.2f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Surface(
+                        modifier = Modifier.weight(1f),
                         onClick = onDismiss,
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -141,11 +158,15 @@ fun PresetEditSheet(
                         Text(
                             text = "Cancel",
                             style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)
                         )
                     }
 
                     Surface(
+                        modifier = Modifier.weight(1.2f),
                         onClick = {
                             if (name.isNotBlank() && mins > 0) {
                                 onSave(initial.copy(name = name.trim(), totalSeconds = mins * 60))
@@ -160,7 +181,10 @@ fun PresetEditSheet(
                         Text(
                             text = "Save",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)
                         )
                     }
                 }
