@@ -26,6 +26,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -65,7 +68,12 @@ fun AlarmGroupsSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.padding(bottom = 24.dp)) {
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 24.dp)
+        ) {
             SheetTitle("Alarm groups")
 
             if (groups.isEmpty()) {
