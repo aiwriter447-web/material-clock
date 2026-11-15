@@ -30,6 +30,15 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowCompat
+import android.content.ContextWrapper
+import android.app.Activity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -295,12 +304,41 @@ fun ClockApp(
             } else ""
         }
 
+        val topConfig = LocalConfiguration.current
+        val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp
+
+        // Landscape has very little height, so the status bar is hidden there to give the
+        // content that space back. A swipe down from the top edge shows it again for a moment.
+        val hostView = LocalView.current
+        DisposableEffect(topLandscape) {
+            var hostActivity: Context? = hostView.context
+            while (hostActivity is ContextWrapper && hostActivity !is Activity) {
+                hostActivity = hostActivity.baseContext
+            }
+            val hostWindow = (hostActivity as? Activity)?.window
+            val insetsController = hostWindow?.let { WindowCompat.getInsetsController(it, hostView) }
+            if (insetsController != null) {
+                if (topLandscape) {
+                    insetsController.systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    insetsController.hide(WindowInsetsCompat.Type.statusBars())
+                } else {
+                    insetsController.show(WindowInsetsCompat.Type.statusBars())
+                }
+            }
+            onDispose {
+                insetsController?.show(WindowInsetsCompat.Type.statusBars())
+            }
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surface,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 TopAppBar(
+                    modifier = if (topLandscape) Modifier.padding(end = DOCK_HEIGHT + 16.dp) else Modifier,
+                    expandedHeight = if (topLandscape) 56.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
                     title = {
                         Box(
                             modifier = Modifier.fillMaxWidth()
@@ -584,7 +622,7 @@ fun ClockApp(
                             Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(
-                                    top = padding.calculateTopPadding(),
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
                                     bottom = padding.calculateBottomPadding() + 8.dp,
                                     end = padding.calculateEndPadding(ld) + 8.dp
                                 )
