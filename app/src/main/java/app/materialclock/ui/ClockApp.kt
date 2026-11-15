@@ -88,6 +88,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -416,7 +417,8 @@ fun ClockApp(
                     },
                     actions = {}, 
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = if (topLandscape) Color.Transparent else MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = if (topLandscape) Color.Transparent else MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 )
