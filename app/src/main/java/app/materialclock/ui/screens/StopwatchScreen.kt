@@ -136,6 +136,7 @@ fun StopwatchScreen(
     val topGap = minOf(32.dp, availH * 0.04f)
     val stackGap = minOf(STACK_GAP, availH * 0.045f)
     val wide = maxWidth > maxHeight
+    val wideCap = minOf(READOUT_CAP, (availH - 16.dp) * 0.2f).coerceAtLeast(28.dp)
     val controlsAndLaps: @Composable (Modifier) -> Unit = { mod ->
         val showList = stopwatch.running || !elapsed.isZero || stopwatch.laps.isNotEmpty()
         Column(
@@ -214,14 +215,10 @@ fun StopwatchScreen(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BoxWithConstraints(
+            Box(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
-                // The three groups sit on one line; each one is about 9.6 times the digit height
-                // wide, so the digit height is chosen to make the whole line fit the pane.
-                val lineCap = minOf(READOUT_CAP, (maxWidth - 16.dp) / 9.6f, availH * 0.4f)
-                    .coerceAtLeast(24.dp)
                 FluidEntrance(delayMillis = 0) {
                     LivingStopwatchReadout(
                         parts = listOf(a, b, c),
@@ -229,8 +226,7 @@ fun StopwatchScreen(
                         label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                             if (stopwatch.running) ", running" else ", stopped",
                         modifier = Modifier.fillMaxWidth(),
-                        cap = lineCap,
-                        horizontal = true
+                        cap = wideCap
                     )
                 }
             }
