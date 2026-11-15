@@ -434,7 +434,7 @@ fun ClockDock(
         val neededWidth = otherTabsWidth + selectedTabWidth + 16.dp
         val showLabel = !vertical && neededWidth <= maxWidth - 8.dp
         // In the side rail every tab is a square; on very short screens they get a bit smaller.
-        val itemH = if (vertical && maxHeight < 300.dp) 44.dp else 56.dp
+        val itemH = if (vertical) ((maxHeight - 16.dp) / destinations.size).coerceIn(44.dp, 76.dp) else 56.dp
 
         val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
         val targetRect = buttonBounds[selectedIndex]
