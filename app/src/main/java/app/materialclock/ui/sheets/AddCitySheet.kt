@@ -15,6 +15,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.foundation.layout.imePadding
+import app.materialclock.ui.theme.LocalUiScale
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -83,7 +85,11 @@ fun AddCitySheet(
     ) {
         // Fixed rather than capped: this sheet is a search field over six hundred rows, so it
         // wants to be as tall as it is allowed to be every time, not to grow as you type.
-        Column(Modifier.height(LocalConfiguration.current.screenHeightDp.dp * SHEET_MAX_FRACTION)) {
+        Column(
+            Modifier
+                .height((LocalConfiguration.current.screenHeightDp.dp / LocalUiScale.current) * SHEET_MAX_FRACTION)
+                .imePadding()
+        ) {
             SheetTitle("Add a city")
             OutlinedTextField(
                 value = query,
