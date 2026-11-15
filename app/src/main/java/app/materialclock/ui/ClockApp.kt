@@ -79,6 +79,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -385,13 +386,25 @@ fun ClockApp(
         ) { padding ->
 
             val ld = LocalLayoutDirection.current
-            val underDock = padding.calculateBottomPadding() +
-                dockHeight + DOCK_CLEARANCE + 12.dp
-            val underDockAndFab = underDock + DOCK_HEIGHT + 12.dp
+            // Landscape (phones turned sideways, unfolded flips/folds): the dock becomes a
+            // vertical bar on the right, so content gets the remaining width and the full height.
+            val config = LocalConfiguration.current
+            val landscape = config.screenWidthDp > config.screenHeightDp
+            val railWidth = DOCK_HEIGHT + 16.dp
+            val underDock = if (landscape) {
+                padding.calculateBottomPadding() + 12.dp
+            } else {
+                padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
+            }
+            val underDockAndFab = if (landscape) {
+                padding.calculateBottomPadding() + 100.dp
+            } else {
+                underDock + DOCK_HEIGHT + 12.dp
+            }
 
             val body = PaddingValues(
                 start = padding.calculateStartPadding(ld) + 16.dp,
-                end = padding.calculateEndPadding(ld) + 16.dp,
+                end = (if (landscape) 0.dp else padding.calculateEndPadding(ld)) + 16.dp,
                 top = padding.calculateTopPadding(),
                 bottom = underDockAndFab,
             )
@@ -422,6 +435,9 @@ fun ClockApp(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(
+                                end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
+                            )
                             .clipScrollableContainer(Orientation.Horizontal),
                         beyondViewportPageCount = 1
                     ) { page ->
@@ -541,19 +557,43 @@ fun ClockApp(
                     AnimatedVisibility(
                         visible = !selectionActive,
                         enter = fadeIn(animationSpec = fluidSpringSpec()) +
-                            slideInVertically(
-                                initialOffsetY = { it / 4 },
-                                animationSpec = fluidSpringSpec()
-                            ),
+                            (if (landscape) {
+                                slideInHorizontally(
+                                    initialOffsetX = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                )
+                            } else {
+                                slideInVertically(
+                                    initialOffsetY = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                )
+                            }),
                         exit = fadeOut(animationSpec = fluidSpringSpec()) +
-                            slideOutVertically(
-                                targetOffsetY = { it / 4 },
-                                animationSpec = fluidSpringSpec()
-                            ),
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(bottom = DOCK_CLEARANCE)
+                            (if (landscape) {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                )
+                            } else {
+                                slideOutVertically(
+                                    targetOffsetY = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                )
+                            }),
+                        modifier = if (landscape) {
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(
+                                    top = padding.calculateTopPadding(),
+                                    bottom = padding.calculateBottomPadding() + 8.dp,
+                                    end = padding.calculateEndPadding(ld) + 8.dp
+                                )
+                        } else {
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(bottom = DOCK_CLEARANCE)
+                        }
                     ) {
                         ClockDock(
                             destinations = Tab.entries,
@@ -566,9 +606,12 @@ fun ClockApp(
                                     )
                                 }
                             },
+                            vertical = landscape,
                             modifier = Modifier.onGloballyPositioned { coords ->
-                                with(density) {
-                                    dockHeight = coords.size.height.toDp()
+                                if (!landscape) {
+                                    with(density) {
+                                        dockHeight = coords.size.height.toDp()
+                                    }
                                 }
                             },
                         )
@@ -593,12 +636,21 @@ fun ClockApp(
                                 else -> editing = vm.blankAlarm()
                             }
                         },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(
-                                bottom = padding.calculateBottomPadding() +
-                                    dockHeight + DOCK_CLEARANCE + 12.dp,
-                            ),
+                        modifier = if (landscape) {
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(
+                                    end = railWidth + padding.calculateEndPadding(ld) + 16.dp,
+                                    bottom = padding.calculateBottomPadding() + 16.dp,
+                                )
+                        } else {
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(
+                                    bottom = padding.calculateBottomPadding() +
+                                        dockHeight + DOCK_CLEARANCE + 12.dp,
+                                )
+                        },
                     )
                 }
             }
