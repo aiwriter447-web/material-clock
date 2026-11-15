@@ -530,4 +530,586 @@ private fun HomeDigitalClock(
     val timeText = buildString {
         append(
             String.format(
-  
+                Locale.getDefault(),
+                "%02d:%02d",
+                hour,
+                local.minute
+            )
+        )
+
+        if (showSeconds) {
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    ":%02d",
+                    local.second
+                )
+            )
+        }
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    val baseTime = if (showSeconds) 52f else 76f
+    val baseAmPm = if (showSeconds) 24f else 32f
+    val fontScale = LocalDensity.current.fontScale
+    val units = timeText.length * 0.6f + if (use24h) 0f else 0.5f
+    val fitSp = (maxWidth.value - 16f) / (fontScale * units)
+    val shrink = (minOf(baseTime, fitSp) / baseTime).coerceIn(0.4f, 1f)
+    val timeFontSize = (baseTime * shrink).sp
+    val amPmFontSize = (baseAmPm * shrink).sp
+    val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = timeText,
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontSize = timeFontSize,
+                    fontWeight = FontWeight(450),
+                    letterSpacing = 1.sp,
+                    fontFeatureSettings = "tnum"
+                ),
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
+            )
+
+            if (!use24h) {
+                Spacer(Modifier.width(8.dp))
+
+                Text(
+                    text = meridiem,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = amPmFontSize,
+                        fontWeight = FontWeight(450),
+                        letterSpacing = 1.sp
+                    ),
+                    color = ink,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(
+                        bottom = amPmBottomPadding
+                    )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        val formatter = remember(home) {
+            DateTimeFormatter
+                .ofPattern("EEEE, d MMMM yyyy")
+                .withZone(home)
+        }
+
+        Text(
+            text = formatter.format(instant),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight(450)
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+    }
+}
+
+@Composable
+private fun CityDial(
+    cities: List<WorldCity>,
+    nowUtcMillis: Long,
+    measurer: TextMeasurer,
+    modifier: Modifier = Modifier
+) {
+    val face = MaterialTheme.colorScheme.surfaceContainerHighest
+    val accent = MaterialTheme.colorScheme.primary
+    val onAccent = MaterialTheme.colorScheme.onPrimary
+    val ghost = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val hourStyle = MaterialTheme.typography.headlineMedium.copy(
+        color = ghost.copy(alpha = 0.45f),
+        fontWeight = FontWeight(450)
+    )
+
+    val pillStyle = MaterialTheme.typography.labelMedium.copy(
+        color = onAccent,
+        fontWeight = FontWeight(450)
+    )
+
+    val hourLabels = remember(measurer, hourStyle) {
+        (0 until 12).associateWith { i ->
+            if (i % 3 == 0) {
+                val label = if (i == 0) "12" else i.toString()
+                measurer.measure(label, hourStyle)
+            } else {
+                null
+            }
+        }
+    }
+
+    Canvas(modifier) {
+        val radius = size.minDimension / 2f
+        val centerPoint = Offset(
+            size.width / 2f,
+            size.height / 2f
+        )
+
+        drawCircle(
+            face,
+            radius = radius,
+            center = centerPoint
+        )
+
+        for (i in 0 until 12) {
+            val angle =
+                (i / 12f) * 2f * PI.toFloat() -
+                    PI.toFloat() / 2f
+
+            val position = Offset(
+                x = centerPoint.x +
+                    cos(angle) * (radius - 44.dp.toPx()),
+                y = centerPoint.y +
+                    sin(angle) * (radius - 44.dp.toPx())
+            )
+
+            val measuredText = hourLabels[i]
+
+            if (measuredText != null) {
+                drawText(
+                    textLayoutResult = measuredText,
+                    topLeft = Offset(
+                        x = position.x -
+                            measuredText.size.width / 2f,
+                        y = position.y -
+                            measuredText.size.height / 2f
+                    )
+                )
+            } else {
+                drawCircle(
+                    accent.copy(alpha = 0.45f),
+                    radius = 3.5.dp.toPx(),
+                    center = position
+                )
+            }
+        }
+
+        cities.forEach { city ->
+            val local = city.timeAt(nowUtcMillis)
+            val hours12 =
+                (local.hour % 12) + local.minute / 60f
+
+            val angle = hours12 / 12f * 360f - 90f
+            val rad = angle * PI.toFloat() / 180f
+            val lineLength = radius - 62.dp.toPx()
+
+            val tip = Offset(
+                x = centerPoint.x + cos(rad) * lineLength,
+                y = centerPoint.y + sin(rad) * lineLength
+            )
+
+            drawLine(
+                accent,
+                start = centerPoint,
+                end = tip,
+                strokeWidth = 2.dp.toPx()
+            )
+
+            val measuredCityText =
+                measurer.measure(city.city, pillStyle)
+
+            val padH = 7.dp.toPx()
+            val w = measuredCityText.size.width + padH * 2
+            val h = measuredCityText.size.height + 5.dp.toPx()
+
+            val flip =
+                if (angle.mod(360f) in 90f..270f) 180f else 0f
+
+            rotate(
+                degrees = angle + flip,
+                pivot = tip
+            ) {
+                drawRoundRect(
+                    color = accent,
+                    topLeft = Offset(
+                        tip.x - w / 2f,
+                        tip.y - h / 2f
+                    ),
+                    size = Size(w, h),
+                    cornerRadius = CornerRadius(h / 2f)
+                )
+
+                drawText(
+                    textLayoutResult = measuredCityText,
+                    topLeft = Offset(
+                        tip.x - measuredCityText.size.width / 2f,
+                        tip.y - measuredCityText.size.height / 2f
+                    )
+                )
+            }
+        }
+
+        drawCircle(
+            accent,
+            radius = 7.dp.toPx(),
+            center = centerPoint
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CityRow(
+    city: WorldCity,
+    home: ZoneId,
+    nowUtcMillis: Long,
+    use24h: Boolean,
+    showSeconds: Boolean,
+    isSelected: Boolean,
+    inSelectionMode: Boolean,
+    onToggleSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val local = city.timeAt(nowUtcMillis)
+    val night = city.isNight(nowUtcMillis)
+
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioHighBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "cityRowScale"
+    )
+
+    val targetContainer =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+
+    val targetContent =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
+    val targetTimeColor =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.primary
+        }
+
+    val containerColor by animateColorAsState(
+        targetContainer,
+        spring(stiffness = Spring.StiffnessLow),
+        label = "containerColor"
+    )
+
+    val contentColor by animateColorAsState(
+        targetContent,
+        spring(stiffness = Spring.StiffnessLow),
+        label = "contentColor"
+    )
+
+    val timeTextColor by animateColorAsState(
+        targetTimeColor,
+        spring(stiffness = Spring.StiffnessLow),
+        label = "timeTextColor"
+    )
+
+    // Night icon now uses the primary theme colors in both modes.
+    val targetBadgeBg =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else if (night) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        }
+
+    val targetBadgeTint =
+        if (isSelected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else if (night) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        }
+
+    val badgeBg by animateColorAsState(
+        targetBadgeBg,
+        spring(stiffness = Spring.StiffnessLow),
+        label = "badgeBg"
+    )
+
+    val badgeTint by animateColorAsState(
+        targetBadgeTint,
+        spring(stiffness = Spring.StiffnessLow),
+        label = "badgeTint"
+    )
+
+    val timeOnly = buildString {
+        if (use24h) {
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    local.hour,
+                    local.minute
+                )
+            )
+        } else {
+            val h =
+                (local.hour % 12).takeIf { it != 0 } ?: 12
+
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    h,
+                    local.minute
+                )
+            )
+        }
+
+        if (showSeconds) {
+            append(
+                String.format(
+                    Locale.getDefault(),
+                    ":%02d",
+                    local.second
+                )
+            )
+        }
+    }
+
+    val amPmString =
+        if (!use24h) {
+            if (local.hour < 12) "am" else "pm"
+        } else {
+            ""
+        }
+
+    val inst = Instant.ofEpochMilli(nowUtcMillis)
+
+    val diffSeconds =
+        city.zone.rules.getOffset(inst).totalSeconds -
+            home.rules.getOffset(inst).totalSeconds
+
+    val diffString =
+        if (diffSeconds == 0) {
+            "Local Time Zone"
+        } else {
+            val totalMins = kotlin.math.abs(diffSeconds) / 60
+            val h = totalMins / 60
+            val m = totalMins % 60
+            val dir = if (diffSeconds > 0) "Ahead" else "Behind"
+
+            val hStr = if (h > 0) "$h hours " else ""
+            val mStr = if (m > 0) "$m Minutes " else ""
+
+            "${hStr}${mStr}$dir"
+        }
+
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(percent = 50),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .heightIn(min = ROW_HEIGHT_DP.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    if (inSelectionMode) {
+                        onToggleSelect()
+                    }
+                },
+                onLongClick = {
+                    onToggleSelect()
+                }
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 20.dp,
+                    vertical = 8.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                color = badgeBg,
+                shape = CircleShape,
+                modifier = Modifier.size(52.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    AnimatedContent(
+                        targetState = night,
+                        transitionSpec = {
+                            (
+                                fadeIn(tween(220)) +
+                                scaleIn(
+                                    spring(
+                                        dampingRatio =
+                                            Spring.DampingRatioMediumBouncy
+                                    )
+                                )
+                            ) togetherWith (
+                                fadeOut(tween(140)) +
+                                scaleOut(tween(140))
+                            )
+                        },
+                        label = "sunMoonAnim"
+                    ) { isNightTime ->
+                        Icon(
+                            imageVector = if (isNightTime) {
+                                Icons.Outlined.Bedtime
+                            } else {
+                                Icons.Outlined.LightMode
+                            },
+                            contentDescription = if (isNightTime) {
+                                "night"
+                            } else {
+                                "daytime"
+                            },
+                            tint = badgeTint,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = 16.dp,
+                        end = 8.dp
+                    ),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = city.city,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight(450)
+                        ),
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (city.pinnedAt != null) {
+                        Spacer(Modifier.width(6.dp))
+
+                        Icon(
+                            imageVector = Icons.Rounded.PushPin,
+                            contentDescription = "Pinned",
+                            tint = if (isSelected) {
+                                contentColor
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "${city.country.ifBlank { city.region }} |",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) {
+                        contentColor
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = "$diffString |",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) {
+                        contentColor
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
+
+                Text(
+                    text = "${city.utcCode(nowUtcMillis)} |",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = if (isSelected) {
+                        contentColor
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = timeOnly,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight(450),
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = timeTextColor,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+
+                if (amPmString.isNotEmpty()) {
+                    Text(
+                        text = amPmString,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight(450)
+                        ),
+                        color = timeTextColor,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+    }
+}
