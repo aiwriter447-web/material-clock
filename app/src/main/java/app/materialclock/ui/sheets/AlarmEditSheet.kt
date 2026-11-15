@@ -416,4 +416,536 @@ fun AlarmEditSheet(
                         fluidSpringSpec = fluidSpringSpec // Pass the fluid spring down
                     )
 
-                  
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val soundInteraction = remember { MutableInteractionSource() }
+                        val isSoundPressed by soundInteraction.collectIsPressedAsState()
+                        
+                        // LIVING FLOW: Button Breathing
+                        val soundScale by animateFloatAsState(
+                            targetValue = if (isSoundPressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
+                            label = "soundScale"
+                        )
+
+                        FilledTonalButton(
+                            onClick = {
+                                ringtonePicker.launch(
+                                    Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                        .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                        .putExtra(
+                                            RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                            soundUri?.takeIf { it != SILENT }?.let(Uri::parse),
+                                        )
+                                )
+                            },
+                            interactionSource = soundInteraction,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 18.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = ROW_H)
+                                .graphicsLayer {
+                                    scaleX = soundScale
+                                    scaleY = soundScale
+                                },
+                        ) {
+                            Icon(Icons.Rounded.MusicNote, contentDescription = null, Modifier.size(20.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                ringtoneName(soundUri),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleMedium, 
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+
+                        // LIVING FLOW: Organic Haptic Resonance (घटती हुई प्राकृतिक वेव)
+                        val vibrateAnim = remember { Animatable(0f) }
+                        LaunchedEffect(vibrate) {
+                            if (vibrate) {
+                                vibrateAnim.animateTo(12f, spring(dampingRatio = 0.2f, stiffness = 500f))
+                                vibrateAnim.animateTo(-12f, spring(dampingRatio = 0.3f, stiffness = 400f))
+                                vibrateAnim.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = 300f))
+                            }
+                        }
+
+                        FilledIconToggleButton(
+                            checked = vibrate,
+                            onCheckedChange = { vibrate = it },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = IconButtonDefaults.filledIconToggleButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer, 
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer, 
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.size(ROW_H),
+                        ) {
+                            Icon(
+                                imageVector = if (vibrate) Icons.Rounded.Vibration else Icons.Rounded.Smartphone,
+                                contentDescription = if (vibrate) "Vibrate on" else "Vibrate off",
+                                modifier = Modifier.graphicsLayer { rotationZ = vibrateAnim.value }
+                            )
+                        }
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (onDelete != null) {
+                            val deleteInteraction = remember { MutableInteractionSource() }
+                            val isDeletePressed by deleteInteraction.collectIsPressedAsState()
+                            
+                            // LIVING FLOW: Deep Tactile Press
+                            val deleteScale by animateFloatAsState(
+                                targetValue = if (isDeletePressed) 0.85f else 1f,
+                                animationSpec = fluidSpringSpec,
+                                label = "deleteScale"
+                            )
+
+                            FilledTonalButton(
+                                onClick = { showDeleteConfirm = true },
+                                interactionSource = deleteInteraction,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = customDeleteBgColor,
+                                    contentColor = customDeleteContentColor 
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = ROW_H)
+                                    .graphicsLayer {
+                                        scaleX = deleteScale
+                                        scaleY = deleteScale
+                                    },
+                            ) {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, Modifier.size(24.dp))
+                            }
+                        }
+
+                        val cancelInteraction = remember { MutableInteractionSource() }
+                        val isCancelPressed by cancelInteraction.collectIsPressedAsState()
+                        
+                        val cancelScale by animateFloatAsState(
+                            targetValue = if (isCancelPressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
+                            label = "cancelScale"
+                        )
+
+                        FilledTonalButton(
+                            onClick = { scope.launch { sheetState.hide(); onDismiss() } },
+                            interactionSource = cancelInteraction,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = customCancelBgColor,
+                                contentColor = customCancelContentColor
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .heightIn(min = ROW_H)
+                                .graphicsLayer {
+                                    scaleX = cancelScale
+                                    scaleY = cancelScale
+                                },
+                        ) {
+                            Text("Cancel", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        val saveInteraction = remember { MutableInteractionSource() }
+                        val isSavePressed by saveInteraction.collectIsPressedAsState()
+                        
+                        val saveScale by animateFloatAsState(
+                            targetValue = if (isSavePressed) 0.90f else 1f,
+                            animationSpec = fluidSpringSpec,
+                            label = "saveScale"
+                        )
+
+                        Button(
+                            onClick = { commitAndClose(explicit = true) },
+                            interactionSource = saveInteraction,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier
+                                .weight(if (onDelete != null) 1.8f else 2.4f)
+                                .heightIn(min = ROW_H)
+                                .graphicsLayer {
+                                    scaleX = saveScale
+                                    scaleY = saveScale
+                                },
+                        ) {
+                            Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Save", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (wide) {
+            // Landscape / wide: time wheels on the left, the rest of the options on the right.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier.weight(0.85f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SwipeTimeEntry(state = timeState)
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1.15f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    detailsBlock()
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(Modifier.height(16.dp))
+
+                SwipeTimeEntry(state = timeState)
+
+                Spacer(Modifier.height(24.dp))
+
+                detailsBlock()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeTimeEntry(state: TimePickerState) {
+    val is24Hour = state.is24hour
+    
+    val hoursList = if (is24Hour) (0..23).map { "%02d".format(it) } else (1..12).map { "%02d".format(it) }
+    val minutesList = (0..59).map { "%02d".format(it) }
+    val amPmList = listOf("am", "pm")
+
+    val currentHourIndex = if (is24Hour) state.hour else {
+        val h12 = (state.hour % 12).takeIf { it != 0 } ?: 12
+        h12 - 1
+    }
+    val currentAmPmIndex = if (state.hour < 12) 0 else 1
+
+    val titleStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "Hours", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(24.dp))
+            WheelPicker(
+                items = hoursList,
+                selectedIndex = currentHourIndex,
+                isAmPm = false,
+                onIndexChanged = { newIndex ->
+                    if (is24Hour) {
+                        state.hour = newIndex
+                    } else {
+                        val newH12 = newIndex + 1
+                        val isPm = state.hour >= 12
+                        state.hour = (newH12 % 12) + if (isPm) 12 else 0
+                    }
+                }
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = " ", style = titleStyle) 
+            Spacer(Modifier.height(24.dp)) 
+            Box(
+                modifier = Modifier.height(maxOf(180.dp, with(LocalDensity.current) { MaterialTheme.typography.displayMedium.lineHeight.toDp() + 8.dp } * 3)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ":",
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp)) 
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "Minutes", style = titleStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(24.dp))
+            WheelPicker(
+                items = minutesList,
+                selectedIndex = state.minute,
+                isAmPm = false,
+                onIndexChanged = { state.minute = it }
+            )
+        }
+
+        if (!is24Hour) {
+            Spacer(Modifier.width(24.dp)) 
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = " ", style = titleStyle) 
+                Spacer(Modifier.height(24.dp))
+                WheelPicker(
+                    items = amPmList,
+                    selectedIndex = currentAmPmIndex,
+                    isAmPm = true, 
+                    onIndexChanged = { newIndex ->
+                        val isCurrentlyPm = state.hour >= 12
+                        val wantsPm = newIndex == 1
+                        if (wantsPm && !isCurrentlyPm) {
+                            state.hour += 12
+                        } else if (!wantsPm && isCurrentlyPm) {
+                            state.hour -= 12
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun WheelPicker(
+    items: List<String>,
+    selectedIndex: Int,
+    isAmPm: Boolean,
+    onIndexChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val virtualCount = 100_000 
+    val initialCenter = virtualCount / 2
+    val initialIndex = initialCenter - (initialCenter % items.size) + selectedIndex.coerceAtLeast(0)
+    
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            val realIndex = listState.firstVisibleItemIndex % items.size
+            if (realIndex != selectedIndex) {
+                onIndexChanged(realIndex) 
+            }
+        }
+    }
+
+    LaunchedEffect(selectedIndex) {
+        val currentlyShowing = listState.firstVisibleItemIndex % items.size
+        if (currentlyShowing != selectedIndex) {
+            val currentCenter = listState.firstVisibleItemIndex
+            val targetOffset = selectedIndex - (currentCenter % items.size)
+            var diff = targetOffset
+            
+            if (diff > items.size / 2) diff -= items.size
+            else if (diff < -items.size / 2) diff += items.size
+            
+            listState.animateScrollToItem(currentCenter + diff)
+        }
+    }
+
+    val firstVisible by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+    
+    val pickerBaseStyle = if (isAmPm) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium
+    val itemHeight = maxOf(60.dp, with(LocalDensity.current) { pickerBaseStyle.lineHeight.toDp() } + 8.dp)
+    val pickerHeight = itemHeight * 3
+
+    LazyColumn(
+        state = listState,
+        flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+        modifier = modifier
+            .height(pickerHeight) 
+            .width(80.dp), 
+        contentPadding = PaddingValues(vertical = itemHeight), 
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        items(virtualCount) { index ->
+            val realIndex = index % items.size
+            val itemText = items[realIndex]
+            val isSelected = index == firstVisible
+            
+            val fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Light
+            val textAlpha = if (isSelected) 1f else 0.3f
+            
+            val baseStyle = if (isAmPm) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium
+            val textStyle = baseStyle.copy(fontWeight = fontWeight)
+
+            // LIVING FLOW: Liquid Scroll Scale
+            val scale by animateFloatAsState(
+                targetValue = if (isSelected) 1.05f else 0.85f, 
+                // बहुत ही सॉफ्ट स्प्रिंग ताकि नंबर एक बुलबुले की तरह बड़े हों
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessLow),
+                label = "scale"
+            )
+            
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(itemHeight) 
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = itemText,
+                    style = textStyle,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha),
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupPicker(
+    groups: List<AlarmGroup>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+    onCreateGroup: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    fluidSpringSpec: androidx.compose.animation.core.SpringSpec<Float> // LIVING FLOW parameter
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showCreate by remember { mutableStateOf(false) }
+    val selectedName = groups.firstOrNull { it.id == selectedId }?.name ?: "No group"
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // LIVING FLOW: Deep tactile press
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = fluidSpringSpec,
+        label = "groupPickerScale"
+    )
+
+    Box(modifier) {
+        FilledTonalButton(
+            onClick = { expanded = true },
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = ROW_H)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+        ) {
+            Icon(Icons.Rounded.Group, contentDescription = null, Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                selectedName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Start,
+            )
+        }
+        
+        MaterialTheme(
+            shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
+        ) {
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("No group") },
+                    onClick = { onSelect(null); expanded = false },
+                )
+                groups.forEach { group ->
+                    DropdownMenuItem(
+                        text = { Text(group.name) },
+                        onClick = { onSelect(group.id); expanded = false },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("New group") },
+                    leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    onClick = { expanded = false; showCreate = true },
+                )
+            }
+        }
+    }
+
+    if (showCreate) {
+        var name by rememberSaveable { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("New group") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Group name") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (name.isNotBlank()) onCreateGroup(name.trim())
+                        showCreate = false
+                    },
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCreate = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun ringtoneName(uri: String?): String {
+    val context = LocalContext.current
+    return remember(uri) {
+        when {
+            uri == null -> "Default sound"
+            uri == SILENT -> "Silent"
+            else -> runCatching {
+                RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
+            }.getOrNull() ?: "Default sound"
+        }
+    }
+}
+
+private val EDGE = 24.dp
+private val ROW_H = 56.dp
+const val SILENT = "silent"
+
+fun systemFirstDay(): DayOfWeek =
+    java.time.temporal.WeekFields.of(Locale.getDefault()).firstDayOfWeek
