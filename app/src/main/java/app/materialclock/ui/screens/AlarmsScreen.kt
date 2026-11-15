@@ -1,5 +1,10 @@
 package app.materialclock.ui.screens
 
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.activity.compose.BackHandler
@@ -243,16 +248,26 @@ fun AlarmsScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
 
-        LazyColumn(
+        // 1 column on phones held upright, 2 when turned sideways, 3 on wide unfolded screens.
+        val columnCount = when {
+            maxWidth >= 840.dp -> 3
+            maxWidth >= 560.dp -> 2
+            else -> 1
+        }
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columnCount),
             modifier = Modifier.fillMaxSize(),
             contentPadding = adjustedContentPadding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (groups.isNotEmpty()) {
                 item(
                     key = "group-cards",
+                    span = { GridItemSpan(maxLineSpan) },
                     contentType = "groups"
                 ) {
                     GroupCardsSection(
@@ -871,6 +886,7 @@ private fun AlarmRow(
         BoxWithConstraints {
         val fontScale = LocalDensity.current.fontScale
         val rowInner = maxWidth - ROW_HORIZONTAL_PADDING * 2
+        val rowVPad = if (LocalConfiguration.current.screenHeightDp < 480) 10.dp else ROW_VERTICAL_PADDING
         val timeNeed = (if (is24Hour) 95f else 130f) * fontScale
         val daysAvail = rowInner.value - timeNeed - 16f
         val daysScale = (daysAvail / (152f * fontScale)).coerceIn(0.55f, 1f)
@@ -879,7 +895,7 @@ private fun AlarmRow(
                 .fillMaxWidth()
                 .padding(
                     horizontal = ROW_HORIZONTAL_PADDING,
-                    vertical = ROW_VERTICAL_PADDING
+                    vertical = rowVPad
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
