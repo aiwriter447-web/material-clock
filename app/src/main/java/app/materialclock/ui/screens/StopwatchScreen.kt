@@ -17,6 +17,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -133,8 +135,13 @@ fun StopwatchScreen(
     val readoutCap = minOf(READOUT_CAP, availH * 0.10f).coerceAtLeast(32.dp)
     val topGap = minOf(32.dp, availH * 0.04f)
     val stackGap = minOf(STACK_GAP, availH * 0.045f)
+    val wide = maxWidth > maxHeight
     val controlsAndLaps: @Composable (Modifier) -> Unit = { mod ->
-        Column(modifier = mod) {
+        val showList = stopwatch.running || !elapsed.isZero || stopwatch.laps.isNotEmpty()
+        Column(
+            modifier = mod,
+            verticalArrangement = if (wide && !showList) Arrangement.Center else Arrangement.Top
+        ) {
             FluidEntrance(delayMillis = 80) {
                 StopwatchControls(
                     idle = !stopwatch.running && elapsed.isZero,
@@ -144,6 +151,7 @@ fun StopwatchScreen(
                     onReset = onReset,
                 )
             }
+            if (showList) {
             Spacer(Modifier.height(12.dp))
             LazyColumn(
                 state = listState,
@@ -190,10 +198,9 @@ fun StopwatchScreen(
                     )
                 }
             }
+            }
         }
     }
-    val wide = maxWidth > maxHeight
-    val wideCap = minOf(READOUT_CAP, (availH - 16.dp) * 0.2f).coerceAtLeast(28.dp)
 
     if (wide) {
         // Landscape / wide: digits on the left, buttons and laps on the right.
@@ -207,10 +214,14 @@ fun StopwatchScreen(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
+                // The three groups sit on one line; each one is about 9.6 times the digit height
+                // wide, so the digit height is chosen to make the whole line fit the pane.
+                val lineCap = minOf(READOUT_CAP, (maxWidth - 16.dp) / 9.6f, availH * 0.4f)
+                    .coerceAtLeast(24.dp)
                 FluidEntrance(delayMillis = 0) {
                     LivingStopwatchReadout(
                         parts = listOf(a, b, c),
@@ -218,7 +229,8 @@ fun StopwatchScreen(
                         label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                             if (stopwatch.running) ", running" else ", stopped",
                         modifier = Modifier.fillMaxWidth(),
-                        cap = wideCap
+                        cap = lineCap,
+                        horizontal = true
                     )
                 }
             }
@@ -307,7 +319,8 @@ private fun LivingStopwatchReadout(
     running: Boolean,
     label: String,
     modifier: Modifier = Modifier,
-    cap: Dp = READOUT_CAP
+    cap: Dp = READOUT_CAP,
+    horizontal: Boolean = false
 ) {
     val infinite = rememberInfiniteTransition(label = "stopwatchLivingPulse")
 
@@ -340,7 +353,10 @@ private fun LivingStopwatchReadout(
     ) {
         Box(
             modifier = Modifier
-                .size(width = cap * 4.3f, height = cap * 3.9f)
+                .size(
+                    width = if (horizontal) cap * 9.8f else cap * 4.3f,
+                    height = if (horizontal) cap * 2.6f else cap * 3.9f
+                )
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
@@ -352,14 +368,33 @@ private fun LivingStopwatchReadout(
                 )
         )
 
-        StackedDigits(
-            parts = parts,
-            capHeight = cap,
-            color = primary,
-            leading = Icons.Rounded.Timer,
-            label = label,
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (horizontal) {
+            Row(
+                modifier = Modifier
+                    .semantics(mergeDescendants = true) { contentDescription = label },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                parts.forEachIndexed { index, part ->
+                    DigitRow(
+                        part = part,
+                        capHeight = cap,
+                        color = primary,
+                        leading = if (index == 0) Icons.Rounded.Timer else null,
+                        separator = index > 0
+                    )
+                }
+            }
+        } else {
+            StackedDigits(
+                parts = parts,
+                capHeight = cap,
+                color = primary,
+                leading = Icons.Rounded.Timer,
+                label = label,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
