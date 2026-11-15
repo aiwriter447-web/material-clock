@@ -14,6 +14,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -203,9 +207,15 @@ private fun SetupPage(
     onSecondary: (() -> Unit)? = null,
 ) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        // On short screens (landscape, small phones, big fonts) the page scrolls so the
+        // buttons can always be reached; on tall screens it stays centred as before.
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+        val pageHeight = maxHeight
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = pageHeight)
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -242,6 +252,7 @@ private fun SetupPage(
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = onSecondary) { Text(secondaryLabel) }
             }
+        }
         }
     }
 }
