@@ -268,8 +268,8 @@ private fun SetTimer(
             }
 
         }
-        val presetsBlock: @Composable () -> Unit = {
-            PresetGrid(presets, onStartPreset, onEditPreset)
+        val presetsBlock: @Composable (Boolean) -> Unit = { compactPresets ->
+            PresetGrid(presets, onStartPreset, onEditPreset, compact = compactPresets)
             
             Spacer(Modifier.height(12.dp))
 
@@ -317,15 +317,24 @@ private fun SetTimer(
                 }
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState()),
+                        .weight(1.3f)
+                        .fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
                 ) {
-                    presetsBlock()
-                    Spacer(Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            presetsBlock(true)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     startBlock(24)
+                    Spacer(Modifier.height(4.dp))
                 }
             }
         } else {
@@ -344,7 +353,7 @@ private fun SetTimer(
 
             Spacer(Modifier.weight(0.14f))
 
-            presetsBlock()
+            presetsBlock(false)
 
             Spacer(Modifier.height(24.dp))
 
@@ -442,24 +451,30 @@ private fun InfiniteWheelPicker(
 private fun PresetGrid(
     presets: List<TimerPreset>,
     onStart: (TimerPreset) -> Unit,
-    onEdit: (TimerPreset) -> Unit
+    onEdit: (TimerPreset) -> Unit,
+    compact: Boolean = false
 ) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = if (compact) 8.dp else 24.dp)
     ) {
         presets.forEach { preset ->
-            PresetChip(preset, onClick = { onStart(preset) }, onLongClick = { onEdit(preset) })
+            PresetChip(
+                preset,
+                onClick = { onStart(preset) },
+                onLongClick = { onEdit(preset) },
+                compact = compact
+            )
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: () -> Unit, compact: Boolean = false) {
     val totalMins = preset.totalSeconds / 60
     val secs = preset.totalSeconds % 60
     val timeLabel = if (totalMins >= 60) {
@@ -487,7 +502,7 @@ private fun PresetChip(preset: TimerPreset, onClick: () -> Unit, onLongClick: ()
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
             .width(100.dp) 
-            .heightIn(min = 56.dp) 
+            .heightIn(min = if (compact) 46.dp else 56.dp) 
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
