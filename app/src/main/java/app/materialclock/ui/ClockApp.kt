@@ -283,7 +283,7 @@ fun ClockApp(
                 // Only consider enabled alarms
                 val next = alarmsNow.filter { it.enabled }.mapNotNull { it.nextFire(now) }.minOrNull()
                 if (next == null) {
-                    "" // Hide completely if all alarms are off
+                    "All alarms are off"
                 } else {
                     val d = java.time.Duration.between(now, next)
                     val days = d.toDays()
@@ -337,11 +337,7 @@ fun ClockApp(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 TopAppBar(
-                    modifier = if (topLandscape) {
-                        Modifier.padding(end = DOCK_HEIGHT + 16.dp)
-                    } else {
-                        Modifier.padding(top = 6.dp)
-                    },
+                    modifier = if (topLandscape) Modifier.padding(end = DOCK_HEIGHT + 16.dp) else Modifier,
                     expandedHeight = if (topLandscape) 56.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
                     title = {
                         Box(
@@ -354,37 +350,34 @@ fun ClockApp(
                                 exit = fadeOut(animationSpec = tween(200)),
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .padding(start = 110.dp, end = 52.dp) 
+                                    .padding(start = 110.dp, end = 12.dp)
                             ) {
                                 Text(
                                     text = marqueeText,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    textAlign = TextAlign.Center, 
+                                    textAlign = TextAlign.Center,
                                     modifier = Modifier
-                                        .fillMaxWidth() 
+                                        .fillMaxWidth()
                                         .basicMarquee(
                                             iterations = Int.MAX_VALUE,
                                             animationMode = MarqueeAnimationMode.Immediately,
                                             velocity = 30.dp,
-                                            initialDelayMillis = 0 
+                                            initialDelayMillis = 0
                                         )
                                 )
                             }
 
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
+                            IconButton(
+                                onClick = { showSettings = true },
                                 modifier = Modifier.align(Alignment.CenterEnd)
                             ) {
-                                IconButton(onClick = { showSettings = true }) {
-                                    Icon(
-                                        Icons.Rounded.Settings,
-                                        contentDescription = "${currentTab.label} settings",
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
+                                Icon(
+                                    Icons.Rounded.Settings,
+                                    contentDescription = "${currentTab.label} settings",
+                                    modifier = Modifier.size(28.dp)
+                                )
                             }
 
                             Surface(
@@ -421,7 +414,7 @@ fun ClockApp(
                             }
                         }
                     },
-                    actions = {}, 
+                    actions = {},
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         scrolledContainerColor = Color.Transparent,
@@ -442,7 +435,8 @@ fun ClockApp(
             } else {
                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             }
-            val innerTopPadding = (padding.calculateTopPadding() - statusBarTop).coerceAtLeast(0.dp)
+            val contentClipTop = if (landscape) 0.dp else statusBarTop + 6.dp
+            val innerTopPadding = (padding.calculateTopPadding() - contentClipTop).coerceAtLeast(0.dp)
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
@@ -488,7 +482,7 @@ fun ClockApp(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(
-                                top = statusBarTop,
+                                top = contentClipTop,
                                 end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
                             )
                             .clipToBounds()
