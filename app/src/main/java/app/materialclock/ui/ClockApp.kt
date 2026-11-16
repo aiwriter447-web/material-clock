@@ -1,6 +1,5 @@
 package app.materialclock.ui
 
-import android.Manifest
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
@@ -9,12 +8,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,19 +25,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,7 +46,6 @@ import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,8 +72,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -171,6 +163,8 @@ fun ClockApp(
             ) {}
             return@ClockTheme
         }
+
+        val isLightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
 
         val nm = remember {
             ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -310,10 +304,9 @@ fun ClockApp(
         val topConfig = LocalConfiguration.current
         val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp || topConfig.screenWidthDp >= 600
 
-        // Landscape has very little height, so the status bar is hidden there to give the
-        // content that space back. A swipe down from the top edge shows it again for a moment.
+        // Sync status bar icon contrast with active theme & hide status bar in landscape
         val hostView = LocalView.current
-        DisposableEffect(topLandscape) {
+        DisposableEffect(topLandscape, isLightTheme) {
             var hostActivity: Context? = hostView.context
             while (hostActivity is ContextWrapper && hostActivity !is Activity) {
                 hostActivity = hostActivity.baseContext
@@ -321,6 +314,8 @@ fun ClockApp(
             val hostWindow = (hostActivity as? Activity)?.window
             val insetsController = hostWindow?.let { WindowCompat.getInsetsController(it, hostView) }
             if (insetsController != null) {
+                insetsController.isAppearanceLightStatusBars = isLightTheme
+                insetsController.isAppearanceLightNavigationBars = isLightTheme
                 if (topLandscape) {
                     insetsController.systemBarsBehavior =
                         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -342,7 +337,11 @@ fun ClockApp(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 TopAppBar(
-                    modifier = if (topLandscape) Modifier.padding(end = DOCK_HEIGHT + 16.dp) else Modifier,
+                    modifier = if (topLandscape) {
+                        Modifier.padding(end = DOCK_HEIGHT + 16.dp)
+                    } else {
+                        Modifier.padding(top = 6.dp)
+                    },
                     expandedHeight = if (topLandscape) 56.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
                     title = {
                         Box(
@@ -438,6 +437,12 @@ fun ClockApp(
             val config = LocalConfiguration.current
             val landscape = config.screenWidthDp > config.screenHeightDp || config.screenWidthDp >= 600
             val railWidth = DOCK_HEIGHT + 16.dp
+            val statusBarTop = if (landscape) {
+                0.dp
+            } else {
+                WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            }
+            val innerTopPadding = (padding.calculateTopPadding() - statusBarTop).coerceAtLeast(0.dp)
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
@@ -452,15 +457,15 @@ fun ClockApp(
             val body = PaddingValues(
                 start = padding.calculateStartPadding(ld) + 16.dp,
                 end = (if (landscape) 0.dp else padding.calculateEndPadding(ld)) + 16.dp,
-                top = padding.calculateTopPadding(),
+                top = innerTopPadding,
                 bottom = underDockAndFab,
             )
             val edgeToEdge = PaddingValues(
-                top = padding.calculateTopPadding(),
+                top = innerTopPadding,
                 bottom = underDock,
             )
             val edgeToEdgeWithFab = PaddingValues(
-                top = padding.calculateTopPadding(),
+                top = innerTopPadding,
                 bottom = underDockAndFab,
             )
 
@@ -482,10 +487,12 @@ fun ClockApp(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .hazeSource(state = hazeState)
                             .padding(
+                                top = statusBarTop,
                                 end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
                             )
+                            .clipToBounds()
+                            .hazeSource(state = hazeState)
                             .clipScrollableContainer(Orientation.Horizontal),
                         beyondViewportPageCount = 1
                     ) { page ->
