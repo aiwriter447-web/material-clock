@@ -225,7 +225,7 @@ fun WorldClockScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val wide = maxWidth > maxHeight
+        val wide = maxWidth > maxHeight || maxWidth >= 600.dp
 
         val headerBlock: @Composable (Dp?) -> Unit = { dialSize ->
                 Crossfade(
