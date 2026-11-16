@@ -306,7 +306,7 @@ fun ClockApp(
         }
 
         val topConfig = LocalConfiguration.current
-        val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp
+        val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp || topConfig.screenWidthDp >= 600
 
         // Landscape has very little height, so the status bar is hidden there to give the
         // content that space back. A swipe down from the top edge shows it again for a moment.
@@ -429,7 +429,7 @@ fun ClockApp(
             // Landscape (phones turned sideways, unfolded flips/folds): the dock becomes a
             // vertical bar on the right, so content gets the remaining width and the full height.
             val config = LocalConfiguration.current
-            val landscape = config.screenWidthDp > config.screenHeightDp
+            val landscape = config.screenWidthDp > config.screenHeightDp || config.screenWidthDp >= 600
             val railWidth = DOCK_HEIGHT + 16.dp
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
