@@ -122,8 +122,8 @@ import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -472,7 +472,7 @@ fun ClockApp(
                 ) + fadeIn(animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
-                val hazeState = rememberHazeState()
+                val hazeState = remember { HazeState() }
 
                 Box(Modifier.fillMaxSize()) {
                     HorizontalPager(
