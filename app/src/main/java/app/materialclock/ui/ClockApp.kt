@@ -10,7 +10,9 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -20,12 +22,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +86,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -117,6 +119,7 @@ import app.materialclock.ui.theme.ClockTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 6.dp
@@ -343,55 +346,25 @@ fun ClockApp(
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // 1. Living Flow notification ticker:
-                            // - Originates smoothly from the Settings icon side
-                            // - Short text stays centered without scrolling
-                            // - Long text emerges from behind the Settings icon and glides under the Title Pill
+                            // 1. Live News Headline Ticker:
+                            // - Originates smoothly from behind the Settings icon
+                            // - Short text stays centered peacefully
+                            // - Long text continuously glides from Settings icon under the Title Pill
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = slideInHorizontally(
-                                    initialOffsetX = { fullWidth -> fullWidth / 3 },
+                                    initialOffsetX = { fullWidth -> fullWidth / 2 },
                                     animationSpec = fluidSpringSpec()
                                 ) + fadeIn(animationSpec = tween(350)),
                                 exit = slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> fullWidth / 3 },
+                                    targetOffsetX = { fullWidth -> fullWidth / 2 },
                                     animationSpec = fluidSpringSpec()
                                 ) + fadeOut(animationSpec = tween(250)),
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .padding(start = 104.dp, end = 24.dp)
                             ) {
-                                AnimatedContent(
-                                    targetState = marqueeText,
-                                    transitionSpec = {
-                                        (slideInHorizontally(
-                                            initialOffsetX = { it / 4 },
-                                            animationSpec = fluidSpringSpec()
-                                        ) + fadeIn(animationSpec = tween(300))) togetherWith
-                                            (slideOutHorizontally(
-                                                targetOffsetX = { -it / 4 },
-                                                animationSpec = fluidSpringSpec()
-                                            ) + fadeOut(animationSpec = tween(200)))
-                                    },
-                                    label = "AlarmStatusTickerAnim"
-                                ) { statusLine ->
-                                    Text(
-                                        text = statusLine,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .basicMarquee(
-                                                iterations = Int.MAX_VALUE,
-                                                animationMode = MarqueeAnimationMode.Immediately,
-                                                velocity = 30.dp,
-                                                initialDelayMillis = 1200
-                                            )
-                                    )
-                                }
+                                LiveNewsHeadlineTicker(text = marqueeText)
                             }
 
                             // 2. Clean Settings icon without any surrounding pill background
@@ -831,6 +804,121 @@ fun ClockApp(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun LiveNewsHeadlineTicker(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val style = MaterialTheme.typography.titleMedium
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        val viewportWidthPx = constraints.maxWidth.toFloat()
+        val safeMarginPx = with(density) { 28.dp.toPx() }
+        val velocityPxPerSec = with(density) { 42.dp.toPx() }
+
+        SubcomposeLayout { constraints ->
+            val measured = subcompose("ticker_text") {
+                Text(
+                    text = text,
+                    style = style,
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }.first().measure(Constraints())
+
+            val textWidthPx = measured.width.toFloat()
+            val needsRunning = textWidthPx > (viewportWidthPx - safeMarginPx)
+
+            layout(constraints.maxWidth, measured.height) {
+                if (!needsRunning) {
+                    val centerX = ((viewportWidthPx - textWidthPx) / 2f).toInt()
+                    measured.placeRelative(centerX, 0)
+                }
+            }
+        }
+
+        // Measure text width reliably to decide between centered static vs continuous live headline
+        var measuredTextWidth by remember(text) { mutableStateOf(0f) }
+
+        SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
+            val placeable = subcompose("measure_only") {
+                Text(
+                    text = text,
+                    style = style,
+                    color = Color.Transparent,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }.first().measure(Constraints())
+
+            if (measuredTextWidth != placeable.width.toFloat()) {
+                measuredTextWidth = placeable.width.toFloat()
+            }
+
+            val shouldScroll = measuredTextWidth > (viewportWidthPx - safeMarginPx)
+            layout(constraints.maxWidth, placeable.height) {
+                if (shouldScroll) {
+                    // Rendered by the animated layer below
+                }
+            }
+        }
+
+        val shouldScroll = measuredTextWidth > 0f && measuredTextWidth > (viewportWidthPx - safeMarginPx)
+        if (shouldScroll) {
+            val offsetX = remember(text, viewportWidthPx, measuredTextWidth) {
+                Animatable(viewportWidthPx)
+            }
+
+            LaunchedEffect(text, viewportWidthPx, measuredTextWidth) {
+                val startX = viewportWidthPx
+                val endX = -measuredTextWidth
+                val totalDistance = startX - endX
+                val durationMs = ((totalDistance / velocityPxPerSec) * 1000f).toInt().coerceAtLeast(1500)
+
+                // Start smoothly from right (Settings icon) and glide continuously left under Title Pill
+                offsetX.snapTo(startX * 0.65f)
+                val firstRunDuration = (((startX * 0.65f - endX) / velocityPxPerSec) * 1000f)
+                    .toInt()
+                    .coerceAtLeast(800)
+                offsetX.animateTo(
+                    targetValue = endX,
+                    animationSpec = tween(durationMillis = firstRunDuration, easing = LinearEasing)
+                )
+
+                while (isActive) {
+                    offsetX.snapTo(startX)
+                    offsetX.animateTo(
+                        targetValue = endX,
+                        animationSpec = tween(durationMillis = durationMs, easing = LinearEasing)
+                    )
+                }
+            }
+
+            SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
+                val placeable = subcompose("scrolling_headline") {
+                    Text(
+                        text = text,
+                        style = style,
+                        color = color,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }.first().measure(Constraints())
+
+                layout(constraints.maxWidth, placeable.height) {
+                    placeable.placeRelative(offsetX.value.toInt(), 0)
+                }
+            }
         }
     }
 }
