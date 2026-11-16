@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "app.materialclock"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
@@ -119,6 +119,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("dev.chrisbanes.haze:haze:1.5.2")
     implementation(libs.androidx.graphics.shapes)
 
     implementation(libs.androidx.core.ktx)
