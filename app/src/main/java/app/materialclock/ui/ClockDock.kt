@@ -417,24 +417,40 @@ private val StopwatchOutlinedCustom: ImageVector
 private var _stopwatchOutlinedCustom: ImageVector? = null
 
 @Composable
-fun rememberFrostedGlassBorder(): BorderStroke {
+fun rememberFrostedGlassBorder(darker: Boolean = false): BorderStroke {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     return BorderStroke(
-        width = 1.dp,
+        width = 1.25.dp,
         brush = Brush.verticalGradient(
-            colors = if (isDark) {
-                listOf(
-                    Color.White.copy(alpha = 0.28f),
-                    primaryContainer.copy(alpha = 0.24f),
-                    Color.White.copy(alpha = 0.08f),
-                )
+            colors = if (darker) {
+                if (isDark) {
+                    listOf(
+                        Color.White.copy(alpha = 0.24f),
+                        primaryContainer.copy(alpha = 0.22f),
+                        Color.Black.copy(alpha = 0.35f),
+                    )
+                } else {
+                    listOf(
+                        Color.White.copy(alpha = 0.65f),
+                        primaryContainer.copy(alpha = 0.36f),
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.36f),
+                    )
+                }
             } else {
-                listOf(
-                    Color.White.copy(alpha = 0.85f),
-                    primaryContainer.copy(alpha = 0.30f),
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
-                )
+                if (isDark) {
+                    listOf(
+                        Color.White.copy(alpha = 0.38f),
+                        primaryContainer.copy(alpha = 0.32f),
+                        Color.White.copy(alpha = 0.12f),
+                    )
+                } else {
+                    listOf(
+                        Color.White.copy(alpha = 0.94f),
+                        primaryContainer.copy(alpha = 0.42f),
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.32f),
+                    )
+                }
             }
         )
     )
@@ -444,26 +460,50 @@ fun rememberFrostedGlassBorder(): BorderStroke {
 fun Modifier.frostedGlassEffect(
     hazeState: HazeState?,
     shape: Shape = CircleShape,
+    darker: Boolean = false,
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.22f else 0.26f)
 
-    val internalGlassSheen = Brush.verticalGradient(
-        colors = if (isDark) {
-            listOf(
-                Color.White.copy(alpha = 0.10f),
-                primaryContainer.copy(alpha = 0.06f),
-                Color.Black.copy(alpha = 0.08f),
-            )
-        } else {
-            listOf(
-                Color.White.copy(alpha = 0.36f),
-                Color.White.copy(alpha = 0.12f),
-                primaryContainer.copy(alpha = 0.14f),
-            )
-        }
-    )
+    val glassTintColor = if (darker) {
+        primaryContainer.copy(alpha = if (isDark) 0.34f else 0.46f)
+    } else {
+        primaryContainer.copy(alpha = if (isDark) 0.38f else 0.42f)
+    }
+
+    val internalGlassSheen = if (darker) {
+        Brush.verticalGradient(
+            colors = if (isDark) {
+                listOf(
+                    Color.Black.copy(alpha = 0.24f),
+                    Color.Black.copy(alpha = 0.34f),
+                    Color.Black.copy(alpha = 0.44f),
+                )
+            } else {
+                listOf(
+                    Color.Black.copy(alpha = 0.10f),
+                    primaryContainer.copy(alpha = 0.18f),
+                    Color.Black.copy(alpha = 0.20f),
+                )
+            }
+        )
+    } else {
+        Brush.verticalGradient(
+            colors = if (isDark) {
+                listOf(
+                    Color.White.copy(alpha = 0.16f),
+                    primaryContainer.copy(alpha = 0.12f),
+                    Color.Black.copy(alpha = 0.10f),
+                )
+            } else {
+                listOf(
+                    Color.White.copy(alpha = 0.48f),
+                    Color.White.copy(alpha = 0.18f),
+                    primaryContainer.copy(alpha = 0.22f),
+                )
+            }
+        )
+    }
 
     val clipped = this.clip(shape)
     return if (hazeState != null) {
@@ -480,7 +520,7 @@ fun Modifier.frostedGlassEffect(
             .background(internalGlassSheen)
     } else {
         clipped
-            .background(primaryContainer.copy(alpha = 0.55f))
+            .background(primaryContainer.copy(alpha = if (darker) 0.72f else 0.65f))
             .background(internalGlassSheen)
     }
 }
@@ -541,9 +581,9 @@ fun ClockDock(
             shape = CircleShape,
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = rememberFrostedGlassBorder(),
+            border = rememberFrostedGlassBorder(darker = false),
             shadowElevation = 0.dp,
-            modifier = Modifier.frostedGlassEffect(hazeState = hazeState)
+            modifier = Modifier.frostedGlassEffect(hazeState = hazeState, darker = false)
         ) {
             val tabs: @Composable () -> Unit = {
                 destinations.forEachIndexed { index, destination ->
