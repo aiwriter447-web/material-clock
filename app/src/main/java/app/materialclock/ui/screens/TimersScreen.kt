@@ -297,7 +297,7 @@ private fun SetTimer(
             }
         }
 
-        if (maxWidth > maxHeight) {
+        if (maxWidth > maxHeight || maxWidth >= 600.dp) {
             // Landscape / wide: wheels on the left, presets and Start on the right.
             Row(
                 modifier = Modifier
@@ -635,7 +635,7 @@ private fun RunningTimer(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
     val availH = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding()
-    val wide = maxWidth > maxHeight
+    val wide = maxWidth > maxHeight || maxWidth >= 600.dp
     val ringSize = if (wide) {
         minOf(RING_SIZE_DP.dp, (maxWidth - 48.dp) * 0.5f, availH - 16.dp).coerceAtLeast(140.dp)
     } else {
