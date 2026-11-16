@@ -14,21 +14,21 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -57,8 +58,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 // --- 100% UNTOUCHED ICONS (Shape guaranteed) ---
 
@@ -236,7 +242,6 @@ private val TimerOutlinedCustom: ImageVector
     }
 private var _timerOutlinedCustom: ImageVector? = null
 
-
 private val WorldFilledCustom: ImageVector
     get() {
         if (_worldFilledCustom != null) return _worldFilledCustom!!
@@ -330,7 +335,6 @@ private val WorldOutlinedCustom: ImageVector
     }
 private var _worldOutlinedCustom: ImageVector? = null
 
-
 private val StopwatchFilledCustom: ImageVector
     get() {
         if (_stopwatchFilledCustom != null) return _stopwatchFilledCustom!!
@@ -417,6 +421,7 @@ fun ClockDock(
     onSelect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
     vertical: Boolean = false,
+    hazeState: HazeState? = null,
 ) {
     val selectedIndex = destinations.indexOf(selected).takeIf { it >= 0 } ?: 0
 
@@ -424,8 +429,6 @@ fun ClockDock(
         modifier = if (vertical) modifier else modifier.fillMaxWidth(),
         contentAlignment = if (vertical) Alignment.Center else Alignment.BottomCenter,
     ) {
-        // Narrow screens get tighter tabs, and if even that cannot fit the selected tab's name
-        // (very small screen or very large font) the name is dropped and only the icon shows.
         val fontScale = LocalDensity.current.fontScale
         val tabPad = if (maxWidth < 360.dp) 10.dp else 16.dp
         val labelWidth = (selected.label.length * 8.5f * fontScale).dp
@@ -433,7 +436,6 @@ fun ClockDock(
         val selectedTabWidth = 24.dp + 8.dp + labelWidth + tabPad * 2
         val neededWidth = otherTabsWidth + selectedTabWidth + 16.dp
         val showLabel = !vertical && neededWidth <= maxWidth - 8.dp
-        // In the side rail every tab is a square; on very short screens they get a bit smaller.
         val itemH = if (vertical) ((maxHeight - 16.dp) / destinations.size).coerceIn(44.dp, 76.dp) else 56.dp
 
         val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
@@ -441,7 +443,6 @@ fun ClockDock(
         val button0Rect = buttonBounds[0]
         val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
 
-        // Fluid Motion: Liquid Pill Indicator Slide (Bouncy & responsive)
         val pillAnimatedX by animateFloatAsState(
             targetValue = pillRelativeX,
             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -465,18 +466,46 @@ fun ClockDock(
         )
         val pillColor = MaterialTheme.colorScheme.primary
 
+        // Material You Frosted Glass Colors & Edge Highlight
+        val dockBaseColor = MaterialTheme.colorScheme.primaryContainer
+        val glassBorder = BorderStroke(
+            width = 1.dp,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.24f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.14f),
+                )
+            )
+        )
+
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = if (hazeState != null) Color.Transparent else dockBaseColor.copy(alpha = 0.78f),
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shadowElevation = 6.dp,
+            border = glassBorder,
+            shadowElevation = 0.dp,
+            modifier = if (hazeState != null) {
+                Modifier
+                    .clip(CircleShape)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = dockBaseColor,
+                            tint = HazeTint(dockBaseColor.copy(alpha = 0.62f)),
+                            blurRadius = 20.dp,
+                            noiseFactor = 0.04f,
+                        )
+                    )
+            } else {
+                Modifier
+            }
         ) {
             val tabs: @Composable () -> Unit = {
                 destinations.forEachIndexed { index, destination ->
                     val isSelected = destination == selected
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
-                    
+
                     val iconRotation = remember { Animatable(0f) }
 
                     LaunchedEffect(isSelected) {
@@ -508,14 +537,12 @@ fun ClockDock(
                         }
                     }
 
-                    // Fluid Motion: Spongy Tap Scale
                     val tabScale by animateFloatAsState(
                         targetValue = if (isPressed) 0.85f else 1f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
                         label = "tabScale"
                     )
 
-                    // Fluid Motion: Smooth Color Blend for Selected Text/Icon
                     val contentColor by animateColorAsState(
                         targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                         animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
@@ -556,7 +583,7 @@ fun ClockDock(
                                     Tab.STOPWATCH -> StopwatchFilledCustom
                                 }
                             }
-                            
+
                             val inactiveIcon = remember(destination) {
                                 when (destination) {
                                     Tab.ALARMS -> AlarmOutlinedCustom
@@ -565,7 +592,7 @@ fun ClockDock(
                                     Tab.STOPWATCH -> StopwatchOutlinedCustom
                                 }
                             }
-                            
+
                             val icon = if (isSelected) activeIcon else inactiveIcon
 
                             Icon(
@@ -579,7 +606,6 @@ fun ClockDock(
                                 tint = contentColor
                             )
 
-                            // Fluid Motion: Bouncy Text Expansion
                             AnimatedVisibility(
                                 visible = isSelected && showLabel,
                                 enter = expandHorizontally(
@@ -654,7 +680,6 @@ fun FloatingAddButton(
     onClick: () -> Unit, 
     modifier: Modifier = Modifier
 ) {
-    // Fluid Motion: Smooth Spring Grow Animation
     val grow by animateFloatAsState(
         targetValue = if (visible) 1f else 0f, 
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow), 
@@ -667,7 +692,6 @@ fun FloatingAddButton(
         label = "addGlyph",
     )
 
-    // Fluid Motion: Bouncy Rotation
     val rotation by animateFloatAsState(
         targetValue = if (visible) 0f else -180f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -677,7 +701,6 @@ fun FloatingAddButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Fluid Motion: Spongy FAB Press
     val pressScale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
