@@ -17,10 +17,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Density
+import kotlin.math.pow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import app.materialclock.data.DarkMode
 import app.materialclock.data.ThemeSettings
+
+/** The short-side width, in dp, that every layout in the app was designed on (1080 px phone). */
+private const val UI_REFERENCE_DP = 384f
+
+/** Phones are scaled between these factors: about 326 dp up to about 422 dp short side. */
+private const val UI_SCALE_MIN = 0.85f
+private const val UI_SCALE_MAX = 1.1f
+
+/**
+ * Text shrinks less than the boxes around it on small phones (and grows less on big ones), so
+ * it stays readable: 0 would scale text exactly like everything else, 1 would not scale it at all.
+ */
+private const val TEXT_DAMPING = 0.4f
+
+/**
+ * How much the whole UI is scaled so it keeps the same proportions on every phone. 1.0 on the
+ * reference phone, 0.85 (the lowest) on a 320 dp phone, about 1.09 on a 419 dp phone.
+ */
+val LocalUiScale = staticCompositionLocalOf { 1f }
+
+private val LocalUiScaleApplied = staticCompositionLocalOf { false }
 
 @Composable
 fun ClockTheme(
@@ -53,7 +79,32 @@ fun ClockTheme(
         activity?.enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
     }
 
+    // Proportional scaling for phones: the design is laid out for a 384 dp short side, and on
+    // other phone sizes every dp and sp grows or shrinks by the same factor, so the screens look
+    // the same instead of getting cramped or loose. The short side is used so that landscape
+    // behaves exactly like portrait. Tablets and unfolded folds (600 dp and up) are not scaled.
+    val outerDensity = LocalDensity.current
+    val screen = LocalConfiguration.current
+    val alreadyScaled = LocalUiScaleApplied.current
+    val shortSideDp = minOf(screen.screenWidthDp, screen.screenHeightDp)
+    val uiScale = when {
+        alreadyScaled -> LocalUiScale.current
+        shortSideDp < 600 -> (shortSideDp / UI_REFERENCE_DP).coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
+        else -> 1f
+    }
+    val scaledDensity = if (alreadyScaled) {
+        outerDensity
+    } else {
+        Density(
+            density = outerDensity.density * uiScale,
+            fontScale = outerDensity.fontScale * uiScale.pow(-TEXT_DAMPING)
+        )
+    }
+
     CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalUiScale provides uiScale,
+        LocalUiScaleApplied provides true,
         LocalTonalElevationEnabled provides !amoled,
     ) {
         MaterialExpressiveTheme(
