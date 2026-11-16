@@ -82,7 +82,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -124,7 +123,6 @@ import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -376,73 +374,51 @@ fun ClockApp(
                                 )
                             }
 
-                            // Frosted Glass Settings Pill
                             Surface(
                                 shape = CircleShape,
-                                color = Color.Transparent,
-                                border = frostedGlassBorder(),
-                                shadowElevation = 0.dp,
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .clip(CircleShape)
-                                    .hazeEffect(
-                                        state = hazeState,
-                                        style = frostedHazeStyle(),
-                                    )
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.align(Alignment.CenterEnd)
                             ) {
-                                IconButton(
-                                    onClick = { showSettings = true },
-                                    modifier = Modifier.background(frostedGlassSheen())
-                                ) {
+                                IconButton(onClick = { showSettings = true }) {
                                     Icon(
                                         Icons.Rounded.Settings,
                                         contentDescription = "${currentTab.label} settings",
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurface
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                             }
 
-                            // Frosted Glass Title Pill
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
-                                border = frostedGlassBorder(),
+                                border = rememberFrostedGlassBorder(),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
-                                    .clip(CircleShape)
-                                    .hazeEffect(
-                                        state = hazeState,
-                                        style = frostedHazeStyle(),
-                                    )
+                                    .frostedGlassEffect(hazeState = hazeState)
                             ) {
-                                Box(
-                                    modifier = Modifier.background(frostedGlassSheen())
-                                ) {
-                                    AnimatedContent(
-                                        targetState = targetTab,
-                                        transitionSpec = {
-                                            (slideInVertically(
+                                AnimatedContent(
+                                    targetState = targetTab,
+                                    transitionSpec = {
+                                        (slideInVertically(
+                                            animationSpec = fluidSpringSpec()
+                                        ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
+                                            (slideOutVertically(
                                                 animationSpec = fluidSpringSpec()
-                                            ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
-                                                (slideOutVertically(
-                                                    animationSpec = fluidSpringSpec()
-                                                ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
-                                        },
-                                        label = "TopBarTitleAnim"
-                                    ) { tab ->
-                                        Text(
-                                            text = tab.label,
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(
-                                                horizontal = 20.dp,
-                                                vertical = 10.dp
-                                            ),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
+                                            ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
+                                    },
+                                    label = "TopBarTitleAnim"
+                                ) { tab ->
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(
+                                            horizontal = 20.dp,
+                                            vertical = 10.dp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }
