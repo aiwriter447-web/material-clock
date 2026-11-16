@@ -1,12 +1,5 @@
 package app.materialclock.ui.screens
 
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -24,11 +17,13 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -42,8 +37,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -78,9 +75,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
@@ -97,7 +95,11 @@ import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
 import app.materialclock.data.order
 import app.materialclock.ui.DOCK_HEIGHT
+import app.materialclock.ui.dockFrostedGlass
+import app.materialclock.ui.rememberDockGlassBorder
 import app.materialclock.ui.sheets.systemFirstDay
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import java.time.DayOfWeek
 
 // Consistent delete color for BOTH light and dark themes.
@@ -125,6 +127,7 @@ fun AlarmsScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
+    val localHazeState = remember { HazeState() }
 
     var is24Hour by remember {
         mutableStateOf(android.text.format.DateFormat.is24HourFormat(context))
@@ -259,7 +262,9 @@ fun AlarmsScreen(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(columnCount),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(state = localHazeState),
             contentPadding = adjustedContentPadding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -321,7 +326,7 @@ fun AlarmsScreen(
             }
         }
 
-        // Fluid Animated Floating Toolbar.
+        // Fluid Animated Floating Toolbar with Dock Frosted Glass effect.
         AnimatedVisibility(
             visible = inSelectionMode,
             enter =
@@ -355,9 +360,6 @@ fun AlarmsScreen(
                 .navigationBarsPadding()
                 .padding(bottom = 20.dp)
         ) {
-            val dark =
-                MaterialTheme.colorScheme.surface.luminance() < 0.5f
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,18 +369,15 @@ fun AlarmsScreen(
             ) {
                 HorizontalFloatingToolbar(
                     expanded = true,
-                    colors = if (dark) {
-                        FloatingToolbarDefaults.standardFloatingToolbarColors(
-                            toolbarContainerColor =
-                                MaterialTheme.colorScheme.surfaceContainerHighest,
-                            toolbarContentColor =
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors()
-                    },
-                    expandedShadowElevation = 6.dp,
-                    modifier = Modifier.height(DOCK_HEIGHT),
+                    colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+                        toolbarContainerColor = Color.Transparent,
+                        toolbarContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                    expandedShadowElevation = 0.dp,
+                    modifier = Modifier
+                        .height(DOCK_HEIGHT)
+                        .dockFrostedGlass(hazeState = localHazeState)
+                        .border(rememberDockGlassBorder(), CircleShape),
                 ) {
                     val allSelected =
                         selectedAlarms.size == alarms.size &&
@@ -884,83 +883,71 @@ private fun AlarmRow(
             ),
     ) {
         BoxWithConstraints {
-        val fontScale = LocalDensity.current.fontScale
-        val rowInner = maxWidth - ROW_HORIZONTAL_PADDING * 2
-        val rowVPad = if (LocalConfiguration.current.screenHeightDp < 480) 10.dp else ROW_VERTICAL_PADDING
-        val timeNeed = (if (is24Hour) 95f else 130f) * fontScale
-        val daysAvail = rowInner.value - timeNeed - 16f
-        val daysScale = (daysAvail / (152f * fontScale)).coerceIn(0.55f, 1f)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = ROW_HORIZONTAL_PADDING,
-                    vertical = rowVPad
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
+            val fontScale = LocalDensity.current.fontScale
+            val rowInner = maxWidth - ROW_HORIZONTAL_PADDING * 2
+            val rowVPad = if (LocalConfiguration.current.screenHeightDp < 480) 10.dp else ROW_VERTICAL_PADDING
+            val timeNeed = (if (is24Hour) 95f else 130f) * fontScale
+            val daysAvail = rowInner.value - timeNeed - 16f
+            val daysScale = (daysAvail / (152f * fontScale)).coerceIn(0.55f, 1f)
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer {
-                        scaleX = timeBreathScale
-                        scaleY = timeBreathScale
-                    },
-                verticalArrangement = Arrangement.Top,
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = ROW_HORIZONTAL_PADDING,
+                        vertical = rowVPad
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = displayLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = titleFontWeight
-                        ),
-                        color = labelColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-
-                    if (alarm.pinnedAt != null) {
-                        Spacer(Modifier.width(6.dp))
-
-                        Icon(
-                            imageVector = Icons.Rounded.PushPin,
-                            contentDescription = "Pinned",
-                            tint = ink,
-                            modifier = Modifier.size(16.dp)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            scaleX = timeBreathScale
+                            scaleY = timeBreathScale
+                        },
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = displayLabel,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = titleFontWeight
+                            ),
+                            color = labelColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
+
+                        if (alarm.pinnedAt != null) {
+                            Spacer(Modifier.width(6.dp))
+
+                            Icon(
+                                imageVector = Icons.Rounded.PushPin,
+                                contentDescription = "Pinned",
+                                tint = ink,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
+                    Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
 
-                val timeStyle =
-                    MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = timeFontWeight,
-                        fontFeatureSettings = "tnum"
-                    )
+                    val timeStyle =
+                        MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = timeFontWeight,
+                            fontFeatureSettings = "tnum"
+                        )
 
-                val amPmStyle =
-                    MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = timeFontWeight
-                    )
+                    val amPmStyle =
+                        MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = timeFontWeight
+                        )
 
-                if (is24Hour) {
-                    Text(
-                        text = "%02d:%02d".format(
-                            alarm.time.hour,
-                            alarm.time.minute
-                        ),
-                        style = timeStyle,
-                        color = ink,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                } else {
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    if (is24Hour) {
                         Text(
                             text = "%02d:%02d".format(
-                                hour12,
+                                alarm.time.hour,
                                 alarm.time.minute
                             ),
                             style = timeStyle,
@@ -968,60 +955,72 @@ private fun AlarmRow(
                             maxLines = 1,
                             softWrap = false
                         )
+                    } else {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "%02d:%02d".format(
+                                    hour12,
+                                    alarm.time.minute
+                                ),
+                                style = timeStyle,
+                                color = ink,
+                                maxLines = 1,
+                                softWrap = false
+                            )
 
-                        Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
-                        Text(
-                            text = meridiem,
-                            style = amPmStyle,
-                            color = ink,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
+                            Text(
+                                text = meridiem,
+                                style = amPmStyle,
+                                color = ink,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    DayLetters(
+                        alarm = alarm,
+                        order = order,
+                        ink = ink,
+                        enabled = enabled,
+                        scale = daysScale
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = {
+                            if (!inSelectionMode) onToggle()
+                        },
+                        enabled = !inSelectionMode,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = container,
+                            checkedTrackColor = ink,
+                            checkedBorderColor = Color.Transparent,
+                            uncheckedThumbColor = ink,
+                            uncheckedTrackColor = Color.Transparent,
+                            uncheckedBorderColor = outlineColor,
+                            disabledCheckedThumbColor = container,
+                            disabledCheckedTrackColor = ink,
+                            disabledCheckedBorderColor = Color.Transparent,
+                            disabledUncheckedThumbColor = ink,
+                            disabledUncheckedTrackColor = Color.Transparent,
+                            disabledUncheckedBorderColor = outlineColor,
+                        ),
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Top,
-            ) {
-                DayLetters(
-                    alarm = alarm,
-                    order = order,
-                    ink = ink,
-                    enabled = enabled,
-                    scale = daysScale
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = {
-                        if (!inSelectionMode) onToggle()
-                    },
-                    enabled = !inSelectionMode,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = container,
-                        checkedTrackColor = ink,
-                        checkedBorderColor = Color.Transparent,
-                        uncheckedThumbColor = ink,
-                        uncheckedTrackColor = Color.Transparent,
-                        uncheckedBorderColor = outlineColor,
-                        disabledCheckedThumbColor = container,
-                        disabledCheckedTrackColor = ink,
-                        disabledCheckedBorderColor = Color.Transparent,
-                        disabledUncheckedThumbColor = ink,
-                        disabledUncheckedTrackColor = Color.Transparent,
-                        disabledUncheckedBorderColor = outlineColor,
-                    ),
-                )
-            }
-        }
         }
     }
 }
