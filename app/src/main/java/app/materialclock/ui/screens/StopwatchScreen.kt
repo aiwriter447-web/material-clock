@@ -135,7 +135,7 @@ fun StopwatchScreen(
     val readoutCap = minOf(READOUT_CAP, availH * 0.10f).coerceAtLeast(32.dp)
     val topGap = minOf(32.dp, availH * 0.04f)
     val stackGap = minOf(STACK_GAP, availH * 0.045f)
-    val wide = maxWidth > maxHeight
+    val wide = maxWidth > maxHeight || maxWidth >= 600.dp
     val wideCap = minOf(READOUT_CAP, (availH - 16.dp) * 0.2f).coerceAtLeast(28.dp)
     val controlsAndLaps: @Composable (Modifier) -> Unit = { mod ->
         val showList = stopwatch.running || !elapsed.isZero || stopwatch.laps.isNotEmpty()
