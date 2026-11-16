@@ -20,7 +20,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -97,7 +96,6 @@ import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.dockFrostedGlass
-import app.materialclock.ui.rememberDockGlassBorder
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import java.time.Instant
@@ -356,7 +354,7 @@ fun WorldClockScreen(
             }
         }
 
-        // Fluid selection toolbar with Dock Frosted Glass effect.
+        // Fluid selection toolbar with borderless Dock Frosted Glass effect.
         AnimatedVisibility(
             visible = inSelectionMode,
             enter =
@@ -410,8 +408,7 @@ fun WorldClockScreen(
                     expandedShadowElevation = 0.dp,
                     modifier = Modifier
                         .height(DOCK_HEIGHT)
-                        .dockFrostedGlass(hazeState = localHazeState)
-                        .border(rememberDockGlassBorder(), CircleShape),
+                        .dockFrostedGlass(hazeState = localHazeState),
                 ) {
                     val allSelected =
                         selectedCities.size == cities.size
