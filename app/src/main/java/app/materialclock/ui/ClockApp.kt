@@ -391,11 +391,11 @@ fun ClockApp(
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
-                                border = rememberFrostedGlassBorder(darker = true),
+                                border = rememberFrostedGlassBorder(solid = true),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
-                                    .frostedGlassEffect(hazeState = hazeState, darker = true)
+                                    .frostedGlassEffect(hazeState = hazeState, solid = true)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
@@ -417,7 +417,7 @@ fun ClockApp(
                                             horizontal = 20.dp,
                                             vertical = 10.dp
                                         ),
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
                             }
