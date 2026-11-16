@@ -416,6 +416,68 @@ private val StopwatchOutlinedCustom: ImageVector
 private var _stopwatchOutlinedCustom: ImageVector? = null
 
 
+// Shared 2x Frosted Glass Optics for Dock & Top Title Pills
+@Composable
+internal fun frostedHazeStyle(): HazeStyle {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.36f else 0.42f)
+
+    return HazeStyle(
+        backgroundColor = Color.Transparent,
+        tint = HazeTint(glassTintColor),
+        blurRadius = 48.dp,
+        noiseFactor = 0.16f,
+    )
+}
+
+@Composable
+internal fun frostedGlassBorder(): BorderStroke {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+
+    return BorderStroke(
+        width = 1.5.dp,
+        brush = Brush.verticalGradient(
+            colors = if (isDark) {
+                listOf(
+                    Color.White.copy(alpha = 0.48f),
+                    primaryContainer.copy(alpha = 0.32f),
+                    Color.White.copy(alpha = 0.14f),
+                )
+            } else {
+                listOf(
+                    Color.White.copy(alpha = 0.96f),
+                    primaryContainer.copy(alpha = 0.48f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f),
+                )
+            }
+        )
+    )
+}
+
+@Composable
+internal fun frostedGlassSheen(): Brush {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+
+    return Brush.verticalGradient(
+        colors = if (isDark) {
+            listOf(
+                Color.White.copy(alpha = 0.22f),
+                primaryContainer.copy(alpha = 0.14f),
+                Color.Black.copy(alpha = 0.16f),
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = 0.68f),
+                Color.White.copy(alpha = 0.28f),
+                primaryContainer.copy(alpha = 0.24f),
+            )
+        }
+    )
+}
+
 @Composable
 fun ClockDock(
     destinations: List<Tab>,
@@ -467,52 +529,14 @@ fun ClockDock(
             label = "pillHeight",
         )
         val pillColor = MaterialTheme.colorScheme.primary
-
-        // Adaptive Frosted Glass Optics (visible both over scrolling content and blank backgrounds)
-        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-        val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.28f else 0.34f)
-
-        // Top-to-bottom specular highlight simulating overhead light hitting curved glass
-        val glassSpecularRim = BorderStroke(
-            width = 1.25.dp,
-            brush = Brush.verticalGradient(
-                colors = if (isDark) {
-                    listOf(
-                        Color.White.copy(alpha = 0.34f),
-                        primaryContainer.copy(alpha = 0.22f),
-                        Color.White.copy(alpha = 0.08f),
-                    )
-                } else {
-                    listOf(
-                        Color.White.copy(alpha = 0.90f),
-                        primaryContainer.copy(alpha = 0.35f),
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
-                    )
-                }
-            )
-        )
-
-        // Internal milky glass sheen so the capsule reads as frosted glass even on blank screens
-        val internalGlassSheen = Brush.verticalGradient(
-            colors = if (isDark) {
-                listOf(
-                    Color.White.copy(alpha = 0.14f),
-                    primaryContainer.copy(alpha = 0.08f),
-                    Color.Black.copy(alpha = 0.12f),
-                )
-            } else {
-                listOf(
-                    Color.White.copy(alpha = 0.52f),
-                    Color.White.copy(alpha = 0.18f),
-                    primaryContainer.copy(alpha = 0.16f),
-                )
-            }
-        )
+        val glassSpecularRim = frostedGlassBorder()
+        val internalGlassSheen = frostedGlassSheen()
+        val hazeStyle = frostedHazeStyle()
 
         Surface(
             shape = CircleShape,
-            color = if (hazeState != null) Color.Transparent else primaryContainer.copy(alpha = 0.55f),
+            color = if (hazeState != null) Color.Transparent else primaryContainer.copy(alpha = 0.65f),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = glassSpecularRim,
             shadowElevation = 0.dp,
@@ -521,12 +545,7 @@ fun ClockDock(
                     .clip(CircleShape)
                     .hazeEffect(
                         state = hazeState,
-                        style = HazeStyle(
-                            backgroundColor = Color.Transparent,
-                            tint = HazeTint(glassTintColor),
-                            blurRadius = 24.dp,
-                            noiseFactor = 0.08f,
-                        )
+                        style = hazeStyle,
                     )
             } else {
                 Modifier
