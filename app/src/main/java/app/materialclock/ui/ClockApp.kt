@@ -1,8 +1,10 @@
 package app.materialclock.ui
 
 import android.Manifest
+import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -30,18 +32,11 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowCompat
-import android.content.ContextWrapper
-import android.app.Activity
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +45,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -79,23 +75,28 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -121,8 +122,9 @@ import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.produceState
 import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 6.dp
@@ -293,7 +295,7 @@ fun ClockApp(
                     val days = d.toDays()
                     val hours = d.toHours() % 24
                     val minutes = d.toMinutes() % 60
-                    
+
                     val parts = buildList {
                         if (days > 0) add(if (days == 1L) "1 Day" else "$days Days")
                         if (hours > 0) add(if (hours == 1L) "1 Hour" else "$hours Hours")
@@ -344,7 +346,7 @@ fun ClockApp(
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            
+
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = fadeIn(animationSpec = tween(400)),
@@ -470,11 +472,14 @@ fun ClockApp(
                 ) + fadeIn(animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
+                val hazeState = rememberHazeState()
+
                 Box(Modifier.fillMaxSize()) {
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxSize()
+                            .hazeSource(state = hazeState)
                             .padding(
                                 end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
                             )
@@ -647,6 +652,7 @@ fun ClockApp(
                                 }
                             },
                             vertical = landscape,
+                            hazeState = hazeState,
                             modifier = Modifier.onGloballyPositioned { coords ->
                                 if (!landscape) {
                                     with(density) {
