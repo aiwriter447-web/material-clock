@@ -1,9 +1,5 @@
 package app.materialclock.ui.screens
 
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -24,28 +20,29 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,14 +78,17 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.materialclock.core.WorldCity
@@ -96,6 +96,10 @@ import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.DOCK_HEIGHT
+import app.materialclock.ui.dockFrostedGlass
+import app.materialclock.ui.rememberDockGlassBorder
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -132,6 +136,7 @@ fun WorldClockScreen(
     }
 
     val measurer = rememberTextMeasurer()
+    val localHazeState = remember { HazeState() }
 
     var selectedCities by remember {
         mutableStateOf(emptySet<ZoneId>())
@@ -228,47 +233,47 @@ fun WorldClockScreen(
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
 
         val headerBlock: @Composable (Dp?) -> Unit = { dialSize ->
-                Crossfade(
-                    targetState = settings.style,
-                    animationSpec = tween(durationMillis = 500),
-                    label = "clockStyleCrossfade"
-                ) { style ->
-                    if (style == WorldClockStyle.DIGITAL) {
-                        HomeDigitalClock(
-                            home = home,
-                            nowUtcMillis = nowUtcMillis,
-                            use24h = use24h,
-                            showSeconds = settings.showSeconds,
-                            modifier = Modifier
+            Crossfade(
+                targetState = settings.style,
+                animationSpec = tween(durationMillis = 500),
+                label = "clockStyleCrossfade"
+            ) { style ->
+                if (style == WorldClockStyle.DIGITAL) {
+                    HomeDigitalClock(
+                        home = home,
+                        nowUtcMillis = nowUtcMillis,
+                        use24h = use24h,
+                        showSeconds = settings.showSeconds,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 12.dp,
+                                bottom = 12.dp
+                            ),
+                    )
+                } else {
+                    CityDial(
+                        cities = cities,
+                        nowUtcMillis = nowUtcMillis,
+                        measurer = measurer,
+                        modifier = if (dialSize != null) {
+                            Modifier.size(dialSize)
+                        } else {
+                            Modifier
                                 .fillMaxWidth()
                                 .padding(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 12.dp,
+                                    start = 54.dp,
+                                    end = 54.dp,
+                                    top = 4.dp,
                                     bottom = 12.dp
-                                ),
-                        )
-                    } else {
-                        CityDial(
-                            cities = cities,
-                            nowUtcMillis = nowUtcMillis,
-                            measurer = measurer,
-                            modifier = if (dialSize != null) {
-                                Modifier.size(dialSize)
-                            } else {
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = 54.dp,
-                                        end = 54.dp,
-                                        top = 4.dp,
-                                        bottom = 12.dp
-                                    )
-                                    .aspectRatio(1f)
-                            },
-                        )
-                    }
+                                )
+                                .aspectRatio(1f)
+                        },
+                    )
                 }
+            }
         }
         val cityItems: LazyListScope.() -> Unit = {
             items(
@@ -301,7 +306,11 @@ fun WorldClockScreen(
 
         if (wide) {
             // Landscape / wide: clock on the left, city list on the right.
-            Row(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = localHazeState)
+            ) {
                 BoxWithConstraints(
                     modifier = Modifier
                         .weight(0.9f)
@@ -316,7 +325,9 @@ fun WorldClockScreen(
                     headerBlock(dial)
                 }
                 LazyColumn(
-                    modifier = Modifier.weight(1.1f).fillMaxHeight(),
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .fillMaxHeight(),
                     contentPadding = PaddingValues(
                         top = contentPadding.calculateTopPadding(),
                         bottom = contentPadding.calculateBottomPadding(),
@@ -329,7 +340,9 @@ fun WorldClockScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = localHazeState),
                 contentPadding = contentPadding,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -343,7 +356,7 @@ fun WorldClockScreen(
             }
         }
 
-        // Fluid selection toolbar.
+        // Fluid selection toolbar with Dock Frosted Glass effect.
         AnimatedVisibility(
             visible = inSelectionMode,
             enter =
@@ -381,9 +394,6 @@ fun WorldClockScreen(
                 .navigationBarsPadding()
                 .padding(bottom = 20.dp)
         ) {
-            val dark =
-                MaterialTheme.colorScheme.surface.luminance() < 0.5f
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -393,18 +403,15 @@ fun WorldClockScreen(
             ) {
                 HorizontalFloatingToolbar(
                     expanded = true,
-                    colors = if (dark) {
-                        FloatingToolbarDefaults.standardFloatingToolbarColors(
-                            toolbarContainerColor =
-                                MaterialTheme.colorScheme.surfaceContainerHighest,
-                            toolbarContentColor =
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors()
-                    },
-                    expandedShadowElevation = 6.dp,
-                    modifier = Modifier.height(DOCK_HEIGHT),
+                    colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+                        toolbarContainerColor = Color.Transparent,
+                        toolbarContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                    expandedShadowElevation = 0.dp,
+                    modifier = Modifier
+                        .height(DOCK_HEIGHT)
+                        .dockFrostedGlass(hazeState = localHazeState)
+                        .border(rememberDockGlassBorder(), CircleShape),
                 ) {
                     val allSelected =
                         selectedCities.size == cities.size
@@ -550,80 +557,80 @@ private fun HomeDigitalClock(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-    val baseTime = if (showSeconds) 52f else 76f
-    val baseAmPm = if (showSeconds) 24f else 32f
-    val fontScale = LocalDensity.current.fontScale
-    val units = timeText.length * 0.6f + if (use24h) 0f else 0.5f
-    val fitSp = (maxWidth.value - 16f) / (fontScale * units)
-    val shrink = (minOf(baseTime, fitSp) / baseTime).coerceIn(0.4f, 1f)
-    val timeFontSize = (baseTime * shrink).sp
-    val amPmFontSize = (baseAmPm * shrink).sp
-    val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
+        val baseTime = if (showSeconds) 52f else 76f
+        val baseAmPm = if (showSeconds) 24f else 32f
+        val fontScale = LocalDensity.current.fontScale
+        val units = timeText.length * 0.6f + if (use24h) 0f else 0.5f
+        val fitSp = (maxWidth.value - 16f) / (fontScale * units)
+        val shrink = (minOf(baseTime, fitSp) / baseTime).coerceIn(0.4f, 1f)
+        val timeFontSize = (baseTime * shrink).sp
+        val amPmFontSize = (baseAmPm * shrink).sp
+        val amPmBottomPadding = if (showSeconds) 10.dp else 14.dp
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = timeText,
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = timeFontSize,
-                    fontWeight = FontWeight(450),
-                    letterSpacing = 1.sp,
-                    fontFeatureSettings = "tnum"
-                ),
-                color = ink,
-                maxLines = 1,
-                softWrap = false,
-            )
-
-            if (!use24h) {
-                Spacer(Modifier.width(8.dp))
-
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
-                    text = meridiem,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = amPmFontSize,
+                    text = timeText,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = timeFontSize,
                         fontWeight = FontWeight(450),
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.sp,
+                        fontFeatureSettings = "tnum"
                     ),
                     color = ink,
                     maxLines = 1,
                     softWrap = false,
-                    modifier = Modifier.padding(
-                        bottom = amPmBottomPadding
-                    )
                 )
+
+                if (!use24h) {
+                    Spacer(Modifier.width(8.dp))
+
+                    Text(
+                        text = meridiem,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = amPmFontSize,
+                            fontWeight = FontWeight(450),
+                            letterSpacing = 1.sp
+                        ),
+                        color = ink,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(
+                            bottom = amPmBottomPadding
+                        )
+                    )
+                }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            val formatter = remember(home) {
+                DateTimeFormatter
+                    .ofPattern("EEEE, d MMMM yyyy")
+                    .withZone(home)
+            }
+
+            Text(
+                text = formatter.format(instant),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight(450)
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        val formatter = remember(home) {
-            DateTimeFormatter
-                .ofPattern("EEEE, d MMMM yyyy")
-                .withZone(home)
-        }
-
-        Text(
-            text = formatter.format(instant),
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight(450)
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
     }
 }
 
