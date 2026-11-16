@@ -343,30 +343,55 @@ fun ClockApp(
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // 1. Live news headline ticker: emerges from behind the Settings icon and slides into the Title Pill
+                            // 1. Living Flow notification ticker:
+                            // - Originates smoothly from the Settings icon side
+                            // - Short text stays centered without scrolling
+                            // - Long text emerges from behind the Settings icon and glides under the Title Pill
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
-                                enter = fadeIn(animationSpec = tween(400)),
-                                exit = fadeOut(animationSpec = tween(200)),
+                                enter = slideInHorizontally(
+                                    initialOffsetX = { fullWidth -> fullWidth / 3 },
+                                    animationSpec = fluidSpringSpec()
+                                ) + fadeIn(animationSpec = tween(350)),
+                                exit = slideOutHorizontally(
+                                    targetOffsetX = { fullWidth -> fullWidth / 3 },
+                                    animationSpec = fluidSpringSpec()
+                                ) + fadeOut(animationSpec = tween(250)),
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .padding(start = 28.dp, end = 24.dp)
+                                    .padding(start = 104.dp, end = 24.dp)
                             ) {
-                                Text(
-                                    text = marqueeText,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            animationMode = MarqueeAnimationMode.Immediately,
-                                            velocity = 30.dp,
-                                            initialDelayMillis = 0
-                                        )
-                                )
+                                AnimatedContent(
+                                    targetState = marqueeText,
+                                    transitionSpec = {
+                                        (slideInHorizontally(
+                                            initialOffsetX = { it / 4 },
+                                            animationSpec = fluidSpringSpec()
+                                        ) + fadeIn(animationSpec = tween(300))) togetherWith
+                                            (slideOutHorizontally(
+                                                targetOffsetX = { -it / 4 },
+                                                animationSpec = fluidSpringSpec()
+                                            ) + fadeOut(animationSpec = tween(200)))
+                                    },
+                                    label = "AlarmStatusTickerAnim"
+                                ) { statusLine ->
+                                    Text(
+                                        text = statusLine,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .basicMarquee(
+                                                iterations = Int.MAX_VALUE,
+                                                animationMode = MarqueeAnimationMode.Immediately,
+                                                velocity = 30.dp,
+                                                initialDelayMillis = 1200
+                                            )
+                                    )
+                                }
                             }
 
                             // 2. Clean Settings icon without any surrounding pill background
@@ -432,15 +457,13 @@ fun ClockApp(
             val config = LocalConfiguration.current
             val landscape = config.screenWidthDp > config.screenHeightDp || config.screenWidthDp >= 600
             val railWidth = DOCK_HEIGHT + 16.dp
-            val statusBarTop = if (landscape) {
-                0.dp
-            } else {
-                WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-            }
-            // Clip boundary hidden right under the lower half of the Title Pill so cards blur
-            // underneath the pill and never poke above it or disturb the status bar / settings icon.
-            val topClipOffset = statusBarTop + (if (landscape) 28.dp else 38.dp)
-            val innerTopPadding = (padding.calculateTopPadding() - topClipOffset).coerceAtLeast(0.dp)
+
+            // Top scroll clip boundary aligned right with the bottom edge of the Title Pill
+            // (slightly tucked by 6.dp under the pill's rounded curve so cards tuck cleanly
+            // beneath the pill without distorting its shape or overlapping the text/settings icon).
+            val topClipOffset = (padding.calculateTopPadding() - 6.dp).coerceAtLeast(0.dp)
+            val innerTopPadding = 6.dp
+
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
