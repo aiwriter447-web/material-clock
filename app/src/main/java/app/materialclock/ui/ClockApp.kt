@@ -343,14 +343,14 @@ fun ClockApp(
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-
+                            // 1. Live news headline ticker: emerges from behind the Settings icon and slides into the Title Pill
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = fadeIn(animationSpec = tween(400)),
                                 exit = fadeOut(animationSpec = tween(200)),
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .padding(start = 110.dp, end = 12.dp)
+                                    .padding(start = 28.dp, end = 24.dp)
                             ) {
                                 Text(
                                     text = marqueeText,
@@ -369,6 +369,7 @@ fun ClockApp(
                                 )
                             }
 
+                            // 2. Clean Settings icon without any surrounding pill background
                             IconButton(
                                 onClick = { showSettings = true },
                                 modifier = Modifier.align(Alignment.CenterEnd)
@@ -380,6 +381,7 @@ fun ClockApp(
                                 )
                             }
 
+                            // 3. Top layer: Frosted Glass Title Pill
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
@@ -435,8 +437,10 @@ fun ClockApp(
             } else {
                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             }
-            val contentClipTop = if (landscape) 0.dp else statusBarTop + 6.dp
-            val innerTopPadding = (padding.calculateTopPadding() - contentClipTop).coerceAtLeast(0.dp)
+            // Clip boundary hidden right under the lower half of the Title Pill so cards blur
+            // underneath the pill and never poke above it or disturb the status bar / settings icon.
+            val topClipOffset = statusBarTop + (if (landscape) 28.dp else 38.dp)
+            val innerTopPadding = (padding.calculateTopPadding() - topClipOffset).coerceAtLeast(0.dp)
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
@@ -482,7 +486,7 @@ fun ClockApp(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(
-                                top = contentClipTop,
+                                top = topClipOffset,
                                 end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
                             )
                             .clipToBounds()
