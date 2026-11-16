@@ -417,11 +417,7 @@ private var _stopwatchOutlinedCustom: ImageVector? = null
 
 @Composable
 fun rememberDockGlassBorder(): BorderStroke {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val edgeColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(
-        alpha = if (isDark) 0.14f else 0.12f
-    )
-    return BorderStroke(width = 0.8.dp, color = edgeColor)
+    return BorderStroke(width = 0.dp, color = Color.Transparent)
 }
 
 @Composable
@@ -530,7 +526,7 @@ fun ClockDock(
             shape = CircleShape,
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            border = rememberDockGlassBorder(),
+            border = null,
             shadowElevation = 0.dp,
             modifier = Modifier.dockFrostedGlass(hazeState = hazeState)
         ) {
