@@ -388,14 +388,15 @@ fun ClockApp(
                                 }
                             }
 
+                            // Solid frosted glass title pill without outer glow border
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
-                                border = rememberFrostedGlassBorder(solid = true),
+                                border = null,
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
-                                    .frostedGlassEffect(hazeState = hazeState, solid = true)
+                                    .solidFrostedGlassEffect(hazeState = hazeState)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
