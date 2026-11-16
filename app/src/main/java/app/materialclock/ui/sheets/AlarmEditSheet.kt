@@ -262,7 +262,7 @@ fun AlarmEditSheet(
     val fluidSpringSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f)
 
     val screenConfig = LocalConfiguration.current
-    val wide = screenConfig.screenWidthDp > screenConfig.screenHeightDp
+    val wide = screenConfig.screenWidthDp > screenConfig.screenHeightDp || screenConfig.screenWidthDp >= 600
 
     ModalBottomSheet(
         onDismissRequest = { scope.launch { sheetState.hide(); onDismiss() } },
