@@ -82,6 +82,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -123,6 +124,7 @@ import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -334,6 +336,8 @@ fun ClockApp(
             }
         }
 
+        val hazeState = remember { HazeState() }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surface,
@@ -372,55 +376,81 @@ fun ClockApp(
                                 )
                             }
 
+                            // Frosted Glass Settings Pill
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
-                                modifier = Modifier.align(Alignment.CenterEnd)
+                                color = Color.Transparent,
+                                border = frostedGlassBorder(),
+                                shadowElevation = 0.dp,
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .clip(CircleShape)
+                                    .hazeEffect(
+                                        state = hazeState,
+                                        style = frostedHazeStyle(),
+                                    )
                             ) {
-                                IconButton(onClick = { showSettings = true }) {
+                                IconButton(
+                                    onClick = { showSettings = true },
+                                    modifier = Modifier.background(frostedGlassSheen())
+                                ) {
                                     Icon(
                                         Icons.Rounded.Settings,
                                         contentDescription = "${currentTab.label} settings",
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(28.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
 
+                            // Frosted Glass Title Pill
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.align(Alignment.CenterStart)
-                            ) {
-                                AnimatedContent(
-                                    targetState = targetTab,
-                                    transitionSpec = {
-                                        (slideInVertically(
-                                            animationSpec = fluidSpringSpec()
-                                        ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
-                                            (slideOutVertically(
-                                                animationSpec = fluidSpringSpec()
-                                            ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
-                                    },
-                                    label = "TopBarTitleAnim"
-                                ) { tab ->
-                                    Text(
-                                        text = tab.label,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(
-                                            horizontal = 20.dp,
-                                            vertical = 10.dp
-                                        ),
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = Color.Transparent,
+                                border = frostedGlassBorder(),
+                                shadowElevation = 0.dp,
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .clip(CircleShape)
+                                    .hazeEffect(
+                                        state = hazeState,
+                                        style = frostedHazeStyle(),
                                     )
+                            ) {
+                                Box(
+                                    modifier = Modifier.background(frostedGlassSheen())
+                                ) {
+                                    AnimatedContent(
+                                        targetState = targetTab,
+                                        transitionSpec = {
+                                            (slideInVertically(
+                                                animationSpec = fluidSpringSpec()
+                                            ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
+                                                (slideOutVertically(
+                                                    animationSpec = fluidSpringSpec()
+                                                ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
+                                        },
+                                        label = "TopBarTitleAnim"
+                                    ) { tab ->
+                                        Text(
+                                            text = tab.label,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(
+                                                horizontal = 20.dp,
+                                                vertical = 10.dp
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             }
                         }
                     },
                     actions = {}, 
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (topLandscape) Color.Transparent else MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = if (topLandscape) Color.Transparent else MaterialTheme.colorScheme.surface,
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 )
@@ -472,8 +502,6 @@ fun ClockApp(
                 ) + fadeIn(animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
-                val hazeState = remember { HazeState() }
-
                 Box(Modifier.fillMaxSize()) {
                     HorizontalPager(
                         state = pagerState,
