@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -417,40 +420,24 @@ private val StopwatchOutlinedCustom: ImageVector
 private var _stopwatchOutlinedCustom: ImageVector? = null
 
 @Composable
-fun rememberFrostedGlassBorder(darker: Boolean = false): BorderStroke {
+fun rememberFrostedGlassBorder(solid: Boolean = false): BorderStroke {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     return BorderStroke(
-        width = 1.25.dp,
+        width = if (solid) 1.2.dp else 1.1.dp,
         brush = Brush.verticalGradient(
-            colors = if (darker) {
-                if (isDark) {
-                    listOf(
-                        Color.White.copy(alpha = 0.24f),
-                        primaryContainer.copy(alpha = 0.22f),
-                        Color.Black.copy(alpha = 0.35f),
-                    )
-                } else {
-                    listOf(
-                        Color.White.copy(alpha = 0.65f),
-                        primaryContainer.copy(alpha = 0.36f),
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.36f),
-                    )
-                }
+            colors = if (isDark) {
+                listOf(
+                    Color.White.copy(alpha = if (solid) 0.34f else 0.36f),
+                    primaryContainer.copy(alpha = 0.28f),
+                    Color.White.copy(alpha = 0.10f),
+                )
             } else {
-                if (isDark) {
-                    listOf(
-                        Color.White.copy(alpha = 0.38f),
-                        primaryContainer.copy(alpha = 0.32f),
-                        Color.White.copy(alpha = 0.12f),
-                    )
-                } else {
-                    listOf(
-                        Color.White.copy(alpha = 0.94f),
-                        primaryContainer.copy(alpha = 0.42f),
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.32f),
-                    )
-                }
+                listOf(
+                    Color.White.copy(alpha = 0.92f),
+                    primaryContainer.copy(alpha = 0.36f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+                )
             }
         )
     )
@@ -460,68 +447,71 @@ fun rememberFrostedGlassBorder(darker: Boolean = false): BorderStroke {
 fun Modifier.frostedGlassEffect(
     hazeState: HazeState?,
     shape: Shape = CircleShape,
-    darker: Boolean = false,
+    solid: Boolean = false,
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val surfaceColor = MaterialTheme.colorScheme.surface
 
-    val glassTintColor = if (darker) {
-        primaryContainer.copy(alpha = if (isDark) 0.34f else 0.46f)
-    } else {
-        primaryContainer.copy(alpha = if (isDark) 0.38f else 0.42f)
+    // Dock uses a clearer refractive frost (18.dp blur) so scrolling cards visibly blur behind it;
+    // Title pill uses a denser "solid frosted glass" tint (32.dp blur + richer Material You frost).
+    val tintAlpha = when {
+        solid && isDark -> 0.66f
+        solid && !isDark -> 0.72f
+        isDark -> 0.34f
+        else -> 0.40f
     }
+    val glassTintColor = primaryContainer.copy(alpha = tintAlpha)
+    val blurRadius = if (solid) 32.dp else 18.dp
 
-    val internalGlassSheen = if (darker) {
-        Brush.verticalGradient(
-            colors = if (isDark) {
-                listOf(
-                    Color.Black.copy(alpha = 0.24f),
-                    Color.Black.copy(alpha = 0.34f),
-                    Color.Black.copy(alpha = 0.44f),
-                )
-            } else {
-                listOf(
-                    Color.Black.copy(alpha = 0.10f),
-                    primaryContainer.copy(alpha = 0.18f),
-                    Color.Black.copy(alpha = 0.20f),
-                )
-            }
-        )
-    } else {
-        Brush.verticalGradient(
-            colors = if (isDark) {
-                listOf(
-                    Color.White.copy(alpha = 0.16f),
-                    primaryContainer.copy(alpha = 0.12f),
-                    Color.Black.copy(alpha = 0.10f),
-                )
-            } else {
-                listOf(
-                    Color.White.copy(alpha = 0.48f),
-                    Color.White.copy(alpha = 0.18f),
-                    primaryContainer.copy(alpha = 0.22f),
-                )
-            }
-        )
-    }
+    val internalGlassSheen = Brush.verticalGradient(
+        colors = if (isDark) {
+            listOf(
+                Color.White.copy(alpha = if (solid) 0.12f else 0.11f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.10f),
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = if (solid) 0.34f else 0.28f),
+                Color.Transparent,
+                primaryContainer.copy(alpha = 0.12f),
+            )
+        }
+    )
 
     val clipped = this.clip(shape)
-    return if (hazeState != null) {
+    val frostedBase = if (hazeState != null) {
         clipped
             .hazeEffect(
                 state = hazeState,
                 style = HazeStyle(
-                    backgroundColor = Color.Transparent,
+                    backgroundColor = surfaceColor.copy(alpha = if (solid) 0.50f else 0.28f),
                     tint = HazeTint(glassTintColor),
-                    blurRadius = 42.dp,
-                    noiseFactor = 0.11f,
+                    blurRadius = blurRadius,
+                    noiseFactor = if (solid) 0.07f else 0.08f,
                 )
             )
             .background(internalGlassSheen)
     } else {
         clipped
-            .background(primaryContainer.copy(alpha = if (darker) 0.72f else 0.65f))
+            .background(primaryContainer.copy(alpha = if (solid) 0.85f else 0.60f))
             .background(internalGlassSheen)
+    }
+
+    // Subtle inner specular highlight line along the curved glass edge
+    val innerRimColor = if (isDark) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.55f)
+    return frostedBase.drawWithContent {
+        drawContent()
+        val strokePx = 1.dp.toPx()
+        val inset = strokePx * 1.2f
+        drawRoundRect(
+            color = innerRimColor,
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - inset * 2f, size.height - inset * 2f),
+            cornerRadius = CornerRadius((size.height - inset * 2f) / 2f),
+            style = Stroke(width = strokePx)
+        )
     }
 }
 
@@ -581,9 +571,9 @@ fun ClockDock(
             shape = CircleShape,
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = rememberFrostedGlassBorder(darker = false),
+            border = rememberFrostedGlassBorder(solid = false),
             shadowElevation = 0.dp,
-            modifier = Modifier.frostedGlassEffect(hazeState = hazeState, darker = false)
+            modifier = Modifier.frostedGlassEffect(hazeState = hazeState, solid = false)
         ) {
             val tabs: @Composable () -> Unit = {
                 destinations.forEachIndexed { index, destination ->
@@ -765,21 +755,36 @@ fun FloatingAddButton(
     onClick: () -> Unit, 
     modifier: Modifier = Modifier
 ) {
+    // Bouncy when opening, critically damped (no-bounce) when closing so it never rebounds as a blink dot
     val grow by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f, 
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow), 
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = if (visible) {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+        } else {
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+        },
         label = "addGrow"
+    )
+
+    val containerAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (visible) 160 else 130, easing = FastOutLinearInEasing),
+        label = "addContainerAlpha"
     )
 
     val glyph by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = if (visible) 200 else 110),
         label = "addGlyph",
     )
 
     val rotation by animateFloatAsState(
         targetValue = if (visible) 0f else -180f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        animationSpec = if (visible) {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        } else {
+            tween(durationMillis = 160, easing = FastOutLinearInEasing)
+        },
         label = "addRotate"
     )
 
@@ -792,19 +797,25 @@ fun FloatingAddButton(
         label = "fabPressScale"
     )
 
-    if (grow <= 0.001f) return
+    val safeGrow = grow.coerceIn(0f, 1f)
+    if (safeGrow <= 0.02f || containerAlpha <= 0.02f) return
 
     FloatingActionButton(
         onClick = onClick,
         interactionSource = interactionSource,
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = if (visible) 6.dp else 0.dp,
+            pressedElevation = if (visible) 8.dp else 0.dp,
+        ),
         shape = CircleShape,
         modifier = modifier
             .size(FAB_SIZE)
             .graphicsLayer { 
-                scaleX = grow * pressScale
-                scaleY = grow * pressScale 
+                scaleX = safeGrow * pressScale
+                scaleY = safeGrow * pressScale
+                alpha = containerAlpha
             },
     ) {
         Icon(
