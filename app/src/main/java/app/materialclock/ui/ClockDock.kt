@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -54,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.boundsInParent
@@ -466,23 +468,53 @@ fun ClockDock(
         )
         val pillColor = MaterialTheme.colorScheme.primary
 
-        // Material You Frosted Glass Colors & Edge Highlight
-        val dockBaseColor = MaterialTheme.colorScheme.primaryContainer
-        val glassBorder = BorderStroke(
-            width = 1.dp,
+        // Adaptive Frosted Glass Optics (visible both over scrolling content and blank backgrounds)
+        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+        val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.28f else 0.34f)
+
+        // Top-to-bottom specular highlight simulating overhead light hitting curved glass
+        val glassSpecularRim = BorderStroke(
+            width = 1.25.dp,
             brush = Brush.verticalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.24f),
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.14f),
-                )
+                colors = if (isDark) {
+                    listOf(
+                        Color.White.copy(alpha = 0.34f),
+                        primaryContainer.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.08f),
+                    )
+                } else {
+                    listOf(
+                        Color.White.copy(alpha = 0.90f),
+                        primaryContainer.copy(alpha = 0.35f),
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
+                    )
+                }
             )
+        )
+
+        // Internal milky glass sheen so the capsule reads as frosted glass even on blank screens
+        val internalGlassSheen = Brush.verticalGradient(
+            colors = if (isDark) {
+                listOf(
+                    Color.White.copy(alpha = 0.14f),
+                    primaryContainer.copy(alpha = 0.08f),
+                    Color.Black.copy(alpha = 0.12f),
+                )
+            } else {
+                listOf(
+                    Color.White.copy(alpha = 0.52f),
+                    Color.White.copy(alpha = 0.18f),
+                    primaryContainer.copy(alpha = 0.16f),
+                )
+            }
         )
 
         Surface(
             shape = CircleShape,
-            color = if (hazeState != null) Color.Transparent else dockBaseColor.copy(alpha = 0.78f),
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            border = glassBorder,
+            color = if (hazeState != null) Color.Transparent else primaryContainer.copy(alpha = 0.55f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = glassSpecularRim,
             shadowElevation = 0.dp,
             modifier = if (hazeState != null) {
                 Modifier
@@ -490,10 +522,10 @@ fun ClockDock(
                     .hazeEffect(
                         state = hazeState,
                         style = HazeStyle(
-                            backgroundColor = dockBaseColor,
-                            tint = HazeTint(dockBaseColor.copy(alpha = 0.62f)),
-                            blurRadius = 20.dp,
-                            noiseFactor = 0.04f,
+                            backgroundColor = Color.Transparent,
+                            tint = HazeTint(glassTintColor),
+                            blurRadius = 24.dp,
+                            noiseFactor = 0.08f,
                         )
                     )
             } else {
@@ -544,7 +576,7 @@ fun ClockDock(
                     )
 
                     val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                         animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
                         label = "contentColorBlend"
                     )
@@ -633,6 +665,7 @@ fun ClockDock(
             if (vertical) {
                 Column(
                     modifier = Modifier
+                        .background(internalGlassSheen)
                         .padding(8.dp)
                         .width(56.dp)
                         .drawBehind {
@@ -652,6 +685,7 @@ fun ClockDock(
             } else {
                 Row(
                     modifier = Modifier
+                        .background(internalGlassSheen)
                         .padding(8.dp)
                         .height(56.dp)
                         .drawBehind {
