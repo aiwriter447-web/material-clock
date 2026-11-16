@@ -53,6 +53,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -415,41 +416,24 @@ private val StopwatchOutlinedCustom: ImageVector
     }
 private var _stopwatchOutlinedCustom: ImageVector? = null
 
-
-// Shared 2x Frosted Glass Optics for Dock & Top Title Pills
 @Composable
-internal fun frostedHazeStyle(): HazeStyle {
+fun rememberFrostedGlassBorder(): BorderStroke {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.36f else 0.42f)
-
-    return HazeStyle(
-        backgroundColor = Color.Transparent,
-        tint = HazeTint(glassTintColor),
-        blurRadius = 48.dp,
-        noiseFactor = 0.16f,
-    )
-}
-
-@Composable
-internal fun frostedGlassBorder(): BorderStroke {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-
     return BorderStroke(
-        width = 1.5.dp,
+        width = 1.dp,
         brush = Brush.verticalGradient(
             colors = if (isDark) {
                 listOf(
-                    Color.White.copy(alpha = 0.48f),
-                    primaryContainer.copy(alpha = 0.32f),
-                    Color.White.copy(alpha = 0.14f),
+                    Color.White.copy(alpha = 0.28f),
+                    primaryContainer.copy(alpha = 0.24f),
+                    Color.White.copy(alpha = 0.08f),
                 )
             } else {
                 listOf(
-                    Color.White.copy(alpha = 0.96f),
-                    primaryContainer.copy(alpha = 0.48f),
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f),
+                    Color.White.copy(alpha = 0.85f),
+                    primaryContainer.copy(alpha = 0.30f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
                 )
             }
         )
@@ -457,25 +441,48 @@ internal fun frostedGlassBorder(): BorderStroke {
 }
 
 @Composable
-internal fun frostedGlassSheen(): Brush {
+fun Modifier.frostedGlassEffect(
+    hazeState: HazeState?,
+    shape: Shape = CircleShape,
+): Modifier {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.22f else 0.26f)
 
-    return Brush.verticalGradient(
+    val internalGlassSheen = Brush.verticalGradient(
         colors = if (isDark) {
             listOf(
-                Color.White.copy(alpha = 0.22f),
-                primaryContainer.copy(alpha = 0.14f),
-                Color.Black.copy(alpha = 0.16f),
+                Color.White.copy(alpha = 0.10f),
+                primaryContainer.copy(alpha = 0.06f),
+                Color.Black.copy(alpha = 0.08f),
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.68f),
-                Color.White.copy(alpha = 0.28f),
-                primaryContainer.copy(alpha = 0.24f),
+                Color.White.copy(alpha = 0.36f),
+                Color.White.copy(alpha = 0.12f),
+                primaryContainer.copy(alpha = 0.14f),
             )
         }
     )
+
+    val clipped = this.clip(shape)
+    return if (hazeState != null) {
+        clipped
+            .hazeEffect(
+                state = hazeState,
+                style = HazeStyle(
+                    backgroundColor = Color.Transparent,
+                    tint = HazeTint(glassTintColor),
+                    blurRadius = 42.dp,
+                    noiseFactor = 0.11f,
+                )
+            )
+            .background(internalGlassSheen)
+    } else {
+        clipped
+            .background(primaryContainer.copy(alpha = 0.55f))
+            .background(internalGlassSheen)
+    }
 }
 
 @Composable
@@ -529,27 +536,14 @@ fun ClockDock(
             label = "pillHeight",
         )
         val pillColor = MaterialTheme.colorScheme.primary
-        val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-        val glassSpecularRim = frostedGlassBorder()
-        val internalGlassSheen = frostedGlassSheen()
-        val hazeStyle = frostedHazeStyle()
 
         Surface(
             shape = CircleShape,
-            color = if (hazeState != null) Color.Transparent else primaryContainer.copy(alpha = 0.65f),
+            color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = glassSpecularRim,
+            border = rememberFrostedGlassBorder(),
             shadowElevation = 0.dp,
-            modifier = if (hazeState != null) {
-                Modifier
-                    .clip(CircleShape)
-                    .hazeEffect(
-                        state = hazeState,
-                        style = hazeStyle,
-                    )
-            } else {
-                Modifier
-            }
+            modifier = Modifier.frostedGlassEffect(hazeState = hazeState)
         ) {
             val tabs: @Composable () -> Unit = {
                 destinations.forEachIndexed { index, destination ->
@@ -684,7 +678,6 @@ fun ClockDock(
             if (vertical) {
                 Column(
                     modifier = Modifier
-                        .background(internalGlassSheen)
                         .padding(8.dp)
                         .width(56.dp)
                         .drawBehind {
@@ -704,7 +697,6 @@ fun ClockDock(
             } else {
                 Row(
                     modifier = Modifier
-                        .background(internalGlassSheen)
                         .padding(8.dp)
                         .height(56.dp)
                         .drawBehind {
