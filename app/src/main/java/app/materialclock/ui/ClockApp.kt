@@ -391,11 +391,11 @@ fun ClockApp(
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
-                                border = rememberFrostedGlassBorder(),
+                                border = rememberFrostedGlassBorder(darker = true),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
-                                    .frostedGlassEffect(hazeState = hazeState)
+                                    .frostedGlassEffect(hazeState = hazeState, darker = true)
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
