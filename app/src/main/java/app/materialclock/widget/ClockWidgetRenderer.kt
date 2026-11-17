@@ -412,6 +412,42 @@ object ClockWidgetRenderer {
             views.setTextViewTextSize(R.id.readout, TypedValue.COMPLEX_UNIT_PX, 0.50f * face.rMin)
         }
 
+        // Day: the date number on its badge. Ripple: "Sat 22" at the top of the dial (when its
+        // date setting is on). Either way a TextClock, so it rolls over at midnight by itself.
+        val dayLook = config.look == AnalogLook.DAY
+        val rippleDate = config.look == AnalogLook.RIPPLE && config.date != DateMode.NONE
+        views.setViewVisibility(R.id.date_centre_slot, if (dayLook || rippleDate) View.VISIBLE else View.GONE)
+        if (dayLook || rippleDate) {
+            val centreX: Float
+            val centreY: Float
+            val half: Float
+            val textSize: Float
+            val skeleton: String
+            val textColour: Int
+            if (dayLook) {
+                val badge = DayDesign.badge(face.cx, face.cy, face.rMin)
+                centreX = badge.cx
+                centreY = badge.cy
+                half = badge.rect.width() / 2f
+                textSize = DayDesign.DAY_TEXT * face.rMin
+                skeleton = "d"
+                textColour = colours.onBadge
+            } else {
+                centreX = face.cx
+                centreY = face.cy - DayDesign.RIPPLE_HEIGHT * face.rMin
+                half = 0.50f * face.rMin
+                textSize = DayDesign.RIPPLE_TEXT * face.rMin
+                skeleton = "EEEd"
+                textColour = colours.onFace
+            }
+            val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton)
+            place(R.id.date_centre_slot, centreX, centreY, half)
+            views.setCharSequence(R.id.date_centre, "setFormat12Hour", pattern)
+            views.setCharSequence(R.id.date_centre, "setFormat24Hour", pattern)
+            views.setTextColor(R.id.date_centre, textColour)
+            views.setTextViewTextSize(R.id.date_centre, TypedValue.COMPLEX_UNIT_PX, textSize)
+        }
+
         // Orbit: the main hands give way to the small clock and the two text complications.
         val orbit = config.look == AnalogLook.ORBIT
         val orbitVisibility = if (orbit) View.VISIBLE else View.GONE
