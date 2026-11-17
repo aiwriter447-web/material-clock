@@ -43,10 +43,26 @@ object LookGeometry {
         0.88f, 0.05f, 0.15f,
     )
 
+    /** Day: a stubby outlined hour hand, a thin minute baton, a hairline second hand with a tail. */
+    private val day = Hands(
+        0.46f, 0.16f, 0.06f,
+        0.74f, 0.05f, 0.05f,
+        0.86f, 0.016f, 0.18f,
+    )
+
+    /** Pebble: a thick hour baton, a thin minute baton and a hairline second hand with a tail. */
+    private val pebble = Hands(
+        0.42f, 0.17f, 0.05f,
+        0.72f, 0.045f, 0.05f,
+        0.84f, 0.014f, 0.18f,
+    )
+
     fun hands(look: AnalogLook): Hands = when (look) {
         AnalogLook.CLASSIC -> classic
         AnalogLook.RIPPLE -> ripple
         AnalogLook.BOLD, AnalogLook.DIGIT -> bold
         AnalogLook.ORBIT -> orbit
+        AnalogLook.DAY -> day
+        AnalogLook.PEBBLE -> pebble
     }
 }
