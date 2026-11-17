@@ -28,6 +28,15 @@ data class WidgetConfig(
     /** Whether the widget has a coloured card behind it, or sits directly on the wallpaper. */
     val background: WidgetBackground = WidgetBackground.FILLED,
 
+    /**
+     * How solid the card (or, on an analog clock, the dial's fill) is: 1 is fully solid, 0 is
+     * no background at all. It is the slider in the editor; [background] and [faceFill] follow it.
+     */
+    val backgroundOpacity: Float = 1f,
+
+    /** Light or dark for this widget alone, whatever the app and the phone are set to. */
+    val appearance: WidgetAppearance = WidgetAppearance.AUTO,
+
     /** World Clock: up to two cities as "zone|city" keys. Empty means the first two in the app. */
     val cityKeys: List<String> = emptyList(),
 
@@ -77,6 +86,17 @@ enum class AnalogLook(val label: String) {
     DIGIT("Digit"),
     /** A plain dial carrying four small complications: a clock, the date, the time and the battery. */
     ORBIT("Orbit"),
+    /** A plain dial with a small rounded date badge at three o'clock and an outlined hour hand. */
+    DAY("Day"),
+    /** A soft four-lobed pebble with a thick hour hand, a thin minute hand and a hairline second hand. */
+    PEBBLE("Pebble"),
+}
+
+/** Light or dark for one widget. [AUTO] follows the app's (or the phone's) setting. */
+enum class WidgetAppearance(val label: String) {
+    AUTO("Auto"),
+    LIGHT("Light"),
+    DARK("Dark"),
 }
 
 /** Card behind a Digital, World Clock or Alarm widget. */
@@ -181,6 +201,8 @@ enum class NumeralSystem(val label: String) {
     ROMAN("I II III"),
     /** U+0660–0669, from the bundled Noto Sans Arabic subset. */
     EASTERN_ARABIC("١ ٢ ٣"),
+    /** U+0966–096F. Drawn with the phone's own Noto Sans Devanagari, which every phone carries. */
+    DEVANAGARI("१ २ ३"),
     NONE("None"),
 }
 
