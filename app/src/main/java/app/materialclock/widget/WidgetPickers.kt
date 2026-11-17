@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import kotlin.math.roundToInt
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
@@ -229,6 +230,34 @@ fun <T> OptionCarousel(
  * 16 dp between rows against 8 dp under a label is what groups them.
  */
 val ROW_GAP = 16.dp
+
+/**
+ * The background's opacity: 100% is a fully solid card, 0% is no background at all, and in
+ * between the card lets the wallpaper show through more and more. [value] is 0 to 1.
+ */
+@Composable
+fun OpacitySlider(label: String, value: Float, onChange: (Float) -> Unit) {
+    Column(Modifier.padding(horizontal = CAROUSEL_EDGE).padding(top = ROW_GAP / 2, bottom = ROW_GAP / 2)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            PickerLabel(label)
+            Text(
+                "${(value * 100f).roundToInt()}%",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        androidx.compose.material3.Slider(
+            value = value,
+            // Steps of 5%, so 0% and 100% are easy to land on exactly.
+            onValueChange = { onChange(((it * 20f).roundToInt() / 20f).coerceIn(0f, 1f)) },
+            valueRange = 0f..1f,
+        )
+    }
+}
 private val LABEL_STRIP = 24.dp
 
 @Composable
