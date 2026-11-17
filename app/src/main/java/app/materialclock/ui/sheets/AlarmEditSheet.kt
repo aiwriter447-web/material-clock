@@ -275,7 +275,7 @@ fun AlarmEditSheet(
                 shape = RoundedCornerShape(36.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, bottom = 24.dp) 
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp) 
                     // LIVING FLOW: Fluid Content Sizing (कंटेनर पानी की तरह अपनी जगह बनाएगा)
                     .animateContentSize(spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow))
             ) {
@@ -365,8 +365,8 @@ fun AlarmEditSheet(
                                 color = containerColor,
                                 contentColor = contentColor,
                                 modifier = Modifier
+                                    .fillMaxWidth(0.86f)
                                     .widthIn(max = 44.dp)
-                                    .fillMaxWidth()
                                     .aspectRatio(1f)
                                     .graphicsLayer {
                                         scaleX = dayScale
@@ -500,6 +500,21 @@ fun AlarmEditSheet(
                         }
                     }
 
+                }
+            }
+        }
+
+        // Delete / Cancel / Save stay pinned at the bottom of the sheet, so they are always
+        // reachable, even on a very small screen where the rest of the sheet has to scroll.
+        val actionsBlock: @Composable () -> Unit = {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = RoundedCornerShape(36.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 12.dp, top = 4.dp)
+            ) {
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -608,12 +623,15 @@ fun AlarmEditSheet(
                 ) {
                     SwipeTimeEntry(state = timeState)
                 }
-                Column(
-                    modifier = Modifier
-                        .weight(1.15f)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    detailsBlock()
+                Column(modifier = Modifier.weight(1.15f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        detailsBlock()
+                    }
+                    actionsBlock()
                 }
             }
         } else {
@@ -622,15 +640,21 @@ fun AlarmEditSheet(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
             ) {
-                Spacer(Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Spacer(Modifier.height(16.dp))
 
-                SwipeTimeEntry(state = timeState)
+                    SwipeTimeEntry(state = timeState)
 
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                detailsBlock()
+                    detailsBlock()
+                }
+                actionsBlock()
             }
         }
     }
