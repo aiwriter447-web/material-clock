@@ -3,6 +3,7 @@ package app.materialclock.widget
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
 import app.materialclock.R
 import app.materialclock.data.NumeralSystem
@@ -41,10 +42,19 @@ object TextInk {
             NumeralSystem.EASTERN_ARABIC -> R.font.noto_sans_arabic_digits
             else -> R.font.google_sans_flex
         }
-        typeface = ResourcesCompat.getFont(context, font)
+        typeface = if (system == NumeralSystem.DEVANAGARI) {
+            // Google Sans Flex has no Devanagari either. Rather than bundle a font, this asks for
+            // the phone's own sans-serif at the wanted weight: every phone carries Noto Sans
+            // Devanagari, and the system picks it for these digits.
+            Typeface.create(Typeface.DEFAULT, weight.coerceIn(100, 900), false)
+        } else {
+            ResourcesCompat.getFont(context, font)
+        }
         textSize = sizePx
         textAlign = Paint.Align.LEFT
-        if (system == NumeralSystem.EASTERN_ARABIC) {
+        if (system == NumeralSystem.DEVANAGARI) {
+            // A system font: no variation axes to set, and the weight is already in the typeface.
+        } else if (system == NumeralSystem.EASTERN_ARABIC) {
             // Noto Sans Arabic is variable on `wght` only; there is no width axis, so a condensed
             // treatment cannot apply here and asking for one would silently do nothing.
             setFontVariationSettings("'wght' $weight")
@@ -94,6 +104,7 @@ object TextInk {
             NumeralSystem.ARABIC -> h.toString()
             NumeralSystem.ROMAN -> ROMAN[h - 1]
             NumeralSystem.EASTERN_ARABIC -> h.toString().map { EASTERN[it - '0'] }.joinToString("")
+            NumeralSystem.DEVANAGARI -> h.toString().map { DEVANAGARI[it - '0'] }.joinToString("")
         }
     }
 
@@ -103,6 +114,7 @@ object TextInk {
         NumeralSystem.ARABIC -> "12"
         NumeralSystem.ROMAN -> "VIII"
         NumeralSystem.EASTERN_ARABIC -> "١٢"
+        NumeralSystem.DEVANAGARI -> "१२"
     }
 
     private val ROMAN = arrayOf(
@@ -111,4 +123,7 @@ object TextInk {
 
     /** U+0660 ARABIC-INDIC DIGIT ZERO … NINE. */
     private val EASTERN = CharArray(10) { (0x0660 + it).toChar() }
+
+    /** U+0966 DEVANAGARI DIGIT ZERO … NINE. */
+    private val DEVANAGARI = CharArray(10) { (0x0966 + it).toChar() }
 }
