@@ -47,6 +47,9 @@ object FaceRenderer {
         val orbitRight: Int = 0,
         val orbitOnRight: Int = 0,
         val orbitTrack: Int = 0,
+        // The Day design's date badge. Zero, and unused, for every other design.
+        val badge: Int = 0,
+        val onBadge: Int = 0,
     )
 
     /**
@@ -72,9 +75,19 @@ object FaceRenderer {
         when (config.faceFill) {
             FaceFill.NONE -> Unit
             FaceFill.CONTAINER -> {
-                fill.color = colours.face
+                fill.color = WidgetColours.withOpacity(colours.face, config.backgroundOpacity)
                 canvas.drawPath(path, fill)
             }
+        }
+        if (config.look == AnalogLook.DAY) {
+            // The badge the date sits on: a rounded square at three o'clock. The date itself is
+            // a TextClock above this (or, in the editor, drawn by LookOverlay).
+            val b = DayDesign.badge(wf / 2f, hf / 2f, r)
+            val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = colours.badge
+            }
+            canvas.drawRoundRect(b.rect, b.corner, b.corner, badgePaint)
         }
         if (config.look == AnalogLook.ORBIT) {
             // Orbit has no indices or numerals: its four complications are the whole dial.
