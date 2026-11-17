@@ -12,7 +12,9 @@ import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ColourSource
 import app.materialclock.data.DarkMode
+import app.materialclock.data.WidgetAppearance
 import app.materialclock.data.WidgetConfig
+import kotlin.math.roundToInt
 import app.materialclock.ui.theme.toAmoledBlack
 
 /**
@@ -60,17 +62,51 @@ object WidgetColours {
         )
         if (config.look == AnalogLook.CLASSIC) return classic
 
+        fun mix(a: Int, b: Int, t: Float) = ColorUtils.blendARGB(a, b, t)
+
+        // Day: a plain dial, an outlined hour hand and a small rounded badge with the date.
+        if (config.look == AnalogLook.DAY) {
+            return FaceRenderer.Colours(
+                face = classic.face,
+                onFace = classic.onFace,
+                minor = classic.minor,
+                outline = classic.outline,
+                accent = scheme.primary.toArgb(),
+                hourHand = scheme.primary.toArgb(),
+                minuteHand = scheme.onSurface.toArgb(),
+                secondHand = scheme.onSurface.toArgb(),
+                pin = scheme.primary.toArgb(),
+                badge = scheme.primaryContainer.toArgb(),
+                onBadge = scheme.onPrimaryContainer.toArgb(),
+            )
+        }
+
+        // Pebble: one hue. The hour hand is the full colour, the minute hand a softer step of it,
+        // and the hairline second hand is the plain text colour.
+        if (config.look == AnalogLook.PEBBLE) {
+            return FaceRenderer.Colours(
+                face = classic.face,
+                onFace = classic.onFace,
+                minor = classic.minor,
+                outline = classic.outline,
+                accent = scheme.primary.toArgb(),
+                hourHand = scheme.primary.toArgb(),
+                minuteHand = mix(scheme.primary.toArgb(), classic.face, 0.30f),
+                secondHand = scheme.onSurface.toArgb(),
+                pin = scheme.primary.toArgb(),
+            )
+        }
+
         // The finished designs (Ripple, Bold, Digit, Orbit) share one colour story: a dark dial,
         // the main colour for the minute hand, a softer step of it for the hour hand, and the
         // tertiary colour as the one accent. Text and marks that should sit *behind* the hands are
         // drawn in a tone close to the dial's own.
-        fun mix(a: Int, b: Int, t: Float) = ColorUtils.blendARGB(a, b, t)
         val face = classic.face
         val primary = scheme.primary.toArgb()
-        val tonal = when (config.look) {
-            AnalogLook.BOLD -> scheme.primaryContainer.toArgb()
-            else -> mix(scheme.primaryContainer.toArgb(), primary, 0.45f)
-        }
+        // Bold and Digit draw their big numerals in the same tone, a step darker than the dial's
+        // own container colour, so both read clearly behind the hands. (Bold used the bare
+        // container colour, which is almost the colour of the dial and nearly vanished.)
+        val tonal = mix(scheme.primaryContainer.toArgb(), primary, 0.45f)
         val tonalText = config.look == AnalogLook.BOLD || config.look == AnalogLook.DIGIT
         return FaceRenderer.Colours(
             face = face,
@@ -94,13 +130,18 @@ object WidgetColours {
 
     /** The Material colour scheme a widget should draw with (app theme, wallpaper or palette). */
     fun scheme(context: Context, config: WidgetConfig, appSettings: ClockSettings): ColorScheme {
-        val dark = when {
-            config.colour == ColourSource.FOLLOW_APP -> when (appSettings.theme.darkMode) {
-                DarkMode.SYSTEM -> systemDark(context)
-                DarkMode.LIGHT -> false
-                DarkMode.DARK -> true
+        val dark = when (config.appearance) {
+            // This widget's own choice wins over the app and over the phone.
+            WidgetAppearance.LIGHT -> false
+            WidgetAppearance.DARK -> true
+            WidgetAppearance.AUTO -> when {
+                config.colour == ColourSource.FOLLOW_APP -> when (appSettings.theme.darkMode) {
+                    DarkMode.SYSTEM -> systemDark(context)
+                    DarkMode.LIGHT -> false
+                    DarkMode.DARK -> true
+                }
+                else -> systemDark(context)
             }
-            else -> systemDark(context)
         }
 
         val base: ColorScheme = when {
@@ -120,6 +161,13 @@ object WidgetColours {
         val amoled = config.colour == ColourSource.FOLLOW_APP && appSettings.theme.amoledBlack
         val scheme = if (dark && amoled) base.toAmoledBlack() else base
         return scheme
+    }
+
+    /** [color] with its own alpha scaled by [opacity], 0 (gone) to 1 (as it is). */
+    fun withOpacity(color: Int, opacity: Float): Int {
+        val o = opacity.coerceIn(0f, 1f)
+        if (o >= 1f) return color
+        return ColorUtils.setAlphaComponent(color, (android.graphics.Color.alpha(color) * o).roundToInt())
     }
 
     private fun dynamic(context: Context, dark: Boolean): ColorScheme =
