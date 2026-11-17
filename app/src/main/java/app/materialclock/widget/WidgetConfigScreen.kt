@@ -74,6 +74,7 @@ import app.materialclock.data.NumeralSystem
 import app.materialclock.data.NumeralWeight
 import app.materialclock.data.NumeralWidth
 import app.materialclock.data.PillOrientation
+import app.materialclock.data.WidgetAppearance
 import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import app.materialclock.data.WidgetType
@@ -153,7 +154,14 @@ fun WidgetConfigScreen(
                 PresetGrid(
                     config = config,
                     settings = settings,
-                    onPreset = { config = it.config },
+                    onPreset = {
+                        config = it.config.copy(
+                            appearance = config.appearance,
+                            backgroundOpacity = config.backgroundOpacity,
+                            background = config.background,
+                            faceFill = config.faceFill,
+                        )
+                    },
                     onCustom = { custom = true },
                 )
             } else {
@@ -171,8 +179,14 @@ fun WidgetConfigScreen(
                         { it.label },
                     ) { config = config.copy(pillOrientation = it) }
                 }
-                OptionGroup("Background", config.faceFill, FaceFill.entries, { it.label }) {
-                    config = config.copy(faceFill = it)
+                OpacitySlider(
+                    "Background opacity",
+                    if (config.faceFill == FaceFill.NONE) 0f else config.backgroundOpacity,
+                ) {
+                    config = config.copy(
+                        backgroundOpacity = it,
+                        faceFill = if (it <= 0.01f) FaceFill.NONE else FaceFill.CONTAINER,
+                    )
                 }
 
                 HandCarousel("Hour hand", config.hourHand, settings, config,
@@ -222,7 +236,9 @@ fun WidgetConfigScreen(
 
                     // The font's own axes, shown as the glyphs they produce. Google Sans Flex has
                     // six; three of them change a numeral's shape in a way worth choosing between.
-                    if (config.numerals != NumeralSystem.EASTERN_ARABIC) {
+                    if (config.numerals != NumeralSystem.EASTERN_ARABIC &&
+                        config.numerals != NumeralSystem.DEVANAGARI
+                    ) {
                         AxisCarousel(
                             "Number width", config.numeralWidth, NumeralWidth.entries,
                             { it.label }, settings, config,
@@ -234,10 +250,17 @@ fun WidgetConfigScreen(
                         { it.label }, settings, config,
                         { c, o -> c.copy(numeralWeight = o) },
                     ) { config = config.copy(numeralWeight = it) }
-                    if (config.numerals != NumeralSystem.EASTERN_ARABIC) {
+                    if (config.numerals != NumeralSystem.EASTERN_ARABIC &&
+                        config.numerals != NumeralSystem.DEVANAGARI
+                    ) {
                         OptionGroup(
                             "Number shape", config.numeralRound, NumeralRound.entries, { it.label },
                         ) { config = config.copy(numeralRound = it) }
+                    } else if (config.numerals == NumeralSystem.DEVANAGARI) {
+                        Note(
+                            "Devanagari digits are drawn with the phone's own font. " +
+                                "Width and shape do not apply.",
+                        )
                     } else {
                         Note(
                             "Eastern Arabic digits come from Noto Sans Arabic, which is variable " +
@@ -263,6 +286,9 @@ fun WidgetConfigScreen(
                     ) { config = config.copy(datePosition = it) }
                 }
 
+                OptionGroup("Light or dark", config.appearance, WidgetAppearance.entries, { it.label }) {
+                    config = config.copy(appearance = it)
+                }
                 OptionGroup("Colour", config.colour, ColourSource.entries, { it.label }) {
                     config = config.copy(colour = it)
                 }
@@ -787,6 +813,8 @@ private fun renderStill(
     val g = LookGeometry.hands(config.look)
     // Digit's numerals sit behind the hands, so they are drawn first.
     LookOverlay.underHands(context, canvas, config, colours, face)
+    // Day's date badge and Ripple's date also sit behind the hands.
+    LookOverlay.dateUnderHands(context, canvas, config, colours, face)
     if (config.look == AnalogLook.ORBIT) {
         // Orbit has no main hands: its small clock, time and date are drawn instead.
         LookOverlay.orbitLive(context, canvas, config, colours, face)
@@ -858,8 +886,19 @@ private fun DigitalEditor(
                 checked = config.digitalDate,
                 onChange = { onChange(config.copy(digitalDate = it)) },
             )
-            OptionGroup("Background", config.background, WidgetBackground.entries, { it.label }) {
-                onChange(config.copy(background = it))
+            OpacitySlider(
+                "Background opacity",
+                if (config.background == WidgetBackground.NONE) 0f else config.backgroundOpacity,
+            ) {
+                onChange(
+                    config.copy(
+                        backgroundOpacity = it,
+                        background = if (it <= 0.01f) WidgetBackground.NONE else WidgetBackground.FILLED,
+                    ),
+                )
+            }
+            OptionGroup("Light or dark", config.appearance, WidgetAppearance.entries, { it.label }) {
+                onChange(config.copy(appearance = it))
             }
             OptionGroup("Colour", config.colour, ColourSource.entries, { it.label }) {
                 onChange(config.copy(colour = it))
