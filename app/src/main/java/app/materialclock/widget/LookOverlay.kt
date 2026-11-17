@@ -43,6 +43,45 @@ object LookOverlay {
         }
     }
 
+    /**
+     * Day's date number on its badge, and Ripple's "Sat 22" at the top. Drawn before the hands,
+     * like the launcher's TextClock, which sits below them.
+     */
+    fun dateUnderHands(
+        context: Context,
+        canvas: Canvas,
+        config: WidgetConfig,
+        colours: FaceRenderer.Colours,
+        face: FaceRenderer.Face,
+    ) {
+        val now = Date()
+        fun centred(text: String, cx: Float, cy: Float, paint: Paint) {
+            val ink = TextInk.ink(paint, text)
+            canvas.drawText(text, cx - ink.width() / 2f - ink.left, cy + ink.height() / 2f - ink.bottom, paint)
+        }
+        when {
+            config.look == AnalogLook.DAY -> {
+                val badge = DayDesign.badge(face.cx, face.cy, face.rMin)
+                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
+                    color = colours.onBadge
+                    textSize = DayDesign.DAY_TEXT * face.rMin
+                }
+                centred(SimpleDateFormat("d", Locale.getDefault()).format(now), badge.cx, badge.cy, paint)
+            }
+            config.look == AnalogLook.RIPPLE && config.date != app.materialclock.data.DateMode.NONE -> {
+                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
+                    color = colours.onFace
+                    textSize = DayDesign.RIPPLE_TEXT * face.rMin
+                }
+                val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEd")
+                centred(
+                    SimpleDateFormat(pattern, Locale.getDefault()).format(now),
+                    face.cx, face.cy - DayDesign.RIPPLE_HEIGHT * face.rMin, paint,
+                )
+            }
+        }
+    }
+
     /** Orbit: the small clock, the time and the date, drawn over the face. */
     fun orbitLive(
         context: Context,
