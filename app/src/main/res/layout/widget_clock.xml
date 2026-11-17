@@ -47,6 +47,30 @@
     </FrameLayout>
 
     <!--
+      Day and Ripple: the date, centred on a point. It sits BELOW the hands (so a hand passes over
+      it) and is placed with padding like every other slot; the text centres itself in the box
+      that padding leaves. Switched on only for those two designs.
+    -->
+    <FrameLayout
+        android:id="@+id/date_centre_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/date_centre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:fontFamily="@font/google_sans_flex_family"
+            android:textFontWeight="700" />
+    </FrameLayout>
+
+    <!--
       The hands sit in their own box so the 2x1 capsule can squeeze them over the small dial on
       the left (setViewPadding on this box). In every other size the box has no padding and fills
       the widget.
