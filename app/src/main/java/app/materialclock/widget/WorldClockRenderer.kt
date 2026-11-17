@@ -192,8 +192,8 @@ object WorldClockRenderer {
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
-        val bgA = scheme.primaryContainer.toArgb()
-        val bgB = scheme.primary.toArgb()
+        val bgA = WidgetColours.withOpacity(scheme.primaryContainer.toArgb(), config.backgroundOpacity)
+        val bgB = WidgetColours.withOpacity(scheme.primary.toArgb(), config.backgroundOpacity)
         // With no card the text sits on the wallpaper, so both halves use the plain text colour.
         val onA = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
         val onB = if (filled) scheme.onPrimary.toArgb() else scheme.onSurface.toArgb()
