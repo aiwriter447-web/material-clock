@@ -34,6 +34,8 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
             numerals = NumeralSystem.NONE,
             indexSet = IndexSet.NONE,
             minorIndices = MinorIndex.NONE,
+            // The weekday and the date, at the top of the dial: "Sat 22".
+            date = DateMode.DAY_WEEKDAY,
         ),
     ),
 
@@ -87,10 +89,56 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
             minorIndices = MinorIndex.NONE,
         ),
     ),
+
+    /**
+     * A plain round dial with a rounded date badge at three o'clock: the number of the day, and
+     * nothing else. The hour hand is an outlined capsule, the minute hand a thin baton.
+     */
+    DAY(
+        "Day",
+        WidgetConfig(
+            look = AnalogLook.DAY,
+            shape = FaceShape.CIRCLE,
+            hourHand = HandStyle.OUTLINE,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.NEEDLE,
+            centrePin = true,
+            numerals = NumeralSystem.NONE,
+            indexSet = IndexSet.NONE,
+            minorIndices = MinorIndex.NONE,
+        ),
+    ),
+
+    /** A soft four-lobed pebble. No numerals, no marks: a thick hour hand and two fine ones. */
+    PEBBLE(
+        "Pebble",
+        WidgetConfig(
+            look = AnalogLook.PEBBLE,
+            shape = FaceShape.CLOVER_4,
+            hourHand = HandStyle.BATON,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.NEEDLE,
+            centrePin = true,
+            numerals = NumeralSystem.NONE,
+            indexSet = IndexSet.NONE,
+            minorIndices = MinorIndex.NONE,
+        ),
+    ),
     ;
 
     companion object {
-        /** The preset [config] is exactly, or null when the configuration has been hand-edited. */
-        fun matching(config: WidgetConfig): WidgetPreset? = entries.firstOrNull { it.config == config }
+        /**
+         * The preset [config] is exactly, or null when the configuration has been hand-edited.
+         * The light/dark choice and the background opacity are not part of a design, so they
+         * never make a preset stop matching.
+         */
+        fun matching(config: WidgetConfig): WidgetPreset? = entries.firstOrNull {
+            it.config == config.copy(
+                appearance = it.config.appearance,
+                backgroundOpacity = it.config.backgroundOpacity,
+                background = it.config.background,
+                faceFill = it.config.faceFill,
+            )
+        }
     }
 }
