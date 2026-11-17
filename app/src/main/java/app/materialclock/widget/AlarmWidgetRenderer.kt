@@ -220,7 +220,7 @@ object AlarmWidgetRenderer {
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
-        val bg = scheme.primaryContainer.toArgb()
+        val bg = WidgetColours.withOpacity(scheme.primaryContainer.toArgb(), config.backgroundOpacity)
         // With no card the text sits on the wallpaper, so it uses the plain text colour.
         val fg = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
         fun alpha(color: Int, a: Float) = ColorUtils.setAlphaComponent(color, (255 * a).roundToInt())
