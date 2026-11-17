@@ -36,6 +36,7 @@ import app.materialclock.core.Alarm
 import app.materialclock.core.WorldCity
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ColourSource
+import app.materialclock.data.WidgetAppearance
 import app.materialclock.data.WidgetBackground
 import app.materialclock.data.WidgetConfig
 import java.time.format.DateTimeFormatter
@@ -78,8 +79,17 @@ fun WidgetOptionsScreen(
                     WidgetOptionsKind.ALARM -> AlarmChoices(config, alarms) { config = it }
                 }
 
-                OptionGroup("Background", config.background, WidgetBackground.entries, { it.label }) {
-                    config = config.copy(background = it)
+                OpacitySlider(
+                    "Background opacity",
+                    if (config.background == WidgetBackground.NONE) 0f else config.backgroundOpacity,
+                ) {
+                    config = config.copy(
+                        backgroundOpacity = it,
+                        background = if (it <= 0.01f) WidgetBackground.NONE else WidgetBackground.FILLED,
+                    )
+                }
+                OptionGroup("Light or dark", config.appearance, WidgetAppearance.entries, { it.label }) {
+                    config = config.copy(appearance = it)
                 }
                 OptionGroup("Colour", config.colour, ColourSource.entries, { it.label }) {
                     config = config.copy(colour = it)
