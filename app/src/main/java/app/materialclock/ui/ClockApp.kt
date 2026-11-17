@@ -74,12 +74,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -89,8 +94,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -124,6 +127,12 @@ import kotlinx.coroutines.launch
 
 private val DOCK_CLEARANCE = 6.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
+
+// The live headline lives between the title pill and the settings icon. The settings icon is a
+// 48 dp button with a 28 dp gear, so the gear's left edge is about 10 dp inside the button.
+private val TICKER_END_INSET = 38.dp
+private val TICKER_START_GAP = 6.dp
+private val TICKER_EDGE_FADE = 18.dp
 
 // LIVING FLOW: Fluid, organic spring physics for all transitions
 private fun <T> fluidSpringSpec() = spring<T>(
@@ -272,6 +281,10 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
+        // Width of the title pill, measured, so the live headline can start right after it.
+        var pillWidthPx by remember { mutableStateOf(0) }
+        val pillWidth = with(density) { pillWidthPx.toDp() }
+
         val alarmsNow by vm.alarms.collectAsStateWithLifecycle()
         val minuteTick by produceState(0) {
             while (true) {
@@ -305,11 +318,13 @@ fun ClockApp(
         }
 
         val topConfig = LocalConfiguration.current
+        // Landscape phones and wide screens (unfolded folds, tablets) get the side rail.
         val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp || topConfig.screenWidthDp >= 600
 
-        // Sync status bar icon contrast with active theme & hide status bar in landscape
+        // Keep the status bar icons readable on the current theme. The status bar always stays
+        // visible, in portrait and in landscape.
         val hostView = LocalView.current
-        DisposableEffect(topLandscape, isLightTheme) {
+        DisposableEffect(isLightTheme) {
             var hostActivity: Context? = hostView.context
             while (hostActivity is ContextWrapper && hostActivity !is Activity) {
                 hostActivity = hostActivity.baseContext
@@ -319,17 +334,8 @@ fun ClockApp(
             if (insetsController != null) {
                 insetsController.isAppearanceLightStatusBars = isLightTheme
                 insetsController.isAppearanceLightNavigationBars = isLightTheme
-                if (topLandscape) {
-                    insetsController.systemBarsBehavior =
-                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    insetsController.hide(WindowInsetsCompat.Type.statusBars())
-                } else {
-                    insetsController.show(WindowInsetsCompat.Type.statusBars())
-                }
             }
-            onDispose {
-                insetsController?.show(WindowInsetsCompat.Type.statusBars())
-            }
+            onDispose { }
         }
 
         val hazeState = remember { HazeState() }
@@ -341,28 +347,35 @@ fun ClockApp(
             topBar = {
                 TopAppBar(
                     modifier = if (topLandscape) Modifier.padding(end = DOCK_HEIGHT + 16.dp) else Modifier,
-                    expandedHeight = if (topLandscape) 56.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
+                    // In landscape the bar is slimmer, so the content gets more of the short screen.
+                    expandedHeight = if (topLandscape) 48.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
                     title = {
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // 1. Live News Headline Ticker:
-                            // - Originates smoothly from behind the Settings icon
-                            // - Short text stays centered peacefully
-                            // - Long text continuously glides from Settings icon under the Title Pill
+                            // 1. Live headline ticker.
+                            // It only lives in the space between the title pill and the settings
+                            // icon: it comes out of the gear, glides towards the pill, and fades
+                            // away exactly where the pill begins. Nothing is drawn outside that
+                            // space, so it never crosses the pill or the icon.
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = slideInHorizontally(
-                                    initialOffsetX = { fullWidth -> fullWidth / 2 },
+                                    initialOffsetX = { fullWidth -> fullWidth / 3 },
                                     animationSpec = fluidSpringSpec()
                                 ) + fadeIn(animationSpec = tween(350)),
                                 exit = slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> fullWidth / 2 },
+                                    targetOffsetX = { fullWidth -> fullWidth / 3 },
                                     animationSpec = fluidSpringSpec()
                                 ) + fadeOut(animationSpec = tween(250)),
                                 modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(start = 104.dp, end = 24.dp)
+                                    .align(Alignment.CenterStart)
+                                    .fillMaxWidth()
+                                    .padding(
+                                        start = pillWidth + TICKER_START_GAP,
+                                        end = TICKER_END_INSET
+                                    )
+                                    .clipToBounds()
                             ) {
                                 LiveNewsHeadlineTicker(text = marqueeText)
                             }
@@ -386,6 +399,7 @@ fun ClockApp(
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
+                                    .onSizeChanged { pillWidthPx = it.width }
                                     .titlePillFrostedGlass(hazeState = hazeState)
                             ) {
                                 AnimatedContent(
@@ -406,7 +420,7 @@ fun ClockApp(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(
                                             horizontal = 20.dp,
-                                            vertical = 10.dp
+                                            vertical = if (topLandscape) 6.dp else 10.dp
                                         ),
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
@@ -808,6 +822,15 @@ fun ClockApp(
     }
 }
 
+/**
+ * The "Alarm in 3 Hours 20 Minutes" line.
+ *
+ * It is laid out inside the small space the caller gives it (between the title pill and the
+ * settings icon). Short text stays centred. Long text glides from the right edge of that space
+ * (the gear) to the left edge (the pill), then starts again. Both ends fade softly, so the text
+ * appears to come out of the gear and to disappear into the pill, like the cards that slide
+ * under the pill.
+ */
 @Composable
 private fun LiveNewsHeadlineTicker(
     text: String,
@@ -818,7 +841,23 @@ private fun LiveNewsHeadlineTicker(
     val color = MaterialTheme.colorScheme.onSurfaceVariant
 
     BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            // Soft fade at both ends of the space.
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                val fade = (TICKER_EDGE_FADE.toPx() / size.width).coerceIn(0f, 0.5f)
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        fade to Color.Black,
+                        1f - fade to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         val viewportWidthPx = constraints.maxWidth.toFloat()
@@ -865,12 +904,7 @@ private fun LiveNewsHeadlineTicker(
                 measuredTextWidth = placeable.width.toFloat()
             }
 
-            val shouldScroll = measuredTextWidth > (viewportWidthPx - safeMarginPx)
-            layout(constraints.maxWidth, placeable.height) {
-                if (shouldScroll) {
-                    // Rendered by the animated layer below
-                }
-            }
+            layout(constraints.maxWidth, placeable.height) { }
         }
 
         val shouldScroll = measuredTextWidth > 0f && measuredTextWidth > (viewportWidthPx - safeMarginPx)
@@ -880,20 +914,13 @@ private fun LiveNewsHeadlineTicker(
             }
 
             LaunchedEffect(text, viewportWidthPx, measuredTextWidth) {
+                // Starts just outside the right edge (where the gear is) and glides left until it
+                // has completely left through the pill side, then starts over.
                 val startX = viewportWidthPx
                 val endX = -measuredTextWidth
-                val totalDistance = startX - endX
-                val durationMs = ((totalDistance / velocityPxPerSec) * 1000f).toInt().coerceAtLeast(1500)
-
-                // Start smoothly from right (Settings icon) and glide continuously left under Title Pill
-                offsetX.snapTo(startX * 0.65f)
-                val firstRunDuration = (((startX * 0.65f - endX) / velocityPxPerSec) * 1000f)
+                val durationMs = (((startX - endX) / velocityPxPerSec) * 1000f)
                     .toInt()
-                    .coerceAtLeast(800)
-                offsetX.animateTo(
-                    targetValue = endX,
-                    animationSpec = tween(durationMillis = firstRunDuration, easing = LinearEasing)
-                )
+                    .coerceAtLeast(1500)
 
                 while (isActive) {
                     offsetX.snapTo(startX)
