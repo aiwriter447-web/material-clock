@@ -250,7 +250,6 @@ fun ClockApp(
         var showScreensaverSettingsSheet by remember(startWithScreensaver) {
             mutableStateOf(startWithScreensaver)
         }
-        var returnToWorldClock by remember { mutableStateOf(false) }
 
         var showGroupsManager by remember { mutableStateOf(false) }
         var addingCity by remember { mutableStateOf(false) }
@@ -354,10 +353,6 @@ fun ClockApp(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             // 1. Live headline ticker.
-                            // It only lives in the space between the title pill and the settings
-                            // icon: it comes out of the gear, glides towards the pill, and fades
-                            // away exactly where the pill begins. Nothing is drawn outside that
-                            // space, so it never crosses the pill or the icon.
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = slideInHorizontally(
@@ -439,15 +434,10 @@ fun ClockApp(
         ) { padding ->
 
             val ld = LocalLayoutDirection.current
-            // Landscape (phones turned sideways, unfolded flips/folds): the dock becomes a
-            // vertical bar on the right, so content gets the remaining width and the full height.
             val config = LocalConfiguration.current
             val landscape = config.screenWidthDp > config.screenHeightDp || config.screenWidthDp >= 600
             val railWidth = DOCK_HEIGHT + 16.dp
 
-            // Top scroll clip boundary aligned right with the bottom edge of the Title Pill
-            // (slightly tucked by 6.dp under the pill's rounded curve so cards tuck cleanly
-            // beneath the pill without distorting its shape or overlapping the text/settings icon).
             val topClipOffset = (padding.calculateTopPadding() - 6.dp).coerceAtLeast(0.dp)
             val innerTopPadding = 6.dp
 
@@ -782,10 +772,11 @@ fun ClockApp(
                 Tab.WORLD -> WorldSettingsSheet(
                     settings = settings,
                     onChange = vm::updateSettings,
-                    onOpenScreensaverSettings = {
-                        showSettings = false
-                        returnToWorldClock = true
-                        showScreensaverSettingsSheet = true
+                    screensaverSettings = screensaverSettings,
+                    onScreensaverChange = { transform ->
+                        scope.launch {
+                            screensaverRepository.updateSettings(transform)
+                        }
                     },
                     onDismiss = { showSettings = false },
                 )
@@ -802,6 +793,7 @@ fun ClockApp(
             }
         }
 
+        // Direct launch when opened from Android System Screensaver Settings
         if (showScreensaverSettingsSheet) {
             ScreensaverSettingsSheet(
                 settings = screensaverSettings,
@@ -812,10 +804,6 @@ fun ClockApp(
                 },
                 onDismiss = {
                     showScreensaverSettingsSheet = false
-                    if (returnToWorldClock) {
-                        showSettings = true
-                        returnToWorldClock = false
-                    }
                 }
             )
         }
@@ -824,12 +812,6 @@ fun ClockApp(
 
 /**
  * The "Alarm in 3 Hours 20 Minutes" line.
- *
- * It is laid out inside the small space the caller gives it (between the title pill and the
- * settings icon). Short text stays centred. Long text glides from the right edge of that space
- * (the gear) to the left edge (the pill), then starts again. Both ends fade softly, so the text
- * appears to come out of the gear and to disappear into the pill, like the cards that slide
- * under the pill.
  */
 @Composable
 private fun LiveNewsHeadlineTicker(
@@ -843,7 +825,6 @@ private fun LiveNewsHeadlineTicker(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            // Soft fade at both ends of the space.
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
@@ -886,7 +867,6 @@ private fun LiveNewsHeadlineTicker(
             }
         }
 
-        // Measure text width reliably to decide between centered static vs continuous live headline
         var measuredTextWidth by remember(text) { mutableStateOf(0f) }
 
         SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
@@ -914,8 +894,6 @@ private fun LiveNewsHeadlineTicker(
             }
 
             LaunchedEffect(text, viewportWidthPx, measuredTextWidth) {
-                // Starts just outside the right edge (where the gear is) and glides left until it
-                // has completely left through the pill side, then starts over.
                 val startX = viewportWidthPx
                 val endX = -measuredTextWidth
                 val durationMs = (((startX - endX) / velocityPxPerSec) * 1000f)
