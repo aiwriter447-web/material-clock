@@ -5,11 +5,19 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,103 +32,215 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.BrightnessLow
+import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Label
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Snooze
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.TimerOff
+import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.VolumeDown
 import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.DarkMode
 import app.materialclock.data.DismissMethod
 import app.materialclock.data.HourFormat
+import app.materialclock.data.ScreensaverBackgroundType
+import app.materialclock.data.ScreensaverSettings
 import app.materialclock.data.WeekStart
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.theme.Palette
 import app.materialclock.widget.WidgetEntryPoints
+import java.time.ZoneId
 
-/* ── Modern Card & Row UI Helpers ─────────────────────────────────────────────────── */
+/* ── Living Flow - Fluid Motion Physics & Expressive Segmented Shapes ─────────────── */
 
-@Composable
-private fun SettingsCard(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp,
-    ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            content()
-        }
+private fun <T> fluidSpring() = spring<T>(
+    dampingRatio = 0.80f,
+    stiffness = Spring.StiffnessMediumLow
+)
+
+private fun segmentedShape(index: Int, count: Int): Shape {
+    val outer = 24.dp
+    val inner = 6.dp
+    return when {
+        count <= 1 -> RoundedCornerShape(outer)
+        index == 0 -> RoundedCornerShape(
+            topStart = outer,
+            topEnd = outer,
+            bottomStart = inner,
+            bottomEnd = inner
+        )
+        index == count - 1 -> RoundedCornerShape(
+            topStart = inner,
+            topEnd = inner,
+            bottomStart = outer,
+            bottomEnd = outer
+        )
+        else -> RoundedCornerShape(inner)
     }
 }
 
 @Composable
-private fun SettingsItemRow(
-    title: String,
-    subtitle: String? = null,
+private fun ExpressiveSheetHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+    )
+}
+
+@Composable
+private fun ExpressiveSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 6.dp)
+    )
+}
+
+@Composable
+private fun SegmentedSurface(
+    index: Int,
+    count: Int,
     onClick: (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && onClick != null) 0.98f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-        label = "itemScale"
+        targetValue = if (isPressed && onClick != null) 0.975f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "segmentedItemScale"
     )
 
+    val shape = segmentedShape(index, count)
+
     Surface(
-        color = Color.Transparent,
-        onClick = onClick ?: {},
-        enabled = onClick != null,
-        interactionSource = interactionSource,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
+            },
+        shape = shape,
+        color = containerColor,
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        interactionSource = interactionSource,
     ) {
+        content()
+    }
+}
+
+@Composable
+private fun SegmentedNavigateRow(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    trailingIcon: ImageVector = Icons.Rounded.ChevronRight,
+    onClick: () -> Unit,
+) {
+    SegmentedSurface(index = index, count = count, onClick = onClick) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
@@ -138,42 +258,204 @@ private fun SettingsItemRow(
                     )
                 }
             }
-            if (trailingContent != null) {
-                trailingContent()
-            }
+            Icon(
+                imageVector = trailingIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun ValueBadge(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.widthIn(max = 130.dp),
+private fun SegmentedSwitchRow(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    SegmentedSurface(
+        index = index,
+        count = count,
+        onClick = { onChange(!checked) }
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onChange
+            )
+        }
     }
 }
 
 @Composable
-private fun ItemDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        thickness = 0.8.dp,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-    )
+private fun <T> SegmentedChoiceRow(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    title: String,
+    value: T,
+    options: List<T>,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+
+    SegmentedSurface(
+        index = index,
+        count = count,
+        onClick = { open = true }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = label(value),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = CircleShape,
+                modifier = Modifier.widthIn(max = 132.dp)
+            ) {
+                Text(
+                    text = label(value),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    options.forEachIndexed { optIdx, option ->
+                        val selected = option == value
+                        val rowBg by animateColorAsState(
+                            targetValue = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            },
+                            animationSpec = tween(200),
+                            label = "choiceOptionBg"
+                        )
+                        Surface(
+                            onClick = {
+                                onSelect(option)
+                                open = false
+                            },
+                            shape = segmentedShape(optIdx, options.size),
+                            color = rowBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = null
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = label(option),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { open = false }) {
+                    Text("Cancel", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        )
+    }
 }
 
-/* ── Sheets Implementation ──────────────────────────────────────────────────────── */
+/* ── 1. Alarm Settings Sheet ──────────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,110 +465,153 @@ fun AlarmSettingsSheet(
     onManageGroups: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val hasFullScreenSetting = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+    val permissionsCount = if (hasFullScreenSetting) 3 else 2
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             item {
-                SheetTitle("Alarm settings")
-                Spacer(Modifier.height(8.dp))
+                ExpressiveSheetHeader("Alarm settings")
             }
 
-            item { SectionLabel("Schedule & Behavior") }
+            // Group 1: Schedule & Behavior (3 items)
+            item { ExpressiveSectionHeader("Schedule & Behavior") }
             item {
-                SettingsCard {
-                    NavigateRow(
-                        title = "Groups",
-                        subtitle = "Alarm groups • Create, rename or delete",
-                        onClick = onManageGroups,
-                    )
-                    ItemDivider()
-                    ChoiceRow(
-                        title = "Start week on",
-                        value = settings.alarms.weekStart,
-                        options = WeekStart.entries,
-                        label = { it.label },
-                        onSelect = { v: WeekStart -> onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) } },
-                    )
-                    ItemDivider()
-                    ChoiceRow(
-                        title = "Dismiss alarm with",
-                        value = settings.alarms.dismissMethod,
-                        options = DismissMethod.entries,
-                        label = { it.label },
-                        onSelect = { v: DismissMethod -> onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) } },
-                    )
-                }
+                SegmentedNavigateRow(
+                    index = 0,
+                    count = 3,
+                    icon = Icons.Rounded.Label,
+                    title = "Groups",
+                    subtitle = "Alarm groups • Create, rename or delete",
+                    onClick = onManageGroups,
+                )
+            }
+            item {
+                SegmentedChoiceRow(
+                    index = 1,
+                    count = 3,
+                    icon = Icons.Rounded.CalendarToday,
+                    title = "Start week on",
+                    value = settings.alarms.weekStart,
+                    options = WeekStart.entries,
+                    label = { it.label },
+                    onSelect = { v: WeekStart ->
+                        onChange { it.copy(alarms = it.alarms.copy(weekStart = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedChoiceRow(
+                    index = 2,
+                    count = 3,
+                    icon = Icons.Rounded.TouchApp,
+                    title = "Dismiss alarm with",
+                    value = settings.alarms.dismissMethod,
+                    options = DismissMethod.entries,
+                    label = { it.label },
+                    onSelect = { v: DismissMethod ->
+                        onChange { it.copy(alarms = it.alarms.copy(dismissMethod = v)) }
+                    },
+                )
             }
 
-            item { 
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Ringing & Sound") 
+            // Group 2: Ringing & Sound (6 items)
+            item { ExpressiveSectionHeader("Ringing & Sound") }
+            item {
+                SegmentedChoiceRow(
+                    index = 0,
+                    count = 6,
+                    icon = Icons.Rounded.TimerOff,
+                    title = "Silence after",
+                    value = settings.alarms.silenceAfterMinutes,
+                    options = listOf(1, 5, 10, 15, 20, 25, 30, 0),
+                    label = ::minutesLabel,
+                    onSelect = { v: Int ->
+                        onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) }
+                    },
+                )
             }
             item {
-                SettingsCard {
-                    ChoiceRow(
-                        title = "Silence after",
-                        value = settings.alarms.silenceAfterMinutes,
-                        options = listOf(1, 5, 10, 15, 20, 25, 30, 0),
-                        label = ::minutesLabel,
-                        onSelect = { v: Int -> onChange { it.copy(alarms = it.alarms.copy(silenceAfterMinutes = v)) } },
-                    )
-                    ItemDivider()
-                    ChoiceRow(
-                        title = "Snooze length",
-                        value = settings.alarms.snoozeMinutes,
-                        options = listOf(1, 5, 10, 15, 20, 30),
-                        label = ::minutesLabel,
-                        onSelect = { v: Int -> onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) } },
-                    )
-                    ItemDivider()
-                    ChoiceRow(
-                        title = "Upcoming alarm notification",
-                        value = settings.alarms.upcomingNotificationMinutes,
-                        options = listOf(0, 5, 10, 15, 30, 60),
-                        label = { if (it == 0) "Off" else "$it minutes before" },
-                        onSelect = { v: Int ->
-                            onChange { it.copy(alarms = it.alarms.copy(upcomingNotificationMinutes = v)) }
-                        },
-                    )
-                    ItemDivider()
-                    DefaultToneRow(
-                        soundUri = settings.alarms.defaultSoundUri,
-                        onPick = { v: String? -> onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) } },
-                    )
-                    ItemDivider()
-                    VolumeRow(
-                        volume = settings.alarms.volume,
-                        onChange = { v: Float -> onChange { it.copy(alarms = it.alarms.copy(volume = v)) } },
-                    )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "Volume buttons during alarm",
-                        subtitle = "Control alarm volume with hardware keys",
-                        checked = settings.alarms.volumeButtonsControlVolume,
-                        onChange = { v: Boolean ->
-                            onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
-                        },
-                    )
-                }
+                SegmentedChoiceRow(
+                    index = 1,
+                    count = 6,
+                    icon = Icons.Rounded.Snooze,
+                    title = "Snooze length",
+                    value = settings.alarms.snoozeMinutes,
+                    options = listOf(1, 5, 10, 15, 20, 30),
+                    label = ::minutesLabel,
+                    onSelect = { v: Int ->
+                        onChange { it.copy(alarms = it.alarms.copy(snoozeMinutes = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedChoiceRow(
+                    index = 2,
+                    count = 6,
+                    icon = Icons.Rounded.NotificationsActive,
+                    title = "Upcoming alarm notification",
+                    value = settings.alarms.upcomingNotificationMinutes,
+                    options = listOf(0, 5, 10, 15, 30, 60),
+                    label = { if (it == 0) "Off" else "$it minutes before" },
+                    onSelect = { v: Int ->
+                        onChange { it.copy(alarms = it.alarms.copy(upcomingNotificationMinutes = v)) }
+                    },
+                )
+            }
+            item {
+                DefaultToneRow(
+                    index = 3,
+                    count = 6,
+                    soundUri = settings.alarms.defaultSoundUri,
+                    onPick = { v: String? ->
+                        onChange { it.copy(alarms = it.alarms.copy(defaultSoundUri = v)) }
+                    },
+                )
+            }
+            item {
+                VolumeRow(
+                    index = 4,
+                    count = 6,
+                    volume = settings.alarms.volume,
+                    onChange = { v: Float ->
+                        onChange { it.copy(alarms = it.alarms.copy(volume = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 5,
+                    count = 6,
+                    icon = Icons.Rounded.VolumeDown,
+                    title = "Volume buttons during alarm",
+                    subtitle = "Control alarm volume with hardware keys",
+                    checked = settings.alarms.volumeButtonsControlVolume,
+                    onChange = { v: Boolean ->
+                        onChange { it.copy(alarms = it.alarms.copy(volumeButtonsControlVolume = v)) }
+                    },
+                )
             }
 
-            item { 
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Permissions & Alerts") 
+            // Group 3: Permissions & Alerts
+            item { ExpressiveSectionHeader("Permissions & Alerts") }
+            item {
+                NotificationPermissionRow(index = 0, count = permissionsCount)
             }
             item {
-                SettingsCard {
-                    NotificationPermissionRow()
-                    ItemDivider()
-                    ExactAlarmPermissionRow()
-                    ItemDivider()
-                    FullScreenIntentRow()
+                ExactAlarmPermissionRow(index = 1, count = permissionsCount)
+            }
+            if (hasFullScreenSetting) {
+                item {
+                    FullScreenIntentRow(index = 2, count = permissionsCount)
                 }
             }
         }
@@ -294,7 +619,12 @@ fun AlarmSettingsSheet(
 }
 
 @Composable
-private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
+private fun DefaultToneRow(
+    index: Int,
+    count: Int,
+    soundUri: String?,
+    onPick: (String?) -> Unit
+) {
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -318,8 +648,10 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
             }.getOrNull() ?: "Default sound"
         }
     }
-    SettingsItemRow(
-        title = "Default alarm tone",
+
+    SegmentedSurface(
+        index = index,
+        count = count,
         onClick = {
             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                 putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
@@ -331,77 +663,125 @@ private fun DefaultToneRow(soundUri: String?, onPick: (String?) -> Unit) {
                 )
             }
             launcher.launch(intent)
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ValueBadge(text = name)
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
-    )
-}
-
-@Composable
-private fun VolumeRow(volume: Float, onChange: (Float) -> Unit) {
-    Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+    ) {
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.VolumeUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Rounded.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Alarm volume",
+                    text = "Default alarm tone",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Text(
-                text = "${(volume * 100).toInt()}%",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = CircleShape,
+                modifier = Modifier.widthIn(max = 128.dp),
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                modifier = Modifier.size(22.dp)
             )
         }
-        Spacer(Modifier.height(6.dp))
-        Slider(
-            value = volume, 
-            onValueChange = onChange,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
 @Composable
-private fun NotificationPermissionRow() {
+private fun VolumeRow(
+    index: Int,
+    count: Int,
+    volume: Float,
+    onChange: (Float) -> Unit
+) {
+    SegmentedSurface(index = index, count = count) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Alarm volume",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${(volume * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Slider(
+                value = volume,
+                onValueChange = onChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 40.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionRow(index: Int, count: Int) {
     val context = LocalContext.current
     val granted = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
-    NavigateRow(
+    SegmentedNavigateRow(
+        index = index,
+        count = count,
+        icon = Icons.Rounded.NotificationsActive,
         title = "Notifications",
         subtitle = if (granted) "Allowed" else "Off — controls won't show on lockscreen",
         onClick = {
             runCatching {
                 context.startActivity(
-                    Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                 )
             }
         },
@@ -409,31 +789,20 @@ private fun NotificationPermissionRow() {
 }
 
 @Composable
-private fun ChangeDateTimeRow() {
-    val context = LocalContext.current
-    NavigateRow(
-        title = "Change date & time",
-        subtitle = "Opens system date & time settings",
-        onClick = {
-            runCatching {
-                context.startActivity(Intent(android.provider.Settings.ACTION_DATE_SETTINGS))
-            }
-        },
-    )
-}
-
-@Composable
-private fun ExactAlarmPermissionRow() {
+private fun ExactAlarmPermissionRow(index: Int, count: Int) {
     val context = LocalContext.current
     val granted = app.materialclock.alarm.AlarmScheduler.canScheduleExact(context)
-    NavigateRow(
+    SegmentedNavigateRow(
+        index = index,
+        count = count,
+        icon = Icons.Rounded.Alarm,
         title = "Alarms and reminders",
         subtitle = if (granted) "Allowed" else "Not allowed — alarms may fire late",
         onClick = {
             runCatching {
                 context.startActivity(
-                    Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                        .setData(android.net.Uri.parse("package:${context.packageName}"))
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                        .setData(Uri.parse("package:${context.packageName}"))
                 )
             }
         },
@@ -441,41 +810,185 @@ private fun ExactAlarmPermissionRow() {
 }
 
 @Composable
-private fun WidgetRows() {
-    val context = LocalContext.current
-    if (WidgetEntryPoints.canPin(context)) {
-        NavigateRow(
-            title = "Add a clock widget",
-            subtitle = "Long-press on home screen to customize",
-            onClick = { WidgetEntryPoints.requestPin(context) },
-        )
-    } else {
-        NavigateRow(
-            title = "Clock widget",
-            subtitle = "Add from your launcher's widget picker",
-            onClick = {},
-        )
-    }
-}
-
-@Composable
-private fun FullScreenIntentRow() {
+private fun FullScreenIntentRow(index: Int, count: Int) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
     val context = LocalContext.current
     val nm = context.getSystemService(android.app.NotificationManager::class.java)
     val granted = nm?.canUseFullScreenIntent() != false
-    NavigateRow(
+    SegmentedNavigateRow(
+        index = index,
+        count = count,
+        icon = Icons.Rounded.Fullscreen,
         title = "Full screen alerts",
         subtitle = if (granted) "Allowed to open full screen when ringing" else "Not allowed — ringing alarm shows as banner",
         onClick = {
             runCatching {
                 context.startActivity(
-                    Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                        .setData(android.net.Uri.parse("package:${context.packageName}"))
+                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                        .setData(Uri.parse("package:${context.packageName}"))
                 )
             }
         },
     )
+}
+
+/* ── 2. Appearance / Stopwatch Settings Sheet ─────────────────────────────────────── */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StopwatchSettingsSheet(
+    settings: ClockSettings,
+    onChange: ((ClockSettings) -> ClockSettings) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val appVersion = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "1.0"
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            item {
+                ExpressiveSheetHeader("Appearance")
+            }
+
+            // Group 1: Theme & Pure Black (2 items)
+            item { ExpressiveSectionHeader("Display Mode") }
+            item {
+                SegmentedChoiceRow(
+                    index = 0,
+                    count = 2,
+                    icon = Icons.Rounded.DarkMode,
+                    title = "Theme",
+                    value = settings.theme.darkMode,
+                    options = DarkMode.entries,
+                    label = { it.label },
+                    onSelect = { v: DarkMode ->
+                        onChange { it.copy(theme = it.theme.copy(darkMode = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 1,
+                    count = 2,
+                    icon = Icons.Rounded.Contrast,
+                    title = "Pure black",
+                    subtitle = "True black surfaces in dark mode for OLED",
+                    checked = settings.theme.amoledBlack,
+                    onChange = { v: Boolean ->
+                        onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) }
+                    },
+                )
+            }
+
+            // Group 2: Theme Colors (1 standalone card)
+            item { ExpressiveSectionHeader("Theme Colors") }
+            item {
+                SegmentedSurface(index = 0, count = 1) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Palette,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Color scheme",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        PaletteRow(
+                            dynamic = settings.theme.dynamicColor,
+                            selected = settings.theme.palette,
+                            onDynamic = {
+                                onChange { it.copy(theme = it.theme.copy(dynamicColor = true)) }
+                            },
+                            onSelect = { v: Palette ->
+                                onChange { it.copy(theme = it.theme.copy(palette = v, dynamicColor = false)) }
+                            },
+                        )
+                    }
+                }
+            }
+
+            // Group 3: Widgets (1 standalone card)
+            item { ExpressiveSectionHeader("Widgets") }
+            item {
+                if (WidgetEntryPoints.canPin(context)) {
+                    SegmentedNavigateRow(
+                        index = 0,
+                        count = 1,
+                        icon = Icons.Rounded.Widgets,
+                        title = "Add a clock widget",
+                        subtitle = "Long-press on home screen to customize",
+                        onClick = { WidgetEntryPoints.requestPin(context) },
+                    )
+                } else {
+                    SegmentedNavigateRow(
+                        index = 0,
+                        count = 1,
+                        icon = Icons.Rounded.Widgets,
+                        title = "Clock widget",
+                        subtitle = "Add from your launcher's widget picker",
+                        onClick = {},
+                    )
+                }
+            }
+
+            // Group 4: About (1 standalone card)
+            item { ExpressiveSectionHeader("About") }
+            item {
+                SegmentedSurface(index = 0, count = 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "About",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "Material Clock $appVersion",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -498,7 +1011,7 @@ private fun PaletteRow(
     }
 
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (wallpaper != null) {
@@ -528,7 +1041,7 @@ private fun Swatch(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else if (selected) 1.1f else 1f,
+        targetValue = if (isPressed) 0.85f else if (selected) 1.08f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -539,7 +1052,7 @@ private fun Swatch(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .size(56.dp)
+                .size(54.dp)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -564,7 +1077,7 @@ private fun Swatch(
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
-                    role = Role.RadioButton, 
+                    role = Role.RadioButton,
                     onClick = onClick
                 ),
             contentAlignment = Alignment.Center,
@@ -578,83 +1091,17 @@ private fun Swatch(
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Text(name, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun StopwatchSettingsSheet(
-    settings: ClockSettings,
-    onChange: ((ClockSettings) -> ClockSettings) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 32.dp)
-        ) {
-            item {
-                SheetTitle("Appearance")
-                Spacer(Modifier.height(8.dp))
-            }
-
-            item {
-                SettingsCard {
-                    ChoiceRow(
-                        title = "Theme",
-                        value = settings.theme.darkMode,
-                        options = DarkMode.entries,
-                        label = { it.label },
-                        onSelect = { v: DarkMode -> onChange { it.copy(theme = it.theme.copy(darkMode = v)) } },
-                    )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "Pure black",
-                        subtitle = "True black surfaces in dark mode for OLED",
-                        checked = settings.theme.amoledBlack,
-                        onChange = { v: Boolean -> onChange { it.copy(theme = it.theme.copy(amoledBlack = v)) } },
-                    )
-                }
-            }
-
-            item {
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Theme Colors")
-                PaletteRow(
-                    dynamic = settings.theme.dynamicColor,
-                    selected = settings.theme.palette,
-                    onDynamic = { onChange { it.copy(theme = it.theme.copy(dynamicColor = true)) } },
-                    onSelect = { v: Palette ->
-                        onChange { it.copy(theme = it.theme.copy(palette = v, dynamicColor = false)) }
-                    },
-                )
-            }
-
-            // ── Widgets Section ──
-            item {
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Widgets")
-            }
-
-            item {
-                SettingsCard {
-                    WidgetRows()
-                }
-            }
-
-            // ── About Section ──
-            item {
-                Spacer(Modifier.height(14.dp))
-                AboutRows()
-            }
-        }
-    }
-}
+/* ── 3. World Clock Settings Sheet ────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -664,10 +1111,14 @@ fun WorldSettingsSheet(
     onOpenScreensaverSettings: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    var pickingHome by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    var pickingHome by rememberSaveable { mutableStateOf(false) }
+    val hasCustomHome = settings.world.homeZoneOverride != null
+    val homeGroupCount = if (hasCustomHome) 2 else 1
+
     val homeCityName = remember(settings.world.homeZoneOverride) {
         settings.world.homeZoneOverride?.let { id ->
-            runCatching { java.time.ZoneId.of(id) }.getOrNull()?.let { zone ->
+            runCatching { ZoneId.of(id) }.getOrNull()?.let { zone ->
                 zone.id.substringAfterLast('/').replace('_', ' ')
             }
         }
@@ -676,88 +1127,235 @@ fun WorldSettingsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             item {
-                SheetTitle("World clock settings")
-                Spacer(Modifier.height(8.dp))
+                ExpressiveSheetHeader("World clock settings")
             }
 
-            item { SectionLabel("Display") }
+            // Group 1: Display (4 items)
+            item { ExpressiveSectionHeader("Display") }
             item {
-                SettingsCard {
-                    ChoiceRow(
-                        title = "Style",
-                        value = settings.world.style,
-                        options = WorldClockStyle.entries,
-                        label = { it.label },
-                        onSelect = { v: WorldClockStyle -> onChange { it.copy(world = it.world.copy(style = v)) } },
-                    )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "Display time with seconds",
-                        checked = settings.world.showSeconds,
-                        onChange = { v: Boolean -> onChange { it.copy(world = it.world.copy(showSeconds = v)) } },
-                    )
-                    ItemDivider()
-                    ChoiceRow(
-                        title = "Time format",
-                        value = settings.world.hourFormat,
-                        options = HourFormat.entries,
-                        label = { it.label },
-                        onSelect = { v: HourFormat -> onChange { it.copy(world = it.world.copy(hourFormat = v)) } },
-                    )
-                    ItemDivider()
-                    NavigateRow(
-                        title = "Screensaver",
-                        subtitle = "Bedside charging clock & setup",
-                        onClick = onOpenScreensaverSettings,
+                SegmentedChoiceRow(
+                    index = 0,
+                    count = 4,
+                    icon = Icons.Rounded.Schedule,
+                    title = "Style",
+                    value = settings.world.style,
+                    options = WorldClockStyle.entries,
+                    label = { it.label },
+                    onSelect = { v: WorldClockStyle ->
+                        onChange { it.copy(world = it.world.copy(style = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 1,
+                    count = 4,
+                    icon = Icons.Rounded.Timer,
+                    title = "Display time with seconds",
+                    checked = settings.world.showSeconds,
+                    onChange = { v: Boolean ->
+                        onChange { it.copy(world = it.world.copy(showSeconds = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedChoiceRow(
+                    index = 2,
+                    count = 4,
+                    icon = Icons.Rounded.AccessTime,
+                    title = "Time format",
+                    value = settings.world.hourFormat,
+                    options = HourFormat.entries,
+                    label = { it.label },
+                    onSelect = { v: HourFormat ->
+                        onChange { it.copy(world = it.world.copy(hourFormat = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedNavigateRow(
+                    index = 3,
+                    count = 4,
+                    icon = Icons.Rounded.Bedtime,
+                    title = "Screensaver",
+                    subtitle = "Bedside charging clock & setup",
+                    onClick = onOpenScreensaverSettings,
+                )
+            }
+
+            // Group 2: Home clock (1 or 2 items)
+            item { ExpressiveSectionHeader("Home clock") }
+            item {
+                SegmentedSwitchRow(
+                    index = 0,
+                    count = homeGroupCount,
+                    icon = Icons.Rounded.Public,
+                    title = "Automatic home clock",
+                    subtitle = "Add a clock for home while travelling",
+                    checked = !hasCustomHome,
+                    onChange = { v: Boolean ->
+                        if (v) {
+                            onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
+                        } else {
+                            pickingHome = true
+                        }
+                    },
+                )
+            }
+            if (hasCustomHome) {
+                item {
+                    SegmentedNavigateRow(
+                        index = 1,
+                        count = homeGroupCount,
+                        icon = Icons.Rounded.Language,
+                        title = "Home time zone",
+                        subtitle = homeCityName ?: "Not set",
+                        onClick = { pickingHome = true },
                     )
                 }
             }
 
+            // Group 3: Date & time (1 standalone item)
+            item { ExpressiveSectionHeader("Date & time") }
             item {
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Home clock") 
-            }
-            item {
-                SettingsCard {
-                    SwitchRow(
-                        title = "Automatic home clock",
-                        subtitle = "Add a clock for home while travelling",
-                        checked = settings.world.homeZoneOverride == null,
-                        onChange = { v: Boolean ->
-                            if (v) {
-                                onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
-                            } else {
-                                pickingHome = true
-                            }
-                        },
-                    )
-                    if (settings.world.homeZoneOverride != null) {
-                        ItemDivider()
-                        NavigateRow(
-                            title = "Home time zone",
-                            subtitle = homeCityName ?: "Not set",
-                            onClick = { pickingHome = true },
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(Modifier.height(14.dp))
-                SectionLabel("Date & time") 
-            }
-            item {
-                SettingsCard { ChangeDateTimeRow() }
+                SegmentedNavigateRow(
+                    index = 0,
+                    count = 1,
+                    icon = Icons.Rounded.CalendarToday,
+                    title = "Change date & time",
+                    subtitle = "Opens system date & time settings",
+                    trailingIcon = Icons.Rounded.OpenInNew,
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_DATE_SETTINGS))
+                        }
+                    },
+                )
             }
         }
     }
+
+    if (pickingHome) {
+        HomeTimeZonePickerDialog(
+            currentZoneId = settings.world.homeZoneOverride ?: ZoneId.systemDefault().id,
+            onSelect = { selectedZoneId ->
+                onChange { it.copy(world = it.world.copy(homeZoneOverride = selectedZoneId)) }
+                pickingHome = false
+            },
+            onDismiss = { pickingHome = false }
+        )
+    }
 }
+
+@Composable
+private fun HomeTimeZonePickerDialog(
+    currentZoneId: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val allZones = remember {
+        ZoneId.getAvailableZoneIds()
+            .filter { '/' in it && !it.startsWith("Etc/") && !it.startsWith("SystemV/") }
+            .sorted()
+    }
+    val filtered = remember(query, allZones) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) allZones
+        else allZones.filter { it.replace('_', ' ').lowercase().contains(q) }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Text(
+                text = "Home time zone",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    shape = CircleShape,
+                    placeholder = { Text("Search city or region") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 280.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(filtered, key = { it }) { id ->
+                        val selected = id == currentZoneId
+                        val display = id.substringAfterLast('/').replace('_', ' ')
+                        val region = id.substringBefore('/').replace('_', ' ')
+                        Surface(
+                            onClick = { onSelect(id) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = display,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = region,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                if (selected) {
+                                    Icon(
+                                        Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+/* ── 4. Timer Settings Sheet ──────────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -781,54 +1379,313 @@ fun TimerSettingsSheet(
         }
     }
 
+    val soundLabel = remember(settings.timers.soundUri) {
+        when (val u = settings.timers.soundUri) {
+            null -> "Default alarm sound"
+            SILENT -> "Silent"
+            else -> runCatching {
+                RingtoneManager.getRingtone(context, Uri.parse(u))?.getTitle(context)
+            }.getOrNull() ?: "Default alarm sound"
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             item {
-                SheetTitle("Timer settings")
-                Spacer(Modifier.height(8.dp))
+                ExpressiveSheetHeader("Timer settings")
             }
 
+            item { ExpressiveSectionHeader("Sound & Alerts") }
             item {
-                SettingsCard {
-                    NavigateRow(
-                        title = "Timer sound",
-                        subtitle = when (val u = settings.timers.soundUri) {
-                            null -> "Default alarm sound"
-                            SILENT -> "Silent"
-                            else -> runCatching {
-                                RingtoneManager.getRingtone(context, Uri.parse(u))?.getTitle(context)
-                            }.getOrNull() ?: "Default alarm sound"
-                        },
-                        onClick = {
-                            picker.launch(
-                                Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Timer sound")
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                SegmentedNavigateRow(
+                    index = 0,
+                    count = 3,
+                    icon = Icons.Rounded.MusicNote,
+                    title = "Timer sound",
+                    subtitle = soundLabel,
+                    onClick = {
+                        picker.launch(
+                            Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Timer sound")
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                        )
+                    },
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 1,
+                    count = 3,
+                    icon = Icons.Rounded.Vibration,
+                    title = "Timer vibrate",
+                    checked = settings.timers.vibrate,
+                    onChange = { v: Boolean ->
+                        onChange { it.copy(timers = it.timers.copy(vibrate = v)) }
+                    },
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 2,
+                    count = 3,
+                    icon = Icons.Rounded.TrendingUp,
+                    title = "Gradually increase volume",
+                    subtitle = "Starts quiet and builds up over first 20s",
+                    checked = settings.timers.gradualVolume,
+                    onChange = { v: Boolean ->
+                        onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/* ── 5. Screensaver Settings Sheet (Merged into Expressive UI) ────────────────────── */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScreensaverSettingsSheet(
+    settings: ScreensaverSettings,
+    onChange: ((ScreensaverSettings) -> ScreensaverSettings) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            item {
+                ExpressiveSheetHeader("Screensaver settings")
+            }
+
+            // Highlighted Top Promo/Action Card (Matching Expressive Pill Banner)
+            item {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Bedtime,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(24.dp)
                             )
-                        },
-                    )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "Timer vibrate",
-                        checked = settings.timers.vibrate,
-                        onChange = { v: Boolean -> onChange { it.copy(timers = it.timers.copy(vibrate = v)) } },
-                    )
-                    ItemDivider()
-                    SwitchRow(
-                        title = "Gradually increase volume",
-                        subtitle = "Starts quiet and builds up over first 20s",
-                        checked = settings.timers.gradualVolume,
-                        onChange = { v: Boolean -> onChange { it.copy(timers = it.timers.copy(gradualVolume = v)) } },
-                    )
+                            Text(
+                                text = "System Screensaver Setup",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "To use bedside clock while charging, select Material Clock in Android System Screensaver settings.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        Button(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
+                                }
+                            },
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Open System Screensaver Settings",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Group 1: Display Elements (3 items)
+            item { ExpressiveSectionHeader("Display Elements") }
+            item {
+                SegmentedSwitchRow(
+                    index = 0,
+                    count = 3,
+                    icon = Icons.Rounded.CalendarToday,
+                    title = "Show Date",
+                    subtitle = "Display current date below clock",
+                    checked = settings.showDate,
+                    onChange = { v -> onChange { it.copy(showDate = v) } }
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 1,
+                    count = 3,
+                    icon = Icons.Rounded.Timer,
+                    title = "Show Seconds",
+                    subtitle = "Update time every second",
+                    checked = settings.showSeconds,
+                    onChange = { v -> onChange { it.copy(showSeconds = v) } }
+                )
+            }
+            item {
+                SegmentedSwitchRow(
+                    index = 2,
+                    count = 3,
+                    icon = Icons.Rounded.BatteryChargingFull,
+                    title = "Show Battery",
+                    subtitle = "Display battery percentage while charging",
+                    checked = settings.showBattery,
+                    onChange = { v -> onChange { it.copy(showBattery = v) } }
+                )
+            }
+
+            // Group 2: Appearance & Night Mode (2 items)
+            item { ExpressiveSectionHeader("Appearance & Night Mode") }
+            item {
+                SegmentedSwitchRow(
+                    index = 0,
+                    count = 2,
+                    icon = Icons.Rounded.Contrast,
+                    title = "OLED Pure Black Background",
+                    subtitle = "True black (#000000) surfaces for OLED screen protection",
+                    checked = settings.backgroundType == ScreensaverBackgroundType.OLED_BLACK,
+                    onChange = { isOled ->
+                        val type = if (isOled) {
+                            ScreensaverBackgroundType.OLED_BLACK
+                        } else {
+                            ScreensaverBackgroundType.LCD_DARK_GRAY
+                        }
+                        onChange { it.copy(backgroundType = type) }
+                    }
+                )
+            }
+            item {
+                SegmentedSurface(
+                    index = 1,
+                    count = 2,
+                    onClick = { onChange { it.copy(nightModeEnabled = !settings.nightModeEnabled) } }
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.BrightnessLow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Night Mode (Dim Clock)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = "Reduce clock brightness for bedside use",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = settings.nightModeEnabled,
+                                onCheckedChange = { v -> onChange { it.copy(nightModeEnabled = v) } }
+                            )
+                        }
+
+                        // Living Flow: Fluid expansion for Clock Dimming slider
+                        AnimatedVisibility(
+                            visible = settings.nightModeEnabled,
+                            enter = expandVertically(animationSpec = fluidSpring()) + fadeIn(tween(250)),
+                            exit = shrinkVertically(animationSpec = fluidSpring()) + fadeOut(tween(200))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 60.dp, end = 20.dp, bottom = 14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Clock Dimming Level",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "${(settings.clockDimmingFactor * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Slider(
+                                    value = settings.clockDimmingFactor,
+                                    onValueChange = { v -> onChange { it.copy(clockDimmingFactor = v) } },
+                                    valueRange = 0.1f..0.8f
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Group 3: Protection (1 standalone item)
+            item { ExpressiveSectionHeader("Protection") }
+            item {
+                SegmentedSwitchRow(
+                    index = 0,
+                    count = 1,
+                    icon = Icons.Rounded.Shield,
+                    title = "Smart Adaptive Pixel Shift",
+                    subtitle = "Shift clock position every few minutes to reduce burn-in risk",
+                    checked = settings.pixelShiftEnabled,
+                    onChange = { v -> onChange { it.copy(pixelShiftEnabled = v) } }
+                )
             }
         }
     }
