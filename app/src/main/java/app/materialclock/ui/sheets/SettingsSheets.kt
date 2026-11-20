@@ -6,8 +6,10 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -18,6 +20,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,11 +43,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -79,6 +86,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -124,7 +132,7 @@ import java.time.ZoneId
 /* ── Living Flow - Fluid Motion Physics & Expressive Segmented Shapes ─────────────── */
 
 private fun <T> fluidSpring() = spring<T>(
-    dampingRatio = 0.80f,
+    dampingRatio = 0.82f,
     stiffness = Spring.StiffnessMediumLow
 )
 
@@ -150,17 +158,48 @@ private fun segmentedShape(index: Int, count: Int): Shape {
 }
 
 @Composable
-private fun ExpressiveSheetHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface,
-        textAlign = TextAlign.Center,
+private fun ExpressiveSheetHeader(
+    title: String,
+    onBack: (() -> Unit)? = null
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 12.dp)
-    )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (onBack != null) {
+            Surface(
+                onClick = onBack,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (onBack != null) 48.dp else 12.dp)
+        )
+    }
 }
 
 @Composable
@@ -1101,17 +1140,19 @@ private fun Swatch(
     }
 }
 
-/* ── 3. World Clock Settings Sheet ────────────────────────────────────────────────── */
+/* ── 3. World Clock Settings Sheet (with Seamless In-Sheet Screensaver Page) ──────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldSettingsSheet(
     settings: ClockSettings,
     onChange: ((ClockSettings) -> ClockSettings) -> Unit,
-    onOpenScreensaverSettings: () -> Unit = {},
+    screensaverSettings: ScreensaverSettings,
+    onScreensaverChange: ((ScreensaverSettings) -> ScreensaverSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    var showScreensaverSubpage by rememberSaveable { mutableStateOf(false) }
     var pickingHome by rememberSaveable { mutableStateOf(false) }
     val hasCustomHome = settings.world.homeZoneOverride != null
     val homeGroupCount = if (hasCustomHome) 2 else 1
@@ -1124,121 +1165,165 @@ fun WorldSettingsSheet(
         }
     }
 
+    // System back button/gesture returns smoothly from Screensaver sub-page to World Clock settings
+    BackHandler(enabled = showScreensaverSubpage) {
+        showScreensaverSubpage = false
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            item {
-                ExpressiveSheetHeader("World clock settings")
-            }
-
-            // Group 1: Display (4 items)
-            item { ExpressiveSectionHeader("Display") }
-            item {
-                SegmentedChoiceRow(
-                    index = 0,
-                    count = 4,
-                    icon = Icons.Rounded.Schedule,
-                    title = "Style",
-                    value = settings.world.style,
-                    options = WorldClockStyle.entries,
-                    label = { it.label },
-                    onSelect = { v: WorldClockStyle ->
-                        onChange { it.copy(world = it.world.copy(style = v)) }
-                    },
-                )
-            }
-            item {
-                SegmentedSwitchRow(
-                    index = 1,
-                    count = 4,
-                    icon = Icons.Rounded.Timer,
-                    title = "Display time with seconds",
-                    checked = settings.world.showSeconds,
-                    onChange = { v: Boolean ->
-                        onChange { it.copy(world = it.world.copy(showSeconds = v)) }
-                    },
-                )
-            }
-            item {
-                SegmentedChoiceRow(
-                    index = 2,
-                    count = 4,
-                    icon = Icons.Rounded.AccessTime,
-                    title = "Time format",
-                    value = settings.world.hourFormat,
-                    options = HourFormat.entries,
-                    label = { it.label },
-                    onSelect = { v: HourFormat ->
-                        onChange { it.copy(world = it.world.copy(hourFormat = v)) }
-                    },
-                )
-            }
-            item {
-                SegmentedNavigateRow(
-                    index = 3,
-                    count = 4,
-                    icon = Icons.Rounded.Bedtime,
-                    title = "Screensaver",
-                    subtitle = "Bedside charging clock & setup",
-                    onClick = onOpenScreensaverSettings,
-                )
-            }
-
-            // Group 2: Home clock (1 or 2 items)
-            item { ExpressiveSectionHeader("Home clock") }
-            item {
-                SegmentedSwitchRow(
-                    index = 0,
-                    count = homeGroupCount,
-                    icon = Icons.Rounded.Public,
-                    title = "Automatic home clock",
-                    subtitle = "Add a clock for home while travelling",
-                    checked = !hasCustomHome,
-                    onChange = { v: Boolean ->
-                        if (v) {
-                            onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
-                        } else {
-                            pickingHome = true
-                        }
-                    },
-                )
-            }
-            if (hasCustomHome) {
-                item {
-                    SegmentedNavigateRow(
-                        index = 1,
-                        count = homeGroupCount,
-                        icon = Icons.Rounded.Language,
-                        title = "Home time zone",
-                        subtitle = homeCityName ?: "Not set",
-                        onClick = { pickingHome = true },
+        AnimatedContent(
+            targetState = showScreensaverSubpage,
+            transitionSpec = {
+                if (targetState) {
+                    // Forward into Screensaver settings
+                    (slideInHorizontally(animationSpec = fluidSpring()) { it / 3 } +
+                        fadeIn(tween(260))) togetherWith
+                        (slideOutHorizontally(animationSpec = fluidSpring()) { -it / 4 } +
+                            fadeOut(tween(180)))
+                } else {
+                    // Back to World clock settings
+                    (slideInHorizontally(animationSpec = fluidSpring()) { -it / 3 } +
+                        fadeIn(tween(260))) togetherWith
+                        (slideOutHorizontally(animationSpec = fluidSpring()) { it / 4 } +
+                            fadeOut(tween(180)))
+                }
+            },
+            label = "worldToScreensaverFlow"
+        ) { isScreensaverPage ->
+            if (isScreensaverPage) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 36.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    item {
+                        ExpressiveSheetHeader(
+                            title = "Screensaver settings",
+                            onBack = { showScreensaverSubpage = false }
+                        )
+                    }
+                    screensaverSettingsItems(
+                        settings = screensaverSettings,
+                        onChange = onScreensaverChange
                     )
                 }
-            }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 36.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    item {
+                        ExpressiveSheetHeader("World clock settings")
+                    }
 
-            // Group 3: Date & time (1 standalone item)
-            item { ExpressiveSectionHeader("Date & time") }
-            item {
-                SegmentedNavigateRow(
-                    index = 0,
-                    count = 1,
-                    icon = Icons.Rounded.CalendarToday,
-                    title = "Change date & time",
-                    subtitle = "Opens system date & time settings",
-                    trailingIcon = Icons.Rounded.OpenInNew,
-                    onClick = {
-                        runCatching {
-                            context.startActivity(Intent(Settings.ACTION_DATE_SETTINGS))
+                    // Group 1: Display (4 items)
+                    item { ExpressiveSectionHeader("Display") }
+                    item {
+                        SegmentedChoiceRow(
+                            index = 0,
+                            count = 4,
+                            icon = Icons.Rounded.Schedule,
+                            title = "Style",
+                            value = settings.world.style,
+                            options = WorldClockStyle.entries,
+                            label = { it.label },
+                            onSelect = { v: WorldClockStyle ->
+                                onChange { it.copy(world = it.world.copy(style = v)) }
+                            },
+                        )
+                    }
+                    item {
+                        SegmentedSwitchRow(
+                            index = 1,
+                            count = 4,
+                            icon = Icons.Rounded.Timer,
+                            title = "Display time with seconds",
+                            checked = settings.world.showSeconds,
+                            onChange = { v: Boolean ->
+                                onChange { it.copy(world = it.world.copy(showSeconds = v)) }
+                            },
+                        )
+                    }
+                    item {
+                        SegmentedChoiceRow(
+                            index = 2,
+                            count = 4,
+                            icon = Icons.Rounded.AccessTime,
+                            title = "Time format",
+                            value = settings.world.hourFormat,
+                            options = HourFormat.entries,
+                            label = { it.label },
+                            onSelect = { v: HourFormat ->
+                                onChange { it.copy(world = it.world.copy(hourFormat = v)) }
+                            },
+                        )
+                    }
+                    item {
+                        SegmentedNavigateRow(
+                            index = 3,
+                            count = 4,
+                            icon = Icons.Rounded.Bedtime,
+                            title = "Screensaver",
+                            subtitle = "Bedside charging clock & setup",
+                            onClick = { showScreensaverSubpage = true },
+                        )
+                    }
+
+                    // Group 2: Home clock (1 or 2 items)
+                    item { ExpressiveSectionHeader("Home clock") }
+                    item {
+                        SegmentedSwitchRow(
+                            index = 0,
+                            count = homeGroupCount,
+                            icon = Icons.Rounded.Public,
+                            title = "Automatic home clock",
+                            subtitle = "Add a clock for home while travelling",
+                            checked = !hasCustomHome,
+                            onChange = { v: Boolean ->
+                                if (v) {
+                                    onChange { it.copy(world = it.world.copy(homeZoneOverride = null)) }
+                                } else {
+                                    pickingHome = true
+                                }
+                            },
+                        )
+                    }
+                    if (hasCustomHome) {
+                        item {
+                            SegmentedNavigateRow(
+                                index = 1,
+                                count = homeGroupCount,
+                                icon = Icons.Rounded.Language,
+                                title = "Home time zone",
+                                subtitle = homeCityName ?: "Not set",
+                                onClick = { pickingHome = true },
+                            )
                         }
-                    },
-                )
+                    }
+
+                    // Group 3: Date & time (1 standalone item)
+                    item { ExpressiveSectionHeader("Date & time") }
+                    item {
+                        SegmentedNavigateRow(
+                            index = 0,
+                            count = 1,
+                            icon = Icons.Rounded.CalendarToday,
+                            title = "Change date & time",
+                            subtitle = "Opens system date & time settings",
+                            trailingIcon = Icons.Rounded.OpenInNew,
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_DATE_SETTINGS))
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
     }
@@ -1451,7 +1536,224 @@ fun TimerSettingsSheet(
     }
 }
 
-/* ── 5. Screensaver Settings Sheet (Merged into Expressive UI) ────────────────────── */
+/* ── 5. Screensaver Settings (Shared Items + Standalone Sheet for System Dream Entry) ── */
+
+private fun LazyListScope.screensaverSettingsItems(
+    settings: ScreensaverSettings,
+    onChange: ((ScreensaverSettings) -> ScreensaverSettings) -> Unit,
+) {
+    // Highlighted Top Promo/Action Card
+    item {
+        val context = LocalContext.current
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Bedtime,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "System Screensaver Setup",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "To use bedside clock while charging, select Material Clock in Android System Screensaver settings.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                )
+                Spacer(Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
+                        }
+                    },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Open System Screensaver Settings",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // Group 1: Display Elements (3 items)
+    item { ExpressiveSectionHeader("Display Elements") }
+    item {
+        SegmentedSwitchRow(
+            index = 0,
+            count = 3,
+            icon = Icons.Rounded.CalendarToday,
+            title = "Show Date",
+            subtitle = "Display current date below clock",
+            checked = settings.showDate,
+            onChange = { v -> onChange { it.copy(showDate = v) } }
+        )
+    }
+    item {
+        SegmentedSwitchRow(
+            index = 1,
+            count = 3,
+            icon = Icons.Rounded.Timer,
+            title = "Show Seconds",
+            subtitle = "Update time every second",
+            checked = settings.showSeconds,
+            onChange = { v -> onChange { it.copy(showSeconds = v) } }
+        )
+    }
+    item {
+        SegmentedSwitchRow(
+            index = 2,
+            count = 3,
+            icon = Icons.Rounded.BatteryChargingFull,
+            title = "Show Battery",
+            subtitle = "Display battery percentage while charging",
+            checked = settings.showBattery,
+            onChange = { v -> onChange { it.copy(showBattery = v) } }
+        )
+    }
+
+    // Group 2: Appearance & Night Mode (2 items)
+    item { ExpressiveSectionHeader("Appearance & Night Mode") }
+    item {
+        SegmentedSwitchRow(
+            index = 0,
+            count = 2,
+            icon = Icons.Rounded.Contrast,
+            title = "OLED Pure Black Background",
+            subtitle = "True black (#000000) surfaces for OLED screen protection",
+            checked = settings.backgroundType == ScreensaverBackgroundType.OLED_BLACK,
+            onChange = { isOled ->
+                val type = if (isOled) {
+                    ScreensaverBackgroundType.OLED_BLACK
+                } else {
+                    ScreensaverBackgroundType.LCD_DARK_GRAY
+                }
+                onChange { it.copy(backgroundType = type) }
+            }
+        )
+    }
+    item {
+        SegmentedSurface(
+            index = 1,
+            count = 2,
+            onClick = { onChange { it.copy(nightModeEnabled = !settings.nightModeEnabled) } }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.BrightnessLow,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Night Mode (Dim Clock)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "Reduce clock brightness for bedside use",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.nightModeEnabled,
+                        onCheckedChange = { v -> onChange { it.copy(nightModeEnabled = v) } }
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = settings.nightModeEnabled,
+                    enter = expandVertically(animationSpec = fluidSpring()) + fadeIn(tween(250)),
+                    exit = shrinkVertically(animationSpec = fluidSpring()) + fadeOut(tween(200))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 60.dp, end = 20.dp, bottom = 14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Clock Dimming Level",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${(settings.clockDimmingFactor * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Slider(
+                            value = settings.clockDimmingFactor,
+                            onValueChange = { v -> onChange { it.copy(clockDimmingFactor = v) } },
+                            valueRange = 0.1f..0.8f
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Group 3: Protection (1 standalone item)
+    item { ExpressiveSectionHeader("Protection") }
+    item {
+        SegmentedSwitchRow(
+            index = 0,
+            count = 1,
+            icon = Icons.Rounded.Shield,
+            title = "Smart Adaptive Pixel Shift",
+            subtitle = "Shift clock position every few minutes to reduce burn-in risk",
+            checked = settings.pixelShiftEnabled,
+            onChange = { v -> onChange { it.copy(pixelShiftEnabled = v) } }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1460,8 +1762,6 @@ fun ScreensaverSettingsSheet(
     onChange: ((ScreensaverSettings) -> ScreensaverSettings) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -1475,218 +1775,10 @@ fun ScreensaverSettingsSheet(
             item {
                 ExpressiveSheetHeader("Screensaver settings")
             }
-
-            // Highlighted Top Promo/Action Card (Matching Expressive Pill Banner)
-            item {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Bedtime,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "System Screensaver Setup",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "To use bedside clock while charging, select Material Clock in Android System Screensaver settings.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                        )
-                        Spacer(Modifier.height(14.dp))
-                        Button(
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
-                                }
-                            },
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "Open System Screensaver Settings",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.Rounded.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Group 1: Display Elements (3 items)
-            item { ExpressiveSectionHeader("Display Elements") }
-            item {
-                SegmentedSwitchRow(
-                    index = 0,
-                    count = 3,
-                    icon = Icons.Rounded.CalendarToday,
-                    title = "Show Date",
-                    subtitle = "Display current date below clock",
-                    checked = settings.showDate,
-                    onChange = { v -> onChange { it.copy(showDate = v) } }
-                )
-            }
-            item {
-                SegmentedSwitchRow(
-                    index = 1,
-                    count = 3,
-                    icon = Icons.Rounded.Timer,
-                    title = "Show Seconds",
-                    subtitle = "Update time every second",
-                    checked = settings.showSeconds,
-                    onChange = { v -> onChange { it.copy(showSeconds = v) } }
-                )
-            }
-            item {
-                SegmentedSwitchRow(
-                    index = 2,
-                    count = 3,
-                    icon = Icons.Rounded.BatteryChargingFull,
-                    title = "Show Battery",
-                    subtitle = "Display battery percentage while charging",
-                    checked = settings.showBattery,
-                    onChange = { v -> onChange { it.copy(showBattery = v) } }
-                )
-            }
-
-            // Group 2: Appearance & Night Mode (2 items)
-            item { ExpressiveSectionHeader("Appearance & Night Mode") }
-            item {
-                SegmentedSwitchRow(
-                    index = 0,
-                    count = 2,
-                    icon = Icons.Rounded.Contrast,
-                    title = "OLED Pure Black Background",
-                    subtitle = "True black (#000000) surfaces for OLED screen protection",
-                    checked = settings.backgroundType == ScreensaverBackgroundType.OLED_BLACK,
-                    onChange = { isOled ->
-                        val type = if (isOled) {
-                            ScreensaverBackgroundType.OLED_BLACK
-                        } else {
-                            ScreensaverBackgroundType.LCD_DARK_GRAY
-                        }
-                        onChange { it.copy(backgroundType = type) }
-                    }
-                )
-            }
-            item {
-                SegmentedSurface(
-                    index = 1,
-                    count = 2,
-                    onClick = { onChange { it.copy(nightModeEnabled = !settings.nightModeEnabled) } }
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.BrightnessLow,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Night Mode (Dim Clock)",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    text = "Reduce clock brightness for bedside use",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = settings.nightModeEnabled,
-                                onCheckedChange = { v -> onChange { it.copy(nightModeEnabled = v) } }
-                            )
-                        }
-
-                        // Living Flow: Fluid expansion for Clock Dimming slider
-                        AnimatedVisibility(
-                            visible = settings.nightModeEnabled,
-                            enter = expandVertically(animationSpec = fluidSpring()) + fadeIn(tween(250)),
-                            exit = shrinkVertically(animationSpec = fluidSpring()) + fadeOut(tween(200))
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 60.dp, end = 20.dp, bottom = 14.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Clock Dimming Level",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = "${(settings.clockDimmingFactor * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Slider(
-                                    value = settings.clockDimmingFactor,
-                                    onValueChange = { v -> onChange { it.copy(clockDimmingFactor = v) } },
-                                    valueRange = 0.1f..0.8f
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Group 3: Protection (1 standalone item)
-            item { ExpressiveSectionHeader("Protection") }
-            item {
-                SegmentedSwitchRow(
-                    index = 0,
-                    count = 1,
-                    icon = Icons.Rounded.Shield,
-                    title = "Smart Adaptive Pixel Shift",
-                    subtitle = "Shift clock position every few minutes to reduce burn-in risk",
-                    checked = settings.pixelShiftEnabled,
-                    onChange = { v -> onChange { it.copy(pixelShiftEnabled = v) } }
-                )
-            }
+            screensaverSettingsItems(
+                settings = settings,
+                onChange = onChange
+            )
         }
     }
 }
