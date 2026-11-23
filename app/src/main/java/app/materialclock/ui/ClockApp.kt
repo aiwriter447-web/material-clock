@@ -25,9 +25,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -125,19 +127,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private val DOCK_CLEARANCE = 6.dp
+private val DOCK_CLEARANCE = 8.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
 
-// The live headline lives between the title pill and the settings icon. The settings icon is a
-// 48 dp button with a 28 dp gear, so the gear's left edge is about 10 dp inside the button.
 private val TICKER_END_INSET = 38.dp
 private val TICKER_START_GAP = 6.dp
 private val TICKER_EDGE_FADE = 18.dp
 
-// LIVING FLOW: Fluid, organic spring physics for all transitions
+// LIVING FLOW: Calm, weighted spring physics for all transitions
 private fun <T> fluidSpringSpec() = spring<T>(
-    dampingRatio = 0.85f,
-    stiffness = 200f
+    dampingRatio = 0.92f,
+    stiffness = 210f
 )
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
@@ -166,6 +166,7 @@ fun ClockApp(
     )
 
     val timer by vm.timer.collectAsStateWithLifecycle()
+    val sw by vm.stopwatch.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
         if (!isLoaded) {
@@ -280,7 +281,6 @@ fun ClockApp(
         val density = LocalDensity.current
         var dockHeight by remember { mutableStateOf(DOCK_HEIGHT) }
 
-        // Width of the title pill, measured, so the live headline can start right after it.
         var pillWidthPx by remember { mutableStateOf(0) }
         val pillWidth = with(density) { pillWidthPx.toDp() }
 
@@ -295,7 +295,6 @@ fun ClockApp(
         val marqueeText = remember(targetTab, alarmsNow, minuteTick) {
             if (targetTab == Tab.ALARMS) {
                 val now = java.time.ZonedDateTime.now()
-                // Only consider enabled alarms
                 val next = alarmsNow.filter { it.enabled }.mapNotNull { it.nextFire(now) }.minOrNull()
                 if (next == null) {
                     "All alarms are off"
@@ -317,11 +316,8 @@ fun ClockApp(
         }
 
         val topConfig = LocalConfiguration.current
-        // Landscape phones and wide screens (unfolded folds, tablets) get the side rail.
         val topLandscape = topConfig.screenWidthDp > topConfig.screenHeightDp || topConfig.screenWidthDp >= 600
 
-        // Keep the status bar icons readable on the current theme. The status bar always stays
-        // visible, in portrait and in landscape.
         val hostView = LocalView.current
         DisposableEffect(isLightTheme) {
             var hostActivity: Context? = hostView.context
@@ -346,13 +342,11 @@ fun ClockApp(
             topBar = {
                 TopAppBar(
                     modifier = if (topLandscape) Modifier.padding(end = DOCK_HEIGHT + 16.dp) else Modifier,
-                    // In landscape the bar is slimmer, so the content gets more of the short screen.
                     expandedHeight = if (topLandscape) 48.dp else TopAppBarDefaults.TopAppBarExpandedHeight,
                     title = {
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // 1. Live headline ticker.
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = slideInHorizontally(
@@ -375,7 +369,6 @@ fun ClockApp(
                                 LiveNewsHeadlineTicker(text = marqueeText)
                             }
 
-                            // 2. Clean Settings icon without any surrounding pill background
                             IconButton(
                                 onClick = { showSettings = true },
                                 modifier = Modifier.align(Alignment.CenterEnd)
@@ -387,7 +380,6 @@ fun ClockApp(
                                 )
                             }
 
-                            // 3. Top layer: Frosted Glass Title Pill
                             Surface(
                                 shape = CircleShape,
                                 color = Color.Transparent,
@@ -444,12 +436,13 @@ fun ClockApp(
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
-                padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
+                padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 14.dp
             }
             val underDockAndFab = if (landscape) {
-                padding.calculateBottomPadding() + 100.dp
+                padding.calculateBottomPadding() + 92.dp
             } else {
-                underDock + DOCK_HEIGHT + 12.dp
+                // FAB is now inline beside the dock bar in portrait, so no extra vertical stack needed
+                underDock
             }
 
             val body = PaddingValues(
@@ -470,6 +463,24 @@ fun ClockApp(
             var initialLaunch by rememberSaveable { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 initialLaunch = true
+            }
+
+            val fabVisible = !selectionActive && (targetTab == Tab.ALARMS || targetTab == Tab.WORLD)
+            val fabLabel = when (targetTab) {
+                Tab.WORLD -> "Add city"
+                Tab.TIMERS -> "Add preset"
+                else -> "Add alarm"
+            }
+            val onFabClick: () -> Unit = {
+                when (targetTab) {
+                    Tab.WORLD -> addingCity = true
+                    Tab.TIMERS -> editingPreset = TimerPreset(
+                        id = 0L,
+                        name = "",
+                        totalSeconds = 25 * 60
+                    )
+                    else -> editing = vm.blankAlarm()
+                }
             }
 
             AnimatedVisibility(
@@ -590,7 +601,6 @@ fun ClockApp(
                                 }
 
                                 Tab.STOPWATCH -> {
-                                    val sw by vm.stopwatch.collectAsStateWithLifecycle()
                                     val now by rememberElapsedTicker(
                                         active = isFocused && sw.running
                                     )
@@ -607,105 +617,110 @@ fun ClockApp(
                         }
                     }
 
-                    AnimatedVisibility(
-                        visible = !selectionActive,
-                        enter = fadeIn(animationSpec = fluidSpringSpec()) +
-                            (if (landscape) {
+                    if (landscape) {
+                        // Landscape: Vertical dock rail on the right + FAB cleanly at bottom-end
+                        AnimatedVisibility(
+                            visible = !selectionActive,
+                            enter = fadeIn(animationSpec = fluidSpringSpec()) +
                                 slideInHorizontally(
                                     initialOffsetX = { it / 4 },
                                     animationSpec = fluidSpringSpec()
-                                )
-                            } else {
-                                slideInVertically(
-                                    initialOffsetY = { it / 4 },
-                                    animationSpec = fluidSpringSpec()
-                                )
-                            }),
-                        exit = fadeOut(animationSpec = fluidSpringSpec()) +
-                            (if (landscape) {
+                                ),
+                            exit = fadeOut(animationSpec = fluidSpringSpec()) +
                                 slideOutHorizontally(
                                     targetOffsetX = { it / 4 },
                                     animationSpec = fluidSpringSpec()
-                                )
-                            } else {
-                                slideOutVertically(
-                                    targetOffsetY = { it / 4 },
-                                    animationSpec = fluidSpringSpec()
-                                )
-                            }),
-                        modifier = if (landscape) {
-                            Modifier
+                                ),
+                            modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(
                                     top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
                                     bottom = padding.calculateBottomPadding() + 8.dp,
                                     end = padding.calculateEndPadding(ld) + 8.dp
                                 )
-                        } else {
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .navigationBarsPadding()
-                                .padding(bottom = DOCK_CLEARANCE)
-                        }
-                    ) {
-                        ClockDock(
-                            destinations = Tab.entries,
-                            selected = targetTab,
-                            onSelect = { selectedTab ->
-                                scope.launch {
-                                    pagerState.animateScrollToPage(
-                                        page = Tab.entries.indexOf(selectedTab),
-                                        animationSpec = fluidSpringSpec()
-                                    )
-                                }
-                            },
-                            vertical = landscape,
-                            hazeState = hazeState,
-                            modifier = Modifier.onGloballyPositioned { coords ->
-                                if (!landscape) {
-                                    with(density) {
-                                        dockHeight = coords.size.height.toDp()
+                        ) {
+                            ClockDock(
+                                destinations = Tab.entries,
+                                selected = targetTab,
+                                onSelect = { selectedTab ->
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(
+                                            page = Tab.entries.indexOf(selectedTab),
+                                            animationSpec = fluidSpringSpec()
+                                        )
                                     }
-                                }
-                            },
-                        )
-                    }
+                                },
+                                vertical = true,
+                                hazeState = hazeState,
+                                timerRunning = timer != null,
+                                stopwatch = sw
+                            )
+                        }
 
-                    FloatingAddButton(
-                        visible = !selectionActive &&
-                            (targetTab == Tab.ALARMS || targetTab == Tab.WORLD),
-                        label = when (targetTab) {
-                            Tab.WORLD -> "Add city"
-                            Tab.TIMERS -> "Add preset"
-                            else -> "Add alarm"
-                        },
-                        onClick = {
-                            when (targetTab) {
-                                Tab.WORLD -> addingCity = true
-                                Tab.TIMERS -> editingPreset = TimerPreset(
-                                    id = 0L,
-                                    name = "",
-                                    totalSeconds = 25 * 60
-                                )
-                                else -> editing = vm.blankAlarm()
-                            }
-                        },
-                        modifier = if (landscape) {
-                            Modifier
+                        FloatingAddButton(
+                            visible = fabVisible,
+                            label = fabLabel,
+                            onClick = onFabClick,
+                            modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(
                                     end = railWidth + padding.calculateEndPadding(ld) + 16.dp,
                                     bottom = padding.calculateBottomPadding() + 16.dp,
                                 )
-                        } else {
-                            Modifier
+                        )
+                    } else {
+                        // Portrait: Dock Bar + Inline Circular '+' FAB side-by-side in one clean row
+                        AnimatedVisibility(
+                            visible = !selectionActive,
+                            enter = fadeIn(animationSpec = fluidSpringSpec()) +
+                                slideInVertically(
+                                    initialOffsetY = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                ),
+                            exit = fadeOut(animationSpec = fluidSpringSpec()) +
+                                slideOutVertically(
+                                    targetOffsetY = { it / 4 },
+                                    animationSpec = fluidSpringSpec()
+                                ),
+                            modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                .padding(
-                                    bottom = padding.calculateBottomPadding() +
-                                        dockHeight + DOCK_CLEARANCE + 12.dp,
+                                .navigationBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = DOCK_CLEARANCE)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                            ) {
+                                ClockDock(
+                                    destinations = Tab.entries,
+                                    selected = targetTab,
+                                    onSelect = { selectedTab ->
+                                        scope.launch {
+                                            pagerState.animateScrollToPage(
+                                                page = Tab.entries.indexOf(selectedTab),
+                                                animationSpec = fluidSpringSpec()
+                                            )
+                                        }
+                                    },
+                                    vertical = false,
+                                    hazeState = hazeState,
+                                    timerRunning = timer != null,
+                                    stopwatch = sw,
+                                    modifier = Modifier.onGloballyPositioned { coords ->
+                                        with(density) {
+                                            dockHeight = coords.size.height.toDp()
+                                        }
+                                    },
                                 )
-                        },
-                    )
+
+                                FloatingAddButton(
+                                    visible = fabVisible,
+                                    label = fabLabel,
+                                    onClick = onFabClick
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -793,7 +808,6 @@ fun ClockApp(
             }
         }
 
-        // Direct launch when opened from Android System Screensaver Settings
         if (showScreensaverSettingsSheet) {
             ScreensaverSettingsSheet(
                 settings = screensaverSettings,
