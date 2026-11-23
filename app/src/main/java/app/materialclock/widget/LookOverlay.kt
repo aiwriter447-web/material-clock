@@ -62,14 +62,14 @@ object LookOverlay {
         when {
             config.look == AnalogLook.DAY -> {
                 val badge = DayDesign.badge(face.cx, face.cy, face.rMin)
-                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
+                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 600).apply {
                     color = colours.onBadge
                     textSize = DayDesign.DAY_TEXT * face.rMin
                 }
                 centred(SimpleDateFormat("d", Locale.getDefault()).format(now), badge.cx, badge.cy, paint)
             }
             config.look == AnalogLook.RIPPLE && config.date != app.materialclock.data.DateMode.NONE -> {
-                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 700).apply {
+                val paint = TextInk.numeralPaint(context, 100f, width = 100f, weight = 600).apply {
                     color = colours.onFace
                     textSize = DayDesign.RIPPLE_TEXT * face.rMin
                 }
