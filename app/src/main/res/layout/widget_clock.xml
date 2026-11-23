@@ -67,7 +67,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:fontFamily="@font/google_sans_flex_family"
-            android:textFontWeight="700" />
+            android:textFontWeight="600" />
     </FrameLayout>
 
     <!--
@@ -156,6 +156,44 @@
             android:maxLines="2"
             android:fontFamily="@font/google_sans_flex_family"
             android:textFontWeight="800" />
+    </FrameLayout>
+
+    <!-- The wide analog card (4x2), "Date and time": the time under the date. -->
+    <FrameLayout
+        android:id="@+id/card_time_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/card_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:fontFamily="@font/google_sans_flex_family"
+            android:textFontWeight="700" />
+    </FrameLayout>
+
+    <!-- The wide analog card (4x2), "Corners": the date small, in the top right corner. -->
+    <FrameLayout
+        android:id="@+id/card_date_end_slot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/card_date_end"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:gravity="end"
+            android:textAlignment="viewEnd"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:fontFamily="@font/google_sans_flex_family"
+            android:textFontWeight="500" />
     </FrameLayout>
 
     <!-- The 2x1 capsule, when it has been stretched wide: the time on the right. -->
