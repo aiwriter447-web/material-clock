@@ -17,10 +17,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,7 +38,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,21 +49,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import app.materialclock.core.Lap
 import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
+import app.materialclock.ui.theme.ClockFace
+import app.materialclock.ui.theme.Numerals
 import kotlinx.coroutines.delay
 import java.time.Duration
 
@@ -91,16 +95,60 @@ private val JellySpring = spring<Float>(
 )
 
 /**
- * Logic for generating 44 different vibrant colors
+ * Generates 108 unique, non-repeating shades (36 distinct hues x 3 tonal tiers)
+ * using a coprime stride (41 mod 108) so consecutive laps also stay visually distinct.
  */
 @Composable
 private fun getLapColors(index: Int): Pair<Color, Color> {
     val isDark = isSystemInDarkTheme()
-    val hue = ((index - 1) * (360f / 44f)) % 360f
+    val safeIndex = (index - 1).coerceAtLeast(0)
+    val slot = (safeIndex * 41) % 108
+    val hueBucket = slot % 36
+    val shadeTier = slot / 36
 
-    val saturation = if (isDark) 0.75f else 0.7f
-    val lightnessBadge = if (isDark) 0.45f else 0.85f
-    val lightnessText = if (isDark) 0.95f else 0.2f
+    val hue = (hueBucket * 10f) % 360f
+
+    val saturation: Float
+    val lightnessBadge: Float
+    val lightnessText: Float
+
+    if (isDark) {
+        when (shadeTier) {
+            0 -> {
+                saturation = 0.78f
+                lightnessBadge = 0.34f
+                lightnessText = 0.96f
+            }
+            1 -> {
+                saturation = 0.72f
+                lightnessBadge = 0.44f
+                lightnessText = 0.98f
+            }
+            else -> {
+                saturation = 0.85f
+                lightnessBadge = 0.26f
+                lightnessText = 0.94f
+            }
+        }
+    } else {
+        when (shadeTier) {
+            0 -> {
+                saturation = 0.76f
+                lightnessBadge = 0.88f
+                lightnessText = 0.18f
+            }
+            1 -> {
+                saturation = 0.84f
+                lightnessBadge = 0.80f
+                lightnessText = 0.14f
+            }
+            else -> {
+                saturation = 0.66f
+                lightnessBadge = 0.92f
+                lightnessText = 0.22f
+            }
+        }
+    }
 
     val badgeBg = Color.hsl(hue, saturation, lightnessBadge)
     val badgeFg = Color.hsl(hue, saturation, lightnessText)
@@ -129,55 +177,71 @@ fun StopwatchScreen(
     }
 
     val layoutDirection = LocalLayoutDirection.current
+    val showList = stopwatch.running || !elapsed.isZero || stopwatch.laps.isNotEmpty()
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    val availH = maxHeight - contentPadding.calculateTopPadding()
-    val readoutCap = minOf(READOUT_CAP, availH * 0.10f).coerceAtLeast(32.dp)
-    val topGap = minOf(32.dp, availH * 0.04f)
-    val stackGap = minOf(STACK_GAP, availH * 0.045f)
-    val wide = maxWidth > maxHeight || maxWidth >= 600.dp
-    val wideCap = minOf(READOUT_CAP, (availH - 16.dp) * 0.2f).coerceAtLeast(28.dp)
-    val controlsAndLaps: @Composable (Modifier) -> Unit = { mod ->
-        val showList = stopwatch.running || !elapsed.isZero || stopwatch.laps.isNotEmpty()
-        Column(
-            modifier = mod,
-            verticalArrangement = if (wide && !showList) Arrangement.Center else Arrangement.Top
-        ) {
-            FluidEntrance(delayMillis = 80) {
-                StopwatchControls(
-                    idle = !stopwatch.running && elapsed.isZero,
-                    running = stopwatch.running,
-                    onToggle = onToggle,
-                    onLap = onLap,
-                    onReset = onReset,
-                )
-            }
+        val availH = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding()
+        val wide = maxWidth > maxHeight || maxWidth >= 600.dp
+        val horizontalCap = minOf(
+            HORIZONTAL_READOUT_CAP,
+            ((if (wide) maxWidth * 0.46f else maxWidth - 48.dp) / 4.8f)
+        ).coerceAtLeast(32.dp)
+
+        val lapsViewport: @Composable (Modifier) -> Unit = { listModifier ->
             if (showList) {
-            Spacer(Modifier.height(12.dp))
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    bottom = contentPadding.calculateBottomPadding() + 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(LAP_GAP),
-            ) {
-                val isIdle = !stopwatch.running && elapsed.isZero
-                if (!isIdle) {
-                    item(key = "current_lap") {
-                        val currentSplit = elapsed.minus(stopwatch.laps.firstOrNull()?.total ?: Duration.ZERO)
-                        val currentLap = Lap(
-                            index = (stopwatch.laps.firstOrNull()?.index ?: 0) + 1,
-                            split = currentSplit,
-                            total = elapsed
-                        )
+                LazyColumn(
+                    state = listState,
+                    modifier = listModifier
+                        .fillMaxWidth()
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.Transparent,
+                                    0.04f to Color.Black,
+                                    0.86f to Color.Black,
+                                    1.0f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        },
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 6.dp,
+                        bottom = 24.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(LAP_GAP),
+                ) {
+                    val isIdle = !stopwatch.running && elapsed.isZero
+                    if (!isIdle) {
+                        item(key = "current_lap") {
+                            val currentSplit = elapsed.minus(stopwatch.laps.firstOrNull()?.total ?: Duration.ZERO)
+                            val currentLap = Lap(
+                                index = (stopwatch.laps.firstOrNull()?.index ?: 0) + 1,
+                                split = currentSplit,
+                                total = elapsed
+                            )
+                            LapRow(
+                                lap = currentLap,
+                                isFastest = false,
+                                isSlowest = false,
+                                isCurrent = true,
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = tween(260, easing = EaseOutSine),
+                                    placementSpec = FluidPlacementSpring
+                                )
+                            )
+                        }
+                    }
+
+                    items(stopwatch.laps, key = { it.index }) { lap ->
                         LapRow(
-                            lap = currentLap,
-                            isFastest = false,
-                            isSlowest = false,
-                            isCurrent = true,
+                            lap = lap,
+                            isFastest = fastest == lap.index,
+                            isSlowest = slowest == lap.index,
+                            isCurrent = false,
                             modifier = Modifier.animateItem(
                                 fadeInSpec = tween(260, easing = EaseOutSine),
                                 placementSpec = FluidPlacementSpring
@@ -185,86 +249,107 @@ fun StopwatchScreen(
                         )
                     }
                 }
-
-                items(stopwatch.laps, key = { it.index }) { lap ->
-                    LapRow(
-                        lap = lap,
-                        isFastest = fastest == lap.index,
-                        isSlowest = slowest == lap.index,
-                        isCurrent = false,
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = tween(260, easing = EaseOutSine),
-                            placementSpec = FluidPlacementSpring
-                        )
-                    )
-                }
-            }
+            } else {
+                Spacer(modifier = listModifier)
             }
         }
-    }
 
-    if (wide) {
-        // Landscape / wide: digits on the left, buttons and laps on the right.
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = contentPadding.calculateTopPadding(),
-                    start = contentPadding.calculateStartPadding(layoutDirection),
-                    end = contentPadding.calculateEndPadding(layoutDirection)
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentAlignment = Alignment.Center
+        if (wide) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = contentPadding.calculateBottomPadding() + 12.dp,
+                        start = contentPadding.calculateStartPadding(layoutDirection),
+                        end = contentPadding.calculateEndPadding(layoutDirection)
+                    ),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FluidEntrance(delayMillis = 0) {
+                        LivingHorizontalReadout(
+                            minutes = a,
+                            seconds = b,
+                            hundredths = c,
+                            running = stopwatch.running,
+                            capHeight = horizontalCap,
+                            label = "Stopwatch, $a minutes $b seconds $c hundredths" +
+                                if (stopwatch.running) ", running" else ", stopped",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    lapsViewport(Modifier.weight(1f))
+                    Spacer(Modifier.height(10.dp))
+                    FluidEntrance(delayMillis = 80) {
+                        StopwatchControls(
+                            idle = !stopwatch.running && elapsed.isZero,
+                            running = stopwatch.running,
+                            onToggle = onToggle,
+                            onLap = onLap,
+                            onReset = onReset,
+                        )
+                    }
+                }
+            }
+        } else {
+            val topOffset = minOf(12.dp, availH * 0.02f)
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = contentPadding.calculateBottomPadding() + 14.dp,
+                        start = contentPadding.calculateStartPadding(layoutDirection),
+                        end = contentPadding.calculateEndPadding(layoutDirection)
+                    )
+            ) {
+                Spacer(Modifier.height(topOffset))
+
                 FluidEntrance(delayMillis = 0) {
-                    LivingStopwatchReadout(
-                        parts = listOf(a, b, c),
+                    LivingHorizontalReadout(
+                        minutes = a,
+                        seconds = b,
+                        hundredths = c,
                         running = stopwatch.running,
+                        capHeight = horizontalCap,
                         label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                             if (stopwatch.running) ", running" else ", stopped",
-                        modifier = Modifier.fillMaxWidth(),
-                        cap = wideCap
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                lapsViewport(Modifier.weight(1f))
+
+                Spacer(Modifier.height(10.dp))
+
+                FluidEntrance(delayMillis = 80) {
+                    StopwatchControls(
+                        idle = !stopwatch.running && elapsed.isZero,
+                        running = stopwatch.running,
+                        onToggle = onToggle,
+                        onLap = onLap,
+                        onReset = onReset,
                     )
                 }
             }
-            controlsAndLaps(Modifier.weight(1f).fillMaxHeight())
         }
-    } else {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(
-                top = contentPadding.calculateTopPadding(),
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection)
-            )
-    ) {
-        Spacer(Modifier.height(topGap))
-
-        FluidEntrance(delayMillis = 0) {
-            LivingStopwatchReadout(
-                parts = listOf(a, b, c),
-                running = stopwatch.running,
-                label = "Stopwatch, $a minutes $b seconds $c hundredths" +
-                    if (stopwatch.running) ", running" else ", stopped",
-                modifier = Modifier.fillMaxWidth(),
-                cap = readoutCap
-            )
-        }
-
-        Spacer(Modifier.height(stackGap))
-
-        controlsAndLaps(Modifier.fillMaxWidth().weight(1f))
-    }
-    }
     }
 }
 
 /* ───────────────────────────────────────────────
-   LIVING FLOW: STAGGERED ENTRANCE & BREATHING READOUT
+   LIVING FLOW: STAGGERED ENTRANCE & HORIZONTAL READOUT
    ─────────────────────────────────────────────── */
 
 @Composable
@@ -310,13 +395,14 @@ private fun FluidEntrance(
 }
 
 @Composable
-private fun LivingStopwatchReadout(
-    parts: List<String>,
+private fun LivingHorizontalReadout(
+    minutes: String,
+    seconds: String,
+    hundredths: String,
     running: Boolean,
+    capHeight: Dp,
     label: String,
-    modifier: Modifier = Modifier,
-    cap: Dp = READOUT_CAP,
-    horizontal: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val infinite = rememberInfiniteTransition(label = "stopwatchLivingPulse")
 
@@ -336,23 +422,32 @@ private fun LivingStopwatchReadout(
         label = "activeReadoutWeight"
     )
 
-    val breathingScale = 1f + (rawBreath * 0.016f * activeWeight)
-    val auraAlpha = (0.04f + rawBreath * 0.12f) * activeWeight
+    val breathingScale = 1f + (rawBreath * 0.018f * activeWeight)
+    val auraAlpha = 0.07f + (rawBreath * 0.13f * activeWeight)
+
     val primary = MaterialTheme.colorScheme.primary
+    val highlightContainer by animateColorAsState(
+        targetValue = if (running) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+        } else {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+        },
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 220f),
+        label = "readoutHighlightContainer"
+    )
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.graphicsLayer {
-            scaleX = breathingScale
-            scaleY = breathingScale
-        }
+        modifier = modifier
+            .clearAndSetSemantics { contentDescription = label }
+            .graphicsLayer {
+                scaleX = breathingScale
+                scaleY = breathingScale
+            }
     ) {
         Box(
             modifier = Modifier
-                .size(
-                    width = if (horizontal) cap * 9.8f else cap * 4.3f,
-                    height = if (horizontal) cap * 2.6f else cap * 3.9f
-                )
+                .size(width = capHeight * 6.4f, height = capHeight * 2.4f)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
@@ -364,32 +459,24 @@ private fun LivingStopwatchReadout(
                 )
         )
 
-        if (horizontal) {
-            Row(
-                modifier = Modifier
-                    .semantics(mergeDescendants = true) { contentDescription = label },
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+        Surface(
+            color = highlightContainer,
+            shape = CircleShape,
+            modifier = Modifier.padding(horizontal = 20.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
             ) {
-                parts.forEachIndexed { index, part ->
-                    DigitRow(
-                        part = part,
-                        capHeight = cap,
-                        color = primary,
-                        leading = if (index == 0) Icons.Rounded.Timer else null,
-                        separator = index > 0
-                    )
-                }
+                Numerals(
+                    text = "$minutes:$seconds:$hundredths",
+                    capHeight = capHeight,
+                    color = primary,
+                    width = ClockFace.TIMER_WIDTH,
+                    weight = ClockFace.TIMER_WEIGHT,
+                    slashedZero = true
+                )
             }
-        } else {
-            StackedDigits(
-                parts = parts,
-                capHeight = cap,
-                color = primary,
-                leading = Icons.Rounded.Timer,
-                label = label,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
@@ -625,13 +712,8 @@ private fun StopwatchControls(
     }
 }
 
-private const val EXPAND_LEAD_MS = 95
-private const val SPLIT_MS = 150
-private const val LABEL_FADE_MS = 70
-
 private val IDLE_PADDING_H = 48.dp
-private val STACK_GAP = 36.dp
-private val READOUT_CAP = 56.dp
+private val HORIZONTAL_READOUT_CAP = 52.dp
 private val GAP = 8.dp
 private val ROW_HEIGHT = 64.dp
 private val LAP_ROW_HEIGHT = 56.dp
