@@ -301,6 +301,7 @@ private fun encodeWidgetConfig(c: WidgetConfig) = JSONObject()
     .put("bg", c.background.name)
     .put("bgOp", c.backgroundOpacity.toDouble())
     .put("appearance", c.appearance.name)
+    .put("card", c.cardStyle.name)
     .put("cities", JSONArray(c.cityKeys))
     .put("alarmId", c.alarmId ?: -1L)
     .put("shape", c.shape.name)
@@ -334,6 +335,7 @@ private fun parseWidgetConfig(s: String): WidgetConfig = runCatching {
         background = enumOr(o.optString("bg"), WidgetBackground.FILLED),
         backgroundOpacity = o.optDouble("bgOp", 1.0).toFloat().coerceIn(0f, 1f),
         appearance = enumOr(o.optString("appearance"), WidgetAppearance.AUTO),
+        cardStyle = enumOr(o.optString("card"), CardStyle.DATE_TIME),
         cityKeys = o.optJSONArray("cities")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
         alarmId = o.optLong("alarmId", -1L).takeIf { it >= 0L },
         shape = enumOr(o.optString("shape"), FaceShape.CIRCLE),
