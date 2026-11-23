@@ -85,6 +85,39 @@ object WorldClockRenderer {
         WidgetRefresh.push(context, manager, appWidgetId) { build(context, settings, config, sides[0], sides[1], options) }
     }
 
+    /**
+     * The widget as the editor's live preview shows it: one size, [w] by [h] pixels, with the two
+     * cities chosen exactly as [update] chooses them.
+     */
+    fun previewViews(
+        context: Context,
+        settings: ClockSettings,
+        config: WidgetConfig,
+        cities: List<WorldCity>,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
+        val ordered = cities.sortedWith(
+            compareByDescending<WorldCity> { it.pinnedAt != null }
+                .thenByDescending { it.pinnedAt ?: 0L }
+                .thenBy { it.city },
+        )
+        val home = settings.world.homeZoneOverride
+            ?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+            ?: ZoneId.systemDefault()
+        val homeSide = Side("Home", home)
+        val chosen = config.cityKeys.mapNotNull { key ->
+            if (key == HOME_CITY_KEY) homeSide
+            else ordered.firstOrNull { worldCityKey(it) == key }?.let { Side(it.city, it.zone) }
+        }
+        val fallback = if (ordered.size >= 2) ordered.take(2).map { Side(it.city, it.zone) }
+        else listOf(homeSide) + ordered.map { Side(it.city, it.zone) }
+        val sides = (chosen + fallback + Side("UTC", ZoneId.of("UTC")))
+            .distinctBy { it.label + it.zone.id }
+            .take(2)
+        return one(context, settings, config, sides[0], sides[1], w, h)
+    }
+
     /** [sizePx], or smaller if [text] would be wider than [maxWidth] at that size (never below 60%). */
     private fun fitCityPx(context: Context, text: String, sizePx: Float, maxWidth: Float): Float {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -192,7 +225,7 @@ object WorldClockRenderer {
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
-        val bgA = WidgetColours.withOpacity(scheme.primaryContainer.toArgb(), config.backgroundOpacity)
+        val bgA = WidgetColours.withOpacity(WidgetColours.card(context, config, settings), config.backgroundOpacity)
         val bgB = WidgetColours.withOpacity(scheme.primary.toArgb(), config.backgroundOpacity)
         // With no card the text sits on the wallpaper, so both halves use the plain text colour.
         val onA = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
@@ -207,7 +240,7 @@ object WorldClockRenderer {
             },
         )
 
-        val radius = if (h / d < ONE_ROW_MAX_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
+        val radius = WidgetCorner.radius(w.toFloat(), h.toFloat(), h / d < ONE_ROW_MAX_HEIGHT_DP)
         if (filled) {
             views.setViewVisibility(R.id.world_bg, View.VISIBLE)
             views.setImageViewIcon(R.id.world_bg, background(bgA, bgB, w, h, radius, horizontal).toIcon())
