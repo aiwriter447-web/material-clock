@@ -106,7 +106,7 @@ object DigitalRenderer {
         val dateRowPx = min(h * 0.32f, w * 0.34f / (if (longRowDate) 5.4f else 3.4f))
 
         // One-row widgets are pills; taller ones get a Material-style rounded card.
-        val radius = if (hDp < DATE_MIN_HEIGHT_DP) h / 2f else min(36f * d, min(w, h) / 2f)
+        val radius = WidgetCorner.radius(w.toFloat(), h.toFloat(), hDp < DATE_MIN_HEIGHT_DP)
 
         return Layout(
             timePx = time,
@@ -183,7 +183,7 @@ object DigitalRenderer {
             views.setViewVisibility(R.id.digital_bg, View.GONE)
         } else {
             views.setViewVisibility(R.id.digital_bg, View.VISIBLE)
-            views.setImageViewIcon(R.id.digital_bg, background(WidgetColours.withOpacity(colours.face, config.backgroundOpacity), w, h, l.radiusPx).toIcon())
+            views.setImageViewIcon(R.id.digital_bg, background(WidgetColours.withOpacity(WidgetColours.card(context, config, settings), config.backgroundOpacity), w, h, l.radiusPx).toIcon())
         }
 
         // Time. 12-hour and 24-hour patterns are both set; the launcher picks by system setting.
@@ -245,7 +245,7 @@ object DigitalRenderer {
         val bmp = if (config.background == WidgetBackground.NONE) {
             Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         } else {
-            background(WidgetColours.withOpacity(colours.face, config.backgroundOpacity), w, h, l.radiusPx)
+            background(WidgetColours.withOpacity(WidgetColours.card(context, config, settings), config.backgroundOpacity), w, h, l.radiusPx)
         }
         val canvas = Canvas(bmp)
         val typeface = ResourcesCompat.getFont(context, R.font.google_sans_flex)
