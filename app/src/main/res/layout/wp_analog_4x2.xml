@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Picker preview: Analog Clock, 4x2. A plain layout, no app code runs for it. The clock and the
+  texts tick: they are the launcher's own views.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:background="@drawable/wp_card_surface"
+        android:gravity="center_vertical">
+        <FrameLayout
+            android:layout_width="84dp"
+            android:layout_height="84dp"
+            android:layout_marginStart="12dp">
+            <AnalogClock
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:dial="@drawable/wp_dial_round"
+                android:hand_hour="@drawable/wp_hand_hour"
+                android:hand_minute="@drawable/wp_hand_minute"
+                android:hand_second="@drawable/wp_hand_second" />
+        </FrameLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:orientation="vertical">
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="EEEE,'&#10;'d MMMM"
+                android:format24Hour="EEEE,'&#10;'d MMMM"
+                android:textColor="@color/wp_on_surface"
+                android:textSize="15sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="600"
+                android:includeFontPadding="false" />
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:format12Hour="h:mm a"
+                android:format24Hour="HH:mm"
+                android:textColor="@color/wp_on_surface"
+                android:textSize="26sp"
+                android:fontFamily="@font/google_sans_flex_family"
+                android:textFontWeight="700"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
