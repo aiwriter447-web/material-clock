@@ -84,6 +84,14 @@ object AlarmWidgetRenderer {
         WidgetRefresh.push(context, manager, appWidgetId) { build(context, settings, config, alarm, options) }
     }
 
+    /** The widget as the editor's live preview shows it: one size, [w] by [h] pixels. */
+    fun previewViews(context: Context, settings: ClockSettings, config: WidgetConfig, alarm: Alarm?, w: Int, h: Int): RemoteViews =
+        one(context, settings, config, alarm, w, h)
+
+    /** The alarm this widget would show: the one chosen in its settings, else the next to ring. */
+    fun previewAlarm(alarms: List<Alarm>, config: WidgetConfig): Alarm? =
+        alarms.firstOrNull { it.id == config.alarmId } ?: pick(alarms)
+
     /** The alarm that rings next; if none is switched on, the earliest one of the day (shown as off). */
     private fun pick(alarms: List<Alarm>): Alarm? {
         val now = ZonedDateTime.now()
@@ -220,7 +228,7 @@ object AlarmWidgetRenderer {
 
         val scheme = WidgetColours.scheme(context, config, settings)
         val filled = config.background == WidgetBackground.FILLED
-        val bg = WidgetColours.withOpacity(scheme.primaryContainer.toArgb(), config.backgroundOpacity)
+        val bg = WidgetColours.withOpacity(WidgetColours.card(context, config, settings), config.backgroundOpacity)
         // With no card the text sits on the wallpaper, so it uses the plain text colour.
         val fg = if (filled) scheme.onPrimaryContainer.toArgb() else scheme.onSurface.toArgb()
         fun alpha(color: Int, a: Float) = ColorUtils.setAlphaComponent(color, (255 * a).roundToInt())
@@ -229,7 +237,7 @@ object AlarmWidgetRenderer {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val texts = mutableListOf<TextSpec>()
-        val radius = if (oneRow) hf / 2f else min(36f * d, min(wf, hf) / 2f)
+        val radius = WidgetCorner.radius(wf, hf, oneRow)
         if (filled) {
             c.drawRoundRect(RectF(0f, 0f, wf, hf), radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg })
         }
