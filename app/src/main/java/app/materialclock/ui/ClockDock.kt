@@ -70,7 +70,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.materialclock.core.StopwatchState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.cos
@@ -171,7 +170,8 @@ fun ClockDock(
     vertical: Boolean = false,
     hazeState: HazeState,
     timerRunning: Boolean = false,
-    stopwatch: StopwatchState = StopwatchState(),
+    stopwatchRunning: Boolean = false,
+    stopwatchSnapshot: Any = Unit,
     modifier: Modifier = Modifier,
 ) {
     val containerModifier = modifier.dockFrostedGlass(hazeState = hazeState)
@@ -188,7 +188,8 @@ fun ClockDock(
                     selected = tab == selected,
                     vertical = true,
                     timerRunning = timerRunning,
-                    stopwatch = stopwatch,
+                    stopwatchRunning = stopwatchRunning,
+                    stopwatchSnapshot = stopwatchSnapshot,
                     onClick = { onSelect(tab) }
                 )
             }
@@ -207,7 +208,8 @@ fun ClockDock(
                     selected = tab == selected,
                     vertical = false,
                     timerRunning = timerRunning,
-                    stopwatch = stopwatch,
+                    stopwatchRunning = stopwatchRunning,
+                    stopwatchSnapshot = stopwatchSnapshot,
                     onClick = { onSelect(tab) }
                 )
             }
@@ -221,7 +223,8 @@ private fun DockItem(
     selected: Boolean,
     vertical: Boolean,
     timerRunning: Boolean,
-    stopwatch: StopwatchState,
+    stopwatchRunning: Boolean,
+    stopwatchSnapshot: Any,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -287,7 +290,8 @@ private fun DockItem(
                 tab = tab,
                 tint = contentColor,
                 timerRunning = timerRunning,
-                stopwatch = stopwatch
+                stopwatchRunning = stopwatchRunning,
+                stopwatchSnapshot = stopwatchSnapshot
             )
 
             if (!vertical) {
@@ -329,7 +333,8 @@ private fun DockTabIcon(
     tab: Tab,
     tint: Color,
     timerRunning: Boolean,
-    stopwatch: StopwatchState
+    stopwatchRunning: Boolean,
+    stopwatchSnapshot: Any
 ) {
     when (tab) {
         Tab.ALARMS -> AlarmClockVectorIcon(tint = tint, modifier = Modifier.size(22.dp))
@@ -341,7 +346,8 @@ private fun DockTabIcon(
         )
         Tab.STOPWATCH -> LiveStopwatchIcon(
             tint = tint,
-            stopwatch = stopwatch,
+            isRunning = stopwatchRunning,
+            snapshot = stopwatchSnapshot,
             modifier = Modifier.size(22.dp)
         )
     }
@@ -359,7 +365,6 @@ private fun AlarmClockVectorIcon(
         val center = Offset(size.width / 2f, size.height * 0.54f)
         val radius = size.minDimension * 0.35f
 
-        // Clock dial
         drawCircle(
             color = tint,
             radius = radius,
@@ -367,7 +372,6 @@ private fun AlarmClockVectorIcon(
             style = Stroke(width = stroke)
         )
 
-        // Left & right top alarm bells
         drawLine(
             color = tint,
             start = Offset(size.width * 0.18f, size.height * 0.25f),
@@ -383,7 +387,6 @@ private fun AlarmClockVectorIcon(
             cap = StrokeCap.Round
         )
 
-        // Left & right feet
         drawLine(
             color = tint,
             start = Offset(center.x - radius * 0.62f, center.y + radius * 0.78f),
@@ -399,7 +402,6 @@ private fun AlarmClockVectorIcon(
             cap = StrokeCap.Round
         )
 
-        // Hands
         drawLine(
             color = tint,
             start = center,
@@ -427,7 +429,6 @@ private fun WorldGlobeVectorIcon(
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension * 0.40f
 
-        // Outer globe circle
         drawCircle(
             color = tint,
             radius = radius,
@@ -435,7 +436,6 @@ private fun WorldGlobeVectorIcon(
             style = Stroke(width = stroke)
         )
 
-        // Equator line
         drawLine(
             color = tint,
             start = Offset(center.x - radius, center.y),
@@ -443,7 +443,6 @@ private fun WorldGlobeVectorIcon(
             strokeWidth = stroke * 0.85f
         )
 
-        // Meridian oval
         drawOval(
             color = tint,
             topLeft = Offset(center.x - radius * 0.46f, center.y - radius),
@@ -476,7 +475,6 @@ private fun LiveHourglassIcon(
         label = "hourglassCycle"
     )
 
-    // Smooth flip rotation only during the final 14% of the cycle when running
     val targetRotation = if (isRunning && rawCycle > 0.86f) {
         ((rawCycle - 0.86f) / 0.14f) * 180f
     } else {
@@ -486,7 +484,7 @@ private fun LiveHourglassIcon(
     val sandProgress = if (isRunning) {
         (rawCycle / 0.86f).coerceIn(0f, 1f)
     } else {
-        1f // Settled upright at bottom when idle
+        1f
     }
 
     Canvas(modifier = modifier) {
@@ -502,7 +500,6 @@ private fun LiveHourglassIcon(
         val neckHalf = w * 0.055f
 
         rotate(degrees = targetRotation, pivot = Offset(w / 2f, midY)) {
-            // Top & bottom horizontal caps
             drawLine(
                 color = tint,
                 start = Offset(w * 0.18f, topY),
@@ -518,7 +515,6 @@ private fun LiveHourglassIcon(
                 cap = StrokeCap.Round
             )
 
-            // Glass chamber path
             val topChamber = Path().apply {
                 moveTo(leftX, topY)
                 lineTo(rightX, topY)
@@ -535,7 +531,6 @@ private fun LiveHourglassIcon(
                 close()
             }
 
-            // Sand inside top chamber (drains downward as sandProgress goes 0 -> 1)
             val topFillFraction = (1f - sandProgress) * 0.82f
             if (topFillFraction > 0.03f) {
                 clipPath(topChamber) {
@@ -548,7 +543,6 @@ private fun LiveHourglassIcon(
                 }
             }
 
-            // Falling sand stream from neck to bottom pile while actively running
             if (isRunning && sandProgress < 0.96f) {
                 val bottomPileTopY = bottomY - (bottomY - midY) * (sandProgress * 0.82f)
                 drawLine(
@@ -560,7 +554,6 @@ private fun LiveHourglassIcon(
                 )
             }
 
-            // Sand inside bottom chamber (fills upward as sandProgress goes 0 -> 1)
             val bottomFillFraction = 0.12f + (sandProgress * 0.72f)
             clipPath(bottomChamber) {
                 val sandTopY = bottomY - (bottomY - midY) * bottomFillFraction
@@ -571,7 +564,6 @@ private fun LiveHourglassIcon(
                 )
             }
 
-            // Hourglass outline
             drawPath(path = topChamber, color = tint, style = Stroke(width = stroke, join = StrokeJoin.Round))
             drawPath(path = bottomChamber, color = tint, style = Stroke(width = stroke, join = StrokeJoin.Round))
         }
@@ -587,16 +579,16 @@ private fun LiveHourglassIcon(
 @Composable
 private fun LiveStopwatchIcon(
     tint: Color,
-    stopwatch: StopwatchState,
+    isRunning: Boolean,
+    snapshot: Any,
     modifier: Modifier = Modifier
 ) {
     var needleDegrees by remember { mutableFloatStateOf(0f) }
     var wasRunning by remember { mutableStateOf(false) }
-    var lastPausedState by remember { mutableStateOf(stopwatch) }
+    var lastPausedSnapshot by remember { mutableStateOf(snapshot) }
 
-    // Smooth 360° continuous sweep (6 degrees per second = 1 full 360° circle every 60s)
-    LaunchedEffect(stopwatch.running) {
-        if (stopwatch.running) {
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
             wasRunning = true
             var lastNanos = withFrameNanos { it }
             while (true) {
@@ -605,22 +597,22 @@ private fun LiveStopwatchIcon(
                 lastNanos = nowNanos
                 needleDegrees = (needleDegrees + deltaSec * 6f) % 360f
             }
-        } else {
-            if (wasRunning) {
-                // Just paused: hold exact angle
-                wasRunning = false
-                lastPausedState = stopwatch
-            } else if (stopwatch != lastPausedState) {
-                // Reset triggered while stopped: return needle to 0°
-                lastPausedState = stopwatch
-                needleDegrees = 0f
-            }
+        } else if (wasRunning) {
+            wasRunning = false
+            lastPausedSnapshot = snapshot
+        }
+    }
+
+    LaunchedEffect(snapshot) {
+        if (!isRunning && !wasRunning && snapshot != lastPausedSnapshot) {
+            lastPausedSnapshot = snapshot
+            needleDegrees = 0f
         }
     }
 
     val animatedAngle by animateFloatAsState(
         targetValue = needleDegrees,
-        animationSpec = if (stopwatch.running) {
+        animationSpec = if (isRunning) {
             tween(durationMillis = 50, easing = LinearEasing)
         } else {
             dockFluidSpring()
@@ -633,7 +625,6 @@ private fun LiveStopwatchIcon(
         val center = Offset(size.width / 2f, size.height * 0.56f)
         val radius = size.minDimension * 0.35f
 
-        // Top crown stem & bar
         drawLine(
             color = tint,
             start = Offset(center.x, center.y - radius),
@@ -649,7 +640,6 @@ private fun LiveStopwatchIcon(
             cap = StrokeCap.Round
         )
 
-        // Top-right side pusher button
         val pusherAngleRad = Math.toRadians(-45.0)
         val pusherStart = Offset(
             center.x + (radius * cos(pusherAngleRad)).toFloat(),
@@ -667,7 +657,6 @@ private fun LiveStopwatchIcon(
             cap = StrokeCap.Round
         )
 
-        // Main dial circle
         drawCircle(
             color = tint,
             radius = radius,
@@ -675,14 +664,12 @@ private fun LiveStopwatchIcon(
             style = Stroke(width = stroke)
         )
 
-        // Center pivot dot
         drawCircle(
             color = tint,
             radius = 1.6.dp.toPx(),
             center = center
         )
 
-        // Rotating 360° stopwatch hand
         rotate(degrees = animatedAngle, pivot = center) {
             drawLine(
                 color = tint,
