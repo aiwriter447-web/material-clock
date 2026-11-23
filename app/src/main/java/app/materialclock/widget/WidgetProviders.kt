@@ -25,6 +25,7 @@ object WidgetProviders {
             AnalogClock2x1Provider::class.java,
             AnalogClock2x2Provider::class.java,
             AnalogClock4x1Provider::class.java,
+            AnalogClock4x2Provider::class.java,
         ),
         WidgetKind.DIGITAL to listOf(DigitalClock2x1Provider::class.java, DigitalClock2x2Provider::class.java, DigitalClock4x1Provider::class.java, DigitalClock4x2Provider::class.java),
         WidgetKind.WORLD to listOf(WorldClock2x1Provider::class.java, WorldClock2x2Provider::class.java, WorldClock4x1Provider::class.java, WorldClock4x2Provider::class.java),
@@ -57,6 +58,7 @@ object WidgetProviders {
 class AnalogClock2x1Provider : ClockWidgetProvider()
 class AnalogClock2x2Provider : ClockWidgetProvider()
 class AnalogClock4x1Provider : ClockWidgetProvider()
+class AnalogClock4x2Provider : ClockWidgetProvider()
 class DigitalClock2x1Provider : ClockWidgetProvider()
 class DigitalClock2x2Provider : ClockWidgetProvider()
 class DigitalClock4x1Provider : ClockWidgetProvider()
