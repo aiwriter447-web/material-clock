@@ -21,6 +21,7 @@ import app.materialclock.R
 import androidx.core.graphics.ColorUtils
 import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockStore
+import app.materialclock.data.CardStyle
 import app.materialclock.data.DateMode
 import app.materialclock.data.DatePosition
 import app.materialclock.data.HandStyle
@@ -132,6 +133,14 @@ object ClockWidgetRenderer {
             return views
         }
 
+        // Wide and two rows tall (4x2): a rounded card with the clock on the left and, on the
+        // right, the date and the time, laid out as the card style says.
+        if (pillW >= 1.5f * pillH) {
+            val views = card(context, config, settings, pillW, pillH)
+            views.setViewPadding(android.R.id.background, m, m, m, m)
+            return views
+        }
+
         // The shaped clock fills its whole cell: other clocks do, and a margin made ours visibly
         // smaller. The padding is set to zero rather than left alone, because a launcher may
         // re-use the previous views when the widget is resized, and a margin left over from the
@@ -204,12 +213,14 @@ object ClockWidgetRenderer {
         val canvas = Canvas(bmp)
         canvas.drawRoundRect(
             RectF(0f, 0f, w.toFloat(), h.toFloat()), h / 2f, h / 2f,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = scheme.surface.toArgb() },
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = WidgetColours.card(context, config, settings) },
         )
         canvas.drawBitmap(face.bitmap, left.toFloat(), top.toFloat(), null)
 
         val views = RemoteViews(context.packageName, R.layout.widget_clock)
         views.setImageViewIcon(R.id.face, bmp.toIcon())
+        views.setViewVisibility(R.id.card_time_slot, View.GONE)
+        views.setViewVisibility(R.id.card_date_end_slot, View.GONE)
         if (orbit) {
             applyOrbitDialHands(views, config, colours, side, left, top, w, h)
         } else {
@@ -279,6 +290,130 @@ object ClockWidgetRenderer {
         return views
     }
 
+    /**
+     * The wide card (4x2): a rounded card, white in light mode and black in dark mode, with the
+     * clock on the left. On the right it is one of three layouts ([CardStyle]): the date and the
+     * time under it; the date alone, large; or the date small in the top right corner and the
+     * time large in the bottom right.
+     */
+    private fun card(
+        context: Context,
+        config: WidgetConfig,
+        settings: app.materialclock.data.ClockSettings,
+        w: Int,
+        h: Int,
+    ): RemoteViews {
+        val orbit = config.look == AnalogLook.ORBIT
+        val colours = WidgetColours.resolve(context, config, settings)
+        val dark = WidgetColours.isDark(context, config, settings)
+        val ink = if (dark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+
+        val side = (h * 0.80f).roundToInt()
+        val top = ((h - side) / 2f).roundToInt()
+        val left = top
+        val face = if (orbit) orbitDial(side, colours) else FaceRenderer.render(context, config, colours, side, side)
+
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val radius = WidgetCorner.radius(w.toFloat(), h.toFloat(), false)
+        canvas.drawRoundRect(
+            RectF(0f, 0f, w.toFloat(), h.toFloat()), radius, radius,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = WidgetColours.card(dark) },
+        )
+        canvas.drawBitmap(face.bitmap, left.toFloat(), top.toFloat(), null)
+
+        val views = RemoteViews(context.packageName, R.layout.widget_clock)
+        views.setImageViewIcon(R.id.face, bmp.toIcon())
+        if (orbit) {
+            applyOrbitDialHands(views, config, colours, side, left, top, w, h)
+        } else {
+            applyHands(views, config, colours, face)
+            applyLook(context, views, config, colours, face, left.toFloat(), top.toFloat(), w, h)
+        }
+        views.setViewPadding(
+            R.id.hands_slot,
+            left, top,
+            (w - left - side).coerceAtLeast(0),
+            (h - top - side).coerceAtLeast(0),
+        )
+
+        val textLeft = left + side + h * 0.10f
+        val rightPad = h * 0.09f
+        val availW = (w - textLeft - rightPad).coerceAtLeast(1f)
+        val is24 = DateFormat.is24HourFormat(context)
+        val timeEm = if (is24) 2.7f else 4.2f
+        val locale = Locale.getDefault()
+        fun twoLines(skeleton: String) = DateFormat.getBestDateTimePattern(locale, skeleton)
+            .replaceFirst(Regex("\\s+"), "'\n'")
+        fun setTime(id: Int, size: Float) {
+            views.setCharSequence(id, "setFormat12Hour", "h:mm a")
+            views.setCharSequence(id, "setFormat24Hour", "HH:mm")
+            views.setTextColor(id, ink)
+            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, size)
+        }
+        fun setDate(id: Int, pattern: String, size: Float, colour: Int) {
+            views.setCharSequence(id, "setFormat12Hour", pattern)
+            views.setCharSequence(id, "setFormat24Hour", pattern)
+            views.setTextColor(id, colour)
+            views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, size)
+        }
+
+        views.setViewVisibility(R.id.pill_time_slot, View.GONE)
+        views.setViewVisibility(R.id.card_time_slot, View.GONE)
+        views.setViewVisibility(R.id.card_date_end_slot, View.GONE)
+        views.setViewVisibility(R.id.date, View.GONE)
+
+        when (config.cardStyle) {
+            CardStyle.DATE_TIME -> {
+                // "Wednesday," over "18 November", and the time under them.
+                val dateSize = min(h * 0.15f, availW / (10.5f * 0.55f))
+                val timeSize = min(h * 0.27f, availW / (timeEm * 0.55f))
+                val gap = h * 0.05f
+                val block = dateSize * 2.4f + gap + timeSize * 1.05f
+                val topPad = ((h - block) / 2f).coerceAtLeast(0f)
+                views.setViewVisibility(R.id.date, View.VISIBLE)
+                setDate(R.id.date, twoLines("EEEEdMMMM"), dateSize, ink)
+                views.setViewPadding(R.id.date_slot, textLeft.roundToInt(), topPad.roundToInt(), 0, 0)
+                views.setViewVisibility(R.id.card_time_slot, View.VISIBLE)
+                setTime(R.id.card_time, timeSize)
+                views.setViewPadding(
+                    R.id.card_time_slot, textLeft.roundToInt(), (topPad + dateSize * 2.4f + gap).roundToInt(), 0, 0,
+                )
+            }
+            CardStyle.DATE -> {
+                val dateSize = min(h * 0.21f, availW / (10.5f * 0.55f))
+                views.setViewVisibility(R.id.date, View.VISIBLE)
+                setDate(R.id.date, twoLines("EEEEdMMMM"), dateSize, ink)
+                views.setViewPadding(
+                    R.id.date_slot, textLeft.roundToInt(), ((h - dateSize * 2.4f) / 2f).roundToInt().coerceAtLeast(0), 0, 0,
+                )
+            }
+            CardStyle.CORNERS -> {
+                // The date small in the top right corner, the time large in the bottom right.
+                val dateSize = h * 0.11f
+                val timeSize = min(h * 0.27f, availW / (timeEm * 0.55f))
+                val edge = (rightPad * 1.4f).roundToInt()
+                views.setViewVisibility(R.id.card_date_end_slot, View.VISIBLE)
+                setDate(R.id.card_date_end, twoLines("dMMMEEE"), dateSize, ink)
+                views.setViewPadding(R.id.card_date_end_slot, 0, (h * 0.12f).roundToInt(), edge, 0)
+                views.setViewVisibility(R.id.pill_time_slot, View.VISIBLE)
+                setTime(R.id.pill_time, timeSize)
+                views.setViewPadding(R.id.pill_time_slot, 0, (h * 0.52f).roundToInt(), edge, (h * 0.07f).roundToInt())
+            }
+        }
+
+        views.setOnClickPendingIntent(
+            android.R.id.background,
+            android.app.PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
+        return views
+    }
+
     private fun oneInner(
         context: Context,
         config: WidgetConfig,
@@ -294,6 +429,8 @@ object ClockWidgetRenderer {
         // Reset, for the reason given in one(): the capsule squeezes the hands into a corner.
         views.setViewPadding(R.id.hands_slot, 0, 0, 0, 0)
         views.setViewVisibility(R.id.pill_time_slot, View.GONE)
+        views.setViewVisibility(R.id.card_time_slot, View.GONE)
+        views.setViewVisibility(R.id.card_date_end_slot, View.GONE)
 
         applyHands(views, config, colours, face)
         applyLook(context, views, config, colours, face, 0f, 0f, w, h)
@@ -594,5 +731,5 @@ object ClockWidgetRenderer {
     private const val BUFFER = 64 * 1024
 
     /** Below this inner height (dp) a wide widget becomes the capsule. */
-    private const val PILL_MAX_HEIGHT_DP = 100f
+    private const val PILL_MAX_HEIGHT_DP = 84f
 }
