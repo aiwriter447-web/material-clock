@@ -61,6 +61,7 @@ import app.materialclock.data.AnalogLook
 import app.materialclock.data.ClockSettings
 import app.materialclock.data.ColourSource
 import app.materialclock.data.DateMode
+import app.materialclock.data.CardStyle
 import app.materialclock.data.DatePosition
 import app.materialclock.data.FaceFill
 import app.materialclock.data.FaceShape
@@ -277,6 +278,9 @@ fun WidgetConfigScreen(
                     config = config,
                 ) { config = config.copy(minorIndices = it) }
 
+                OptionGroup("Wide card (4x2)", config.cardStyle, CardStyle.entries, { it.label }) {
+                    config = config.copy(cardStyle = it)
+                }
                 OptionGroup("Date", config.date, DateMode.entries, { it.label }) {
                     config = config.copy(date = it)
                 }
