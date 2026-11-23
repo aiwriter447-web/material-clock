@@ -14,13 +14,13 @@ object DayDesign {
     /** The date badge: a rounded rectangle at three o'clock. */
     class Badge(val rect: RectF, val corner: Float, val cx: Float, val cy: Float)
 
-    private const val BADGE_CENTRE = 0.66f
+    private const val BADGE_CENTRE = 0.70f
     private const val BADGE_WIDTH = 0.46f
     private const val BADGE_HEIGHT = 0.34f
     private const val BADGE_CORNER = 0.10f
 
     /** The size of the date number, against the dial's radius. */
-    const val DAY_TEXT = 0.20f
+    const val DAY_TEXT = 0.25f
 
     fun badge(cx: Float, cy: Float, r: Float): Badge {
         val bx = cx + BADGE_CENTRE * r
@@ -30,6 +30,6 @@ object DayDesign {
     }
 
     /** Ripple's date, "Sat 22": its size and how far above the centre it is centred. */
-    const val RIPPLE_TEXT = 0.15f
-    const val RIPPLE_HEIGHT = 0.58f
+    const val RIPPLE_TEXT = 0.205f
+    const val RIPPLE_HEIGHT = 0.70f
 }
