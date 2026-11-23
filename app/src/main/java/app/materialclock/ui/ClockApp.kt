@@ -441,7 +441,6 @@ fun ClockApp(
             val underDockAndFab = if (landscape) {
                 padding.calculateBottomPadding() + 92.dp
             } else {
-                // FAB is now inline beside the dock bar in portrait, so no extra vertical stack needed
                 underDock
             }
 
@@ -618,7 +617,6 @@ fun ClockApp(
                     }
 
                     if (landscape) {
-                        // Landscape: Vertical dock rail on the right + FAB cleanly at bottom-end
                         AnimatedVisibility(
                             visible = !selectionActive,
                             enter = fadeIn(animationSpec = fluidSpringSpec()) +
@@ -653,7 +651,8 @@ fun ClockApp(
                                 vertical = true,
                                 hazeState = hazeState,
                                 timerRunning = timer != null,
-                                stopwatch = sw
+                                stopwatchRunning = sw.running,
+                                stopwatchSnapshot = sw
                             )
                         }
 
@@ -669,7 +668,6 @@ fun ClockApp(
                                 )
                         )
                     } else {
-                        // Portrait: Dock Bar + Inline Circular '+' FAB side-by-side in one clean row
                         AnimatedVisibility(
                             visible = !selectionActive,
                             enter = fadeIn(animationSpec = fluidSpringSpec()) +
@@ -705,7 +703,8 @@ fun ClockApp(
                                     vertical = false,
                                     hazeState = hazeState,
                                     timerRunning = timer != null,
-                                    stopwatch = sw,
+                                    stopwatchRunning = sw.running,
+                                    stopwatchSnapshot = sw,
                                     modifier = Modifier.onGloballyPositioned { coords ->
                                         with(density) {
                                             dockHeight = coords.size.height.toDp()
