@@ -1,6 +1,15 @@
 package app.materialclock.widget
 
 import android.text.format.DateFormat
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import android.widget.RemoteViews
+import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +83,8 @@ fun WidgetOptionsScreen(
             )
 
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                LivePreview(kind, config, settings, cities, alarms)
+
                 when (kind) {
                     WidgetOptionsKind.WORLD -> CityChoices(config, settings, cities) { config = it }
                     WidgetOptionsKind.ALARM -> AlarmChoices(config, alarms) { config = it }
@@ -115,6 +126,76 @@ fun WidgetOptionsScreen(
             }
         }
     }
+}
+
+/**
+ * The widget, live, as it will look: the same drawing code the home screen uses, shown at two
+ * sizes (wide and square) on a plain backdrop, so a transparent background can be judged too.
+ * It redraws whenever anything on the screen changes.
+ */
+@Composable
+private fun LivePreview(
+    kind: WidgetOptionsKind,
+    config: WidgetConfig,
+    settings: ClockSettings,
+    cities: List<WorldCity>,
+    alarms: List<Alarm>,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val wideW = 300.dp
+    val wideH = 110.dp
+    val squareSide = 150.dp
+
+    val wide = remember(kind, config, settings, cities, alarms) {
+        previewViews(context, kind, config, settings, cities, alarms, with(density) { wideW.roundToPx() }, with(density) { wideH.roundToPx() })
+    }
+    val square = remember(kind, config, settings, cities, alarms) {
+        previewViews(context, kind, config, settings, cities, alarms, with(density) { squareSide.roundToPx() }, with(density) { squareSide.roundToPx() })
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF0B6BC0), Color(0xFF45A9EC))))
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        PreviewHost(wide, wideW, wideH)
+        PreviewHost(square, squareSide, squareSide)
+    }
+}
+
+private fun previewViews(
+    context: android.content.Context,
+    kind: WidgetOptionsKind,
+    config: WidgetConfig,
+    settings: ClockSettings,
+    cities: List<WorldCity>,
+    alarms: List<Alarm>,
+    w: Int,
+    h: Int,
+): RemoteViews = when (kind) {
+    WidgetOptionsKind.WORLD -> WorldClockRenderer.previewViews(context, settings, config, cities, w, h)
+    WidgetOptionsKind.ALARM -> AlarmWidgetRenderer.previewViews(
+        context, settings, config, AlarmWidgetRenderer.previewAlarm(alarms, config), w, h,
+    )
+}
+
+/** Hosts a [RemoteViews] in the app, at exactly [width] by [height]. */
+@Composable
+private fun PreviewHost(views: RemoteViews, width: Dp, height: Dp) {
+    AndroidView(
+        modifier = Modifier.size(width, height),
+        factory = { FrameLayout(it) },
+        update = { frame ->
+            frame.removeAllViews()
+            runCatching { frame.addView(views.apply(frame.context, frame)) }
+        },
+    )
 }
 
 @Composable
