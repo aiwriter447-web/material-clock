@@ -64,6 +64,27 @@ object WidgetColours {
 
         fun mix(a: Int, b: Int, t: Float) = ColorUtils.blendARGB(a, b, t)
 
+        // Watch: a pure black dial with white marks and hands (dark), or pure white with black
+        // ones (light), and a red second hand. Fixed colours on purpose: this one is a classic
+        // watch, not a themed dial.
+        if (config.look == AnalogLook.WATCH) {
+            val dark = isDark(context, config, appSettings)
+            val face = card(dark)
+            val ink = if (dark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+            val red = 0xFFE5342B.toInt()
+            return FaceRenderer.Colours(
+                face = face,
+                onFace = ink,
+                minor = mix(ink, face, 0.45f),
+                outline = mix(ink, face, 0.80f),
+                accent = red,
+                hourHand = ink,
+                minuteHand = ink,
+                secondHand = red,
+                pin = red,
+            )
+        }
+
         // Day: a plain dial, an outlined hour hand and a small rounded badge with the date.
         if (config.look == AnalogLook.DAY) {
             return FaceRenderer.Colours(
@@ -76,7 +97,8 @@ object WidgetColours {
                 minuteHand = scheme.onSurface.toArgb(),
                 secondHand = scheme.onSurface.toArgb(),
                 pin = scheme.primary.toArgb(),
-                badge = scheme.primaryContainer.toArgb(),
+                // A livelier step of the container colour, not the pale container itself.
+                badge = mix(scheme.primaryContainer.toArgb(), scheme.primary.toArgb(), 0.40f),
                 onBadge = scheme.onPrimaryContainer.toArgb(),
             )
         }
@@ -129,8 +151,9 @@ object WidgetColours {
     }
 
     /** The Material colour scheme a widget should draw with (app theme, wallpaper or palette). */
-    fun scheme(context: Context, config: WidgetConfig, appSettings: ClockSettings): ColorScheme {
-        val dark = when (config.appearance) {
+    /** Whether this widget is dark: its own choice first, then the app's, then the phone's. */
+    fun isDark(context: Context, config: WidgetConfig, appSettings: ClockSettings): Boolean =
+        when (config.appearance) {
             // This widget's own choice wins over the app and over the phone.
             WidgetAppearance.LIGHT -> false
             WidgetAppearance.DARK -> true
@@ -143,6 +166,16 @@ object WidgetColours {
                 else -> systemDark(context)
             }
         }
+
+    /** The plain card behind a widget: #FFFFFF in light mode, #000000 in dark mode. */
+    fun card(dark: Boolean): Int = if (dark) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+
+    /** [card] for a widget's own light/dark setting. */
+    fun card(context: Context, config: WidgetConfig, appSettings: ClockSettings): Int =
+        card(isDark(context, config, appSettings))
+
+    fun scheme(context: Context, config: WidgetConfig, appSettings: ClockSettings): ColorScheme {
+        val dark = isDark(context, config, appSettings)
 
         val base: ColorScheme = when {
             config.colour == ColourSource.FOLLOW_APP -> {
