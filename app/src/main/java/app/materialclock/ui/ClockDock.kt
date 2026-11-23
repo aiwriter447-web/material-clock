@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -71,6 +72,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.cos
 import kotlin.math.sin
@@ -86,19 +89,41 @@ private fun <T> dockFluidSpring() = spring<T>(
 /**
  * Frosted glass treatment for the top Title Pill (no white outline).
  */
-fun Modifier.titlePillFrostedGlass(hazeState: HazeState): Modifier = composed {
+fun Modifier.titlePillFrostedGlass(
+    hazeState: HazeState?,
+    shape: Shape = CircleShape
+): Modifier = composed {
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val tintColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)
-    this
-        .clip(CircleShape)
-        .hazeEffect(state = hazeState)
-        .background(tintColor)
+
+    if (hazeState != null) {
+        this
+            .clip(shape)
+            .hazeEffect(
+                state = hazeState,
+                style = HazeStyle(
+                    backgroundColor = surfaceColor,
+                    tint = HazeTint(tintColor),
+                    blurRadius = 42.dp,
+                    noiseFactor = 0.04f
+                )
+            )
+    } else {
+        this
+            .clip(shape)
+            .background(tintColor)
+    }
 }
 
 /**
  * Frosted glass + luminous white rim & underside highlight exclusively for the outer Dock Bar.
  */
-fun Modifier.dockFrostedGlass(hazeState: HazeState): Modifier = composed {
+fun Modifier.dockFrostedGlass(
+    hazeState: HazeState?,
+    shape: Shape = CircleShape
+): Modifier = composed {
     val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val glassFill = if (isLight) {
         MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.84f)
     } else {
@@ -116,23 +141,45 @@ fun Modifier.dockFrostedGlass(hazeState: HazeState): Modifier = composed {
         Color.White.copy(alpha = 0.52f)
     }
 
-    this
-        .shadow(
-            elevation = if (isLight) 10.dp else 8.dp,
-            shape = CircleShape,
-            ambientColor = Color.Black.copy(alpha = if (isLight) 0.14f else 0.35f),
-            spotColor = Color.Black.copy(alpha = if (isLight) 0.18f else 0.45f)
-        )
-        .clip(CircleShape)
-        .hazeEffect(state = hazeState)
-        .background(glassFill)
-        .drawWithContent {
-            drawContent()
+    val baseBlurModifier = if (hazeState != null) {
+        this
+            .shadow(
+                elevation = if (isLight) 10.dp else 8.dp,
+                shape = shape,
+                ambientColor = Color.Black.copy(alpha = if (isLight) 0.14f else 0.35f),
+                spotColor = Color.Black.copy(alpha = if (isLight) 0.18f else 0.45f)
+            )
+            .clip(shape)
+            .hazeEffect(
+                state = hazeState,
+                style = HazeStyle(
+                    backgroundColor = surfaceColor,
+                    tint = HazeTint(glassFill),
+                    blurRadius = 42.dp,
+                    noiseFactor = 0.04f
+                )
+            )
+    } else {
+        this
+            .shadow(
+                elevation = if (isLight) 10.dp else 8.dp,
+                shape = shape,
+                ambientColor = Color.Black.copy(alpha = if (isLight) 0.14f else 0.35f),
+                spotColor = Color.Black.copy(alpha = if (isLight) 0.18f else 0.45f)
+            )
+            .clip(shape)
+            .background(glassFill)
+    }
 
+    baseBlurModifier.drawWithContent {
+        drawContent()
+
+        val baseStroke = 1.25.dp.toPx()
+        val underStroke = 2.4.dp.toPx()
+        if (size.width > underStroke && size.height > underStroke) {
             val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
 
             // 1. Crisp continuous white border wrapping all rounded corners
-            val baseStroke = 1.25.dp.toPx()
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     0.0f to topRimColor,
@@ -146,7 +193,6 @@ fun Modifier.dockFrostedGlass(hazeState: HazeState): Modifier = composed {
             )
 
             // 2. Extra underside & lower-corner white highlight so it pops even on bright light themes
-            val underStroke = 2.4.dp.toPx()
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     0.0f to Color.Transparent,
@@ -160,6 +206,7 @@ fun Modifier.dockFrostedGlass(hazeState: HazeState): Modifier = composed {
                 style = Stroke(width = underStroke)
             )
         }
+    }
 }
 
 @Composable
@@ -168,7 +215,7 @@ fun ClockDock(
     selected: Tab,
     onSelect: (Tab) -> Unit,
     vertical: Boolean = false,
-    hazeState: HazeState,
+    hazeState: HazeState? = null,
     timerRunning: Boolean = false,
     stopwatchRunning: Boolean = false,
     stopwatchSnapshot: Any = Unit,
