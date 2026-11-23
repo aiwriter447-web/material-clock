@@ -37,6 +37,9 @@ data class WidgetConfig(
     /** Light or dark for this widget alone, whatever the app and the phone are set to. */
     val appearance: WidgetAppearance = WidgetAppearance.AUTO,
 
+    /** The layout of the wide analog card (4x2). */
+    val cardStyle: CardStyle = CardStyle.DATE_TIME,
+
     /** World Clock: up to two cities as "zone|city" keys. Empty means the first two in the app. */
     val cityKeys: List<String> = emptyList(),
 
@@ -90,6 +93,21 @@ enum class AnalogLook(val label: String) {
     DAY("Day"),
     /** A soft four-lobed pebble with a thick hour hand, a thin minute hand and a hairline second hand. */
     PEBBLE("Pebble"),
+    /**
+     * A watch dial: pure black (dark) or pure white (light), thick hands, sixty fine marks and a
+     * red hairline second hand. It is the Classic preset.
+     */
+    WATCH("Watch"),
+}
+
+/** What the wide analog card (4x2) shows next to its clock. */
+enum class CardStyle(val label: String) {
+    /** The weekday and date, with the time under them. */
+    DATE_TIME("Date and time"),
+    /** Only the weekday and date, large. */
+    DATE("Date only"),
+    /** The date small in the top right corner, the time large in the bottom right. */
+    CORNERS("Corners"),
 }
 
 /** Light or dark for one widget. [AUTO] follows the app's (or the phone's) setting. */
