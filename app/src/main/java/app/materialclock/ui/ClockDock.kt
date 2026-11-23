@@ -2,38 +2,38 @@ package app.materialclock.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,433 +41,126 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.materialclock.core.StopwatchState
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import kotlin.math.cos
+import kotlin.math.sin
 
-// --- 100% UNTOUCHED ICONS (Shape guaranteed) ---
+val DOCK_HEIGHT = 72.dp
 
-private val AlarmFilledCustom: ImageVector
-    get() {
-        if (_alarmFilledCustom != null) return _alarmFilledCustom!!
-        _alarmFilledCustom = ImageVector.Builder(
-            name = "AlarmFilledCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 4f)
-            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
-            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
-            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
-            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
-            close()
-            moveTo(11f, 8f)
-            lineTo(11f, 14f)
-            lineTo(15.25f, 16.55f)
-            lineTo(16f, 15.32f)
-            lineTo(12.5f, 13.25f)
-            lineTo(12.5f, 8f)
-            close()
-            moveTo(7.88f, 3.39f)
-            lineTo(6.6f, 1.86f)
-            lineTo(2f, 5.71f)
-            lineTo(3.29f, 7.25f)
-            close()
-            moveTo(22f, 5.72f)
-            lineTo(17.4f, 1.86f)
-            lineTo(16.11f, 3.39f)
-            lineTo(20.71f, 7.25f)
-            close()
-        }.build()
-        return _alarmFilledCustom!!
-    }
-private var _alarmFilledCustom: ImageVector? = null
+// LIVING FLOW: Weighted, calm, critically-damped spring physics (zero jitter or bounce)
+private fun <T> dockFluidSpring() = spring<T>(
+    dampingRatio = 0.94f,
+    stiffness = 210f
+)
 
-private val AlarmOutlinedCustom: ImageVector
-    get() {
-        if (_alarmOutlinedCustom != null) return _alarmOutlinedCustom!!
-        _alarmOutlinedCustom = ImageVector.Builder(
-            name = "AlarmOutlinedCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 4f)
-            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
-            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
-            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
-            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
-            close()
-            moveTo(12f, 6f)
-            curveTo(8.13f, 6f, 5f, 9.13f, 5f, 13f)
-            curveTo(5f, 16.87f, 8.13f, 20f, 12f, 20f)
-            curveTo(15.87f, 20f, 19f, 16.87f, 19f, 13f)
-            curveTo(19f, 9.13f, 15.87f, 6f, 12f, 6f)
-            close()
-            moveTo(11f, 8f)
-            lineTo(11f, 14f)
-            lineTo(15.25f, 16.55f)
-            lineTo(16f, 15.32f)
-            lineTo(12.5f, 13.25f)
-            lineTo(12.5f, 8f)
-            close()
-            moveTo(7.88f, 3.39f)
-            lineTo(6.6f, 1.86f)
-            lineTo(2f, 5.71f)
-            lineTo(3.29f, 7.25f)
-            close()
-            moveTo(22f, 5.72f)
-            lineTo(17.4f, 1.86f)
-            lineTo(16.11f, 3.39f)
-            lineTo(20.71f, 7.25f)
-            close()
-        }.build()
-        return _alarmOutlinedCustom!!
-    }
-private var _alarmOutlinedCustom: ImageVector? = null
-
-private val TimerFilledCustom: ImageVector
-    get() {
-        if (_timerFilledCustom != null) return _timerFilledCustom!!
-        _timerFilledCustom = ImageVector.Builder(
-            name = "TimerFilledCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(
-            fill = SolidColor(Color.Black),
-            pathFillType = PathFillType.EvenOdd
-        ) {
-            moveTo(4f, 2f)
-            lineTo(20f, 2f)
-            lineTo(20f, 4f)
-            lineTo(18f, 4f)
-            lineTo(18f, 7.5f)
-            curveTo(18f, 9.8f, 16f, 11.5f, 13.5f, 12f)
-            curveTo(16f, 12.5f, 18f, 14.2f, 18f, 16.5f)
-            lineTo(18f, 20f)
-            lineTo(20f, 20f)
-            lineTo(20f, 22f)
-            lineTo(4f, 22f)
-            lineTo(4f, 20f)
-            lineTo(6f, 20f)
-            lineTo(6f, 16.5f)
-            curveTo(6f, 14.2f, 8f, 12.5f, 10.5f, 12f)
-            curveTo(8f, 11.5f, 6f, 9.8f, 6f, 7.5f)
-            lineTo(6f, 4f)
-            lineTo(4f, 4f)
-            close()
-            moveTo(8f, 4f)
-            lineTo(16f, 4f)
-            lineTo(16f, 7.5f)
-            curveTo(16f, 9.2f, 14.5f, 10.5f, 12f, 10.5f)
-            curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
-            close()
-        }.build()
-        return _timerFilledCustom!!
-    }
-private var _timerFilledCustom: ImageVector? = null
-
-private val TimerOutlinedCustom: ImageVector
-    get() {
-        if (_timerOutlinedCustom != null) return _timerOutlinedCustom!!
-        _timerOutlinedCustom = ImageVector.Builder(
-            name = "TimerOutlinedCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(
-            fill = SolidColor(Color.Black),
-            pathFillType = PathFillType.EvenOdd
-        ) {
-            moveTo(4f, 2f)
-            lineTo(20f, 2f)
-            lineTo(20f, 4f)
-            lineTo(18f, 4f)
-            lineTo(18f, 7.5f)
-            curveTo(18f, 9.8f, 16f, 11.5f, 13.5f, 12f)
-            curveTo(16f, 12.5f, 18f, 14.2f, 18f, 16.5f)
-            lineTo(18f, 20f)
-            lineTo(20f, 20f)
-            lineTo(20f, 22f)
-            lineTo(4f, 22f)
-            lineTo(4f, 20f)
-            lineTo(6f, 20f)
-            lineTo(6f, 16.5f)
-            curveTo(6f, 14.2f, 8f, 12.5f, 10.5f, 12f)
-            curveTo(8f, 11.5f, 6f, 9.8f, 6f, 7.5f)
-            lineTo(6f, 4f)
-            lineTo(4f, 4f)
-            close()
-            moveTo(8f, 4f)
-            lineTo(16f, 4f)
-            lineTo(16f, 7.5f)
-            curveTo(16f, 9.2f, 14.5f, 10.5f, 12f, 10.5f)
-            curveTo(9.5f, 10.5f, 8f, 9.2f, 8f, 7.5f)
-            close()
-            moveTo(8f, 20f)
-            lineTo(16f, 20f)
-            lineTo(16f, 16.5f)
-            curveTo(16f, 14.8f, 14.5f, 13.5f, 12f, 13.5f)
-            curveTo(9.5f, 13.5f, 8f, 14.8f, 8f, 16.5f)
-            close()
-        }.build()
-        return _timerOutlinedCustom!!
-    }
-private var _timerOutlinedCustom: ImageVector? = null
-
-private val WorldFilledCustom: ImageVector
-    get() {
-        if (_worldFilledCustom != null) return _worldFilledCustom!!
-        _worldFilledCustom = ImageVector.Builder(
-            name = "WorldFilledCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 2f)
-            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
-            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
-            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
-            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
-            close()
-            moveTo(11f, 19.93f)
-            curveTo(7.05f, 19.44f, 4f, 16.08f, 4f, 12f)
-            curveTo(4f, 11.38f, 4.08f, 10.79f, 4.21f, 10.21f)
-            lineTo(9f, 15f)
-            verticalLineTo(16f)
-            curveTo(9f, 17.1f, 9.9f, 18f, 11f, 18f)
-            verticalLineTo(19.93f)
-            close()
-            moveTo(17.9f, 17.39f)
-            curveTo(17.64f, 16.58f, 16.9f, 16f, 16f, 16f)
-            horizontalLineTo(15f)
-            verticalLineTo(13f)
-            curveTo(15f, 12.45f, 14.55f, 12f, 14f, 12f)
-            horizontalLineTo(8f)
-            verticalLineTo(10f)
-            horizontalLineTo(10f)
-            curveTo(10.55f, 10f, 11f, 9.55f, 11f, 9f)
-            verticalLineTo(7f)
-            horizontalLineTo(13f)
-            curveTo(14.1f, 7f, 15f, 6.1f, 15f, 5f)
-            verticalLineTo(4.59f)
-            curveTo(17.93f, 5.77f, 20f, 8.65f, 20f, 12f)
-            curveTo(20f, 14.08f, 19.2f, 15.97f, 17.9f, 17.39f)
-            close()
-        }.build()
-        return _worldFilledCustom!!
-    }
-private var _worldFilledCustom: ImageVector? = null
-
-private val WorldOutlinedCustom: ImageVector
-    get() {
-        if (_worldOutlinedCustom != null) return _worldOutlinedCustom!!
-        _worldOutlinedCustom = ImageVector.Builder(
-            name = "WorldOutlinedCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 2f)
-            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
-            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
-            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
-            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
-            close()
-            moveTo(12f, 20f)
-            curveTo(7.58f, 20f, 4f, 16.42f, 4f, 12f)
-            curveTo(4f, 11.45f, 4.06f, 10.92f, 4.16f, 10.4f)
-            lineTo(8.5f, 14.74f)
-            lineTo(8.5f, 16f)
-            curveTo(8.5f, 16.55f, 8.95f, 17f, 9.5f, 17f)
-            lineTo(10.5f, 17f)
-            lineTo(10.5f, 19.82f)
-            curveTo(10.98f, 19.94f, 11.48f, 20f, 12f, 20f)
-            close()
-            moveTo(17.65f, 16.14f)
-            curveTo(17.15f, 15.54f, 16.18f, 15f, 15.5f, 15f)
-            lineTo(14.5f, 15f)
-            lineTo(14.5f, 12f)
-            curveTo(14.5f, 11.45f, 14.05f, 11f, 13.5f, 11f)
-            lineTo(8.5f, 11f)
-            lineTo(8.5f, 9.5f)
-            lineTo(10f, 9.5f)
-            curveTo(10.55f, 9.5f, 11f, 9.05f, 11f, 8.5f)
-            lineTo(11f, 6.5f)
-            lineTo(13f, 6.5f)
-            curveTo(13.83f, 6.5f, 14.5f, 5.83f, 14.5f, 5f)
-            lineTo(14.5f, 4.29f)
-            curveTo(17.75f, 5.65f, 20f, 8.61f, 20f, 12f)
-            curveTo(20f, 13.68f, 19.4f, 15.17f, 18.42f, 16.36f)
-            lineTo(17.65f, 16.14f)
-            close()
-        }.build()
-        return _worldOutlinedCustom!!
-    }
-private var _worldOutlinedCustom: ImageVector? = null
-
-private val StopwatchFilledCustom: ImageVector
-    get() {
-        if (_stopwatchFilledCustom != null) return _stopwatchFilledCustom!!
-        _stopwatchFilledCustom = ImageVector.Builder(
-            name = "StopwatchFilledCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 4f)
-            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
-            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
-            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
-            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
-            close()
-            moveTo(9f, 1f)
-            lineTo(15f, 1f)
-            lineTo(15f, 3f)
-            lineTo(9f, 3f)
-            close()
-            moveTo(19.03f, 4.88f)
-            lineTo(20.44f, 6.3f)
-            lineTo(19.03f, 7.71f)
-            lineTo(17.62f, 6.29f)
-            close()
-            moveTo(11f, 8f)
-            lineTo(11f, 14f)
-            lineTo(13f, 14f)
-            lineTo(13f, 8f)
-            close()
-        }.build()
-        return _stopwatchFilledCustom!!
-    }
-private var _stopwatchFilledCustom: ImageVector? = null
-
-private val StopwatchOutlinedCustom: ImageVector
-    get() {
-        if (_stopwatchOutlinedCustom != null) return _stopwatchOutlinedCustom!!
-        _stopwatchOutlinedCustom = ImageVector.Builder(
-            name = "StopwatchOutlinedCustom",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 4f)
-            curveTo(16.97f, 4f, 21f, 8.03f, 21f, 13f)
-            curveTo(21f, 17.97f, 16.97f, 22f, 12f, 22f)
-            curveTo(7.03f, 22f, 3f, 17.97f, 3f, 13f)
-            curveTo(3f, 8.03f, 7.03f, 4f, 12f, 4f)
-            close()
-            moveTo(12f, 6f)
-            curveTo(8.13f, 6f, 5f, 9.13f, 5f, 13f)
-            curveTo(5f, 16.87f, 8.13f, 20f, 12f, 20f)
-            curveTo(15.87f, 20f, 19f, 16.87f, 19f, 13f)
-            curveTo(19f, 9.13f, 15.87f, 6f, 12f, 6f)
-            close()
-            moveTo(9f, 1f)
-            lineTo(15f, 1f)
-            lineTo(15f, 3f)
-            lineTo(9f, 3f)
-            close()
-            moveTo(19.03f, 4.88f)
-            lineTo(20.44f, 6.3f)
-            lineTo(19.03f, 7.71f)
-            lineTo(17.62f, 6.29f)
-            close()
-            moveTo(11f, 8f)
-            lineTo(11f, 14f)
-            lineTo(13f, 14f)
-            lineTo(13f, 8f)
-            close()
-        }.build()
-        return _stopwatchOutlinedCustom!!
-    }
-private var _stopwatchOutlinedCustom: ImageVector? = null
-
-@Composable
-fun rememberDockGlassBorder(): BorderStroke {
-    return BorderStroke(width = 0.dp, color = Color.Transparent)
+/**
+ * Frosted glass treatment for the top Title Pill (no white outline).
+ */
+fun Modifier.titlePillFrostedGlass(hazeState: HazeState): Modifier = composed {
+    val tintColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)
+    this
+        .clip(CircleShape)
+        .hazeEffect(state = hazeState)
+        .background(tintColor)
 }
 
-@Composable
-fun Modifier.dockFrostedGlass(
-    hazeState: HazeState?,
-    shape: Shape = CircleShape,
-): Modifier {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val glassTintColor = primaryContainer.copy(alpha = if (isDark) 0.46f else 0.50f)
-
-    val clipped = this.clip(shape)
-    return if (hazeState != null) {
-        clipped.hazeEffect(
-            state = hazeState,
-            style = HazeStyle(
-                backgroundColor = Color.Transparent,
-                tint = HazeTint(glassTintColor),
-                blurRadius = 18.dp,
-                noiseFactor = 0.05f,
-            )
-        )
+/**
+ * Frosted glass + luminous white rim & underside highlight exclusively for the outer Dock Bar.
+ */
+fun Modifier.dockFrostedGlass(hazeState: HazeState): Modifier = composed {
+    val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val glassFill = if (isLight) {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.84f)
     } else {
-        clipped.background(primaryContainer.copy(alpha = 0.78f))
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f)
     }
-}
 
-@Composable
-fun Modifier.titlePillFrostedGlass(
-    hazeState: HazeState?,
-    shape: Shape = CircleShape,
-): Modifier {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val solidFrostedTint = primaryContainer.copy(alpha = if (isDark) 0.74f else 0.78f)
-
-    val clipped = this.clip(shape)
-    return if (hazeState != null) {
-        clipped.hazeEffect(
-            state = hazeState,
-            style = HazeStyle(
-                backgroundColor = Color.Transparent,
-                tint = HazeTint(solidFrostedTint),
-                blurRadius = 24.dp,
-                noiseFactor = 0.04f,
-            )
-        )
+    val topRimColor = if (isLight) {
+        Color.White.copy(alpha = 0.72f)
     } else {
-        clipped.background(primaryContainer.copy(alpha = 0.88f))
+        Color.White.copy(alpha = 0.22f)
     }
+    val bottomRimColor = if (isLight) {
+        Color.White
+    } else {
+        Color.White.copy(alpha = 0.52f)
+    }
+
+    this
+        .shadow(
+            elevation = if (isLight) 10.dp else 8.dp,
+            shape = CircleShape,
+            ambientColor = Color.Black.copy(alpha = if (isLight) 0.14f else 0.35f),
+            spotColor = Color.Black.copy(alpha = if (isLight) 0.18f else 0.45f)
+        )
+        .clip(CircleShape)
+        .hazeEffect(state = hazeState)
+        .background(glassFill)
+        .drawWithContent {
+            drawContent()
+
+            val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+
+            // 1. Crisp continuous white border wrapping all rounded corners
+            val baseStroke = 1.25.dp.toPx()
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    0.0f to topRimColor,
+                    0.55f to bottomRimColor.copy(alpha = 0.88f),
+                    1.0f to bottomRimColor
+                ),
+                topLeft = Offset(baseStroke / 2f, baseStroke / 2f),
+                size = Size(size.width - baseStroke, size.height - baseStroke),
+                cornerRadius = cornerRadius,
+                style = Stroke(width = baseStroke)
+            )
+
+            // 2. Extra underside & lower-corner white highlight so it pops even on bright light themes
+            val underStroke = 2.4.dp.toPx()
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    0.0f to Color.Transparent,
+                    0.52f to Color.Transparent,
+                    0.78f to bottomRimColor.copy(alpha = 0.55f),
+                    1.0f to bottomRimColor
+                ),
+                topLeft = Offset(underStroke / 2f, underStroke / 2f),
+                size = Size(size.width - underStroke, size.height - underStroke),
+                cornerRadius = cornerRadius,
+                style = Stroke(width = underStroke)
+            )
+        }
 }
 
 @Composable
@@ -475,228 +168,156 @@ fun ClockDock(
     destinations: List<Tab>,
     selected: Tab,
     onSelect: (Tab) -> Unit,
-    modifier: Modifier = Modifier,
     vertical: Boolean = false,
-    hazeState: HazeState? = null,
+    hazeState: HazeState,
+    timerRunning: Boolean = false,
+    stopwatch: StopwatchState = StopwatchState(),
+    modifier: Modifier = Modifier,
 ) {
-    val selectedIndex = destinations.indexOf(selected).takeIf { it >= 0 } ?: 0
+    val containerModifier = modifier.dockFrostedGlass(hazeState = hazeState)
 
-    BoxWithConstraints(
-        modifier = if (vertical) modifier else modifier.fillMaxWidth(),
-        contentAlignment = if (vertical) Alignment.Center else Alignment.BottomCenter,
-    ) {
-        val fontScale = LocalDensity.current.fontScale
-        val tabPad = if (maxWidth < 360.dp) 10.dp else 16.dp
-        val labelWidth = (selected.label.length * 8.5f * fontScale).dp
-        val otherTabsWidth = (24.dp + tabPad * 2) * (destinations.size - 1)
-        val selectedTabWidth = 24.dp + 8.dp + labelWidth + tabPad * 2
-        val neededWidth = otherTabsWidth + selectedTabWidth + 16.dp
-        val showLabel = !vertical && neededWidth <= maxWidth - 8.dp
-        val itemH = if (vertical) ((maxHeight - 16.dp) / destinations.size).coerceIn(44.dp, 76.dp) else 56.dp
-
-        val buttonBounds = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
-        val targetRect = buttonBounds[selectedIndex]
-        val button0Rect = buttonBounds[0]
-        val pillRelativeX = (targetRect?.left ?: 0f) - (button0Rect?.left ?: 0f)
-
-        val pillAnimatedX by animateFloatAsState(
-            targetValue = pillRelativeX,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-            label = "pillX",
-        )
-        val pillAnimatedWidth by animateFloatAsState(
-            targetValue = targetRect?.width ?: 0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-            label = "pillWidth",
-        )
-        val pillRelativeY = (targetRect?.top ?: 0f) - (button0Rect?.top ?: 0f)
-        val pillAnimatedY by animateFloatAsState(
-            targetValue = pillRelativeY,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-            label = "pillY",
-        )
-        val pillAnimatedHeight by animateFloatAsState(
-            targetValue = targetRect?.height ?: 0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-            label = "pillHeight",
-        )
-        val pillColor = MaterialTheme.colorScheme.primary
-
-        Surface(
-            shape = CircleShape,
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            border = null,
-            shadowElevation = 0.dp,
-            modifier = Modifier.dockFrostedGlass(hazeState = hazeState)
+    if (vertical) {
+        Column(
+            modifier = containerModifier.padding(vertical = 8.dp, horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val tabs: @Composable () -> Unit = {
-                destinations.forEachIndexed { index, destination ->
-                    val isSelected = destination == selected
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
-
-                    val iconRotation = remember { Animatable(0f) }
-
-                    LaunchedEffect(isSelected) {
-                        if (isSelected) {
-                            when (destination) {
-                                Tab.ALARMS -> {
-                                    iconRotation.animateTo(15f, tween(50))
-                                    iconRotation.animateTo(-15f, tween(100))
-                                    iconRotation.animateTo(15f, tween(100))
-                                    iconRotation.animateTo(-15f, tween(100))
-                                    iconRotation.animateTo(0f, tween(50))
-                                }
-                                Tab.WORLD -> {
-                                    iconRotation.snapTo(0f)
-                                    iconRotation.animateTo(360f, tween(600, easing = FastOutSlowInEasing))
-                                }
-                                Tab.TIMERS -> {
-                                    iconRotation.snapTo(0f)
-                                    iconRotation.animateTo(180f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
-                                }
-                                Tab.STOPWATCH -> {
-                                    iconRotation.animateTo(-15f, tween(100))
-                                    iconRotation.animateTo(15f, tween(100))
-                                    iconRotation.animateTo(0f, tween(100))
-                                }
-                            }
-                        } else {
-                            iconRotation.animateTo(0f, tween(300))
-                        }
-                    }
-
-                    val tabScale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.85f else 1f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
-                        label = "tabScale"
-                    )
-
-                    val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
-                        animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
-                        label = "contentColorBlend"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .then(
-                                if (vertical) Modifier.fillMaxWidth().height(itemH)
-                                else Modifier.fillMaxHeight()
-                            )
-                            .clip(CircleShape)
-                            .graphicsLayer {
-                                scaleX = tabScale
-                                scaleY = tabScale
-                            }
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = { onSelect(destination) }
-                            )
-                            .onGloballyPositioned { coords ->
-                                buttonBounds[index] = coords.boundsInParent()
-                            }
-                            .padding(horizontal = if (vertical) 0.dp else tabPad),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            val activeIcon = remember(destination) {
-                                when (destination) {
-                                    Tab.ALARMS -> AlarmFilledCustom
-                                    Tab.WORLD -> WorldFilledCustom
-                                    Tab.TIMERS -> TimerFilledCustom
-                                    Tab.STOPWATCH -> StopwatchFilledCustom
-                                }
-                            }
-
-                            val inactiveIcon = remember(destination) {
-                                when (destination) {
-                                    Tab.ALARMS -> AlarmOutlinedCustom
-                                    Tab.WORLD -> WorldOutlinedCustom
-                                    Tab.TIMERS -> TimerOutlinedCustom
-                                    Tab.STOPWATCH -> StopwatchOutlinedCustom
-                                }
-                            }
-
-                            val icon = if (isSelected) activeIcon else inactiveIcon
-
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = destination.label,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .graphicsLayer {
-                                        rotationZ = iconRotation.value
-                                    },
-                                tint = contentColor
-                            )
-
-                            AnimatedVisibility(
-                                visible = isSelected && showLabel,
-                                enter = expandHorizontally(
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
-                                ) + fadeIn(animationSpec = tween(150)),
-                                exit = shrinkHorizontally(
-                                    animationSpec = tween(200, easing = FastOutLinearInEasing)
-                                ) + fadeOut(animationSpec = tween(150)),
-                            ) {
-                                Text(
-                                    text = destination.label,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                    color = contentColor,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            }
-                        }
-                    }
-                }
+            destinations.forEach { tab ->
+                DockItem(
+                    tab = tab,
+                    selected = tab == selected,
+                    vertical = true,
+                    timerRunning = timerRunning,
+                    stopwatch = stopwatch,
+                    onClick = { onSelect(tab) }
+                )
             }
-            if (vertical) {
-                Column(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .width(56.dp)
-                        .drawBehind {
-                            if (pillAnimatedHeight > 0f) {
-                                drawRoundRect(
-                                    color = pillColor,
-                                    topLeft = Offset(0f, pillAnimatedY),
-                                    size = Size(size.width, pillAnimatedHeight),
-                                    cornerRadius = CornerRadius(size.width / 2f),
-                                )
-                            }
-                        },
-                    horizontalAlignment = Alignment.CenterHorizontally
+        }
+    } else {
+        Row(
+            modifier = containerModifier
+                .height(DOCK_HEIGHT)
+                .padding(horizontal = 8.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            destinations.forEach { tab ->
+                DockItem(
+                    tab = tab,
+                    selected = tab == selected,
+                    vertical = false,
+                    timerRunning = timerRunning,
+                    stopwatch = stopwatch,
+                    onClick = { onSelect(tab) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DockItem(
+    tab: Tab,
+    selected: Boolean,
+    vertical: Boolean,
+    timerRunning: Boolean,
+    stopwatch: StopwatchState,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = dockFluidSpring(),
+        label = "dockItemPress"
+    )
+
+    val pillColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 320),
+        label = "dockPillBg"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(durationMillis = 320),
+        label = "dockContentTint"
+    )
+
+    val horizontalPad by animateFloatAsState(
+        targetValue = if (vertical) 10f else if (selected) 18f else 13f,
+        animationSpec = dockFluidSpring(),
+        label = "dockHorizontalPad"
+    )
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clip(CircleShape)
+            .background(pillColor)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick
+            )
+            .padding(
+                horizontal = horizontalPad.dp,
+                vertical = if (vertical) 10.dp else 7.dp
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            DockTabIcon(
+                tab = tab,
+                tint = contentColor,
+                timerRunning = timerRunning,
+                stopwatch = stopwatch
+            )
+
+            if (!vertical) {
+                AnimatedVisibility(
+                    visible = selected,
+                    enter = expandVertically(
+                        animationSpec = dockFluidSpring(),
+                        expandFrom = Alignment.Top
+                    ) + fadeIn(animationSpec = tween(280)),
+                    exit = shrinkVertically(
+                        animationSpec = dockFluidSpring(),
+                        shrinkTowards = Alignment.Top
+                    ) + fadeOut(animationSpec = tween(180))
                 ) {
-                    tabs()
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .height(56.dp)
-                        .drawBehind {
-                            if (pillAnimatedWidth > 0f) {
-                                drawRoundRect(
-                                    color = pillColor,
-                                    topLeft = Offset(pillAnimatedX, 0f),
-                                    size = Size(pillAnimatedWidth, size.height),
-                                    cornerRadius = CornerRadius(size.height / 2f),
-                                )
-                            }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    tabs()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = tab.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                lineHeight = 13.sp,
+                                letterSpacing = 0.1.sp
+                            ),
+                            fontWeight = FontWeight.SemiBold,
+                            color = contentColor,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -704,80 +325,432 @@ fun ClockDock(
 }
 
 @Composable
-fun FloatingAddButton(
-    visible: Boolean, 
-    label: String, 
-    onClick: () -> Unit, 
-    modifier: Modifier = Modifier
+private fun DockTabIcon(
+    tab: Tab,
+    tint: Color,
+    timerRunning: Boolean,
+    stopwatch: StopwatchState
 ) {
-    // Living Flow: Smooth spring on entry, critically damped non-overshooting dissolve on exit
-    val grow by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = if (visible) {
-            spring(dampingRatio = 0.82f, stiffness = 240f)
-        } else {
-            tween(durationMillis = 200, easing = FastOutSlowInEasing)
-        },
-        label = "addGrow"
-    )
-
-    val glyph by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "addGlyph",
-    )
-
-    val rotation by animateFloatAsState(
-        targetValue = if (visible) 0f else -120f,
-        animationSpec = if (visible) {
-            spring(dampingRatio = 0.82f, stiffness = 220f)
-        } else {
-            tween(durationMillis = 200, easing = FastOutSlowInEasing)
-        },
-        label = "addRotate"
-    )
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMedium),
-        label = "fabPressScale"
-    )
-
-    val safeGrow = grow.coerceIn(0f, 1f)
-    if (!visible && safeGrow <= 0.01f) return
-
-    FloatingActionButton(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        shape = CircleShape,
-        modifier = modifier
-            .size(FAB_SIZE)
-            .graphicsLayer {
-                scaleX = safeGrow * pressScale
-                scaleY = safeGrow * pressScale
-                alpha = safeGrow
-            },
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Add,
-            contentDescription = label,
-            modifier = Modifier
-                .size(FAB_ICON_SIZE)
-                .graphicsLayer {
-                    scaleX = glyph
-                    scaleY = glyph
-                    alpha = glyph
-                    rotationZ = rotation
-                },
+    when (tab) {
+        Tab.ALARMS -> AlarmClockVectorIcon(tint = tint, modifier = Modifier.size(22.dp))
+        Tab.WORLD -> WorldGlobeVectorIcon(tint = tint, modifier = Modifier.size(22.dp))
+        Tab.TIMERS -> LiveHourglassIcon(
+            tint = tint,
+            isRunning = timerRunning,
+            modifier = Modifier.size(22.dp)
+        )
+        Tab.STOPWATCH -> LiveStopwatchIcon(
+            tint = tint,
+            stopwatch = stopwatch,
+            modifier = Modifier.size(22.dp)
         )
     }
 }
 
-val DOCK_HEIGHT = 72.dp
-private val FAB_SIZE = 73.dp // 30% bigger than 56.dp
-private val FAB_ICON_SIZE = 36.dp // 30% bigger than 28.dp
+/* ── Custom Crafted Vector Icons (Consistent 1.85dp Outlined Stroke Weight) ───────── */
+
+@Composable
+private fun AlarmClockVectorIcon(
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val stroke = 1.85.dp.toPx()
+        val center = Offset(size.width / 2f, size.height * 0.54f)
+        val radius = size.minDimension * 0.35f
+
+        // Clock dial
+        drawCircle(
+            color = tint,
+            radius = radius,
+            center = center,
+            style = Stroke(width = stroke)
+        )
+
+        // Left & right top alarm bells
+        drawLine(
+            color = tint,
+            start = Offset(size.width * 0.18f, size.height * 0.25f),
+            end = Offset(size.width * 0.33f, size.height * 0.13f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(size.width * 0.82f, size.height * 0.25f),
+            end = Offset(size.width * 0.67f, size.height * 0.13f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        // Left & right feet
+        drawLine(
+            color = tint,
+            start = Offset(center.x - radius * 0.62f, center.y + radius * 0.78f),
+            end = Offset(center.x - radius * 0.85f, center.y + radius * 1.05f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(center.x + radius * 0.62f, center.y + radius * 0.78f),
+            end = Offset(center.x + radius * 0.85f, center.y + radius * 1.05f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        // Hands
+        drawLine(
+            color = tint,
+            start = center,
+            end = Offset(center.x, center.y - radius * 0.52f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = center,
+            end = Offset(center.x + radius * 0.42f, center.y + radius * 0.22f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun WorldGlobeVectorIcon(
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val stroke = 1.85.dp.toPx()
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension * 0.40f
+
+        // Outer globe circle
+        drawCircle(
+            color = tint,
+            radius = radius,
+            center = center,
+            style = Stroke(width = stroke)
+        )
+
+        // Equator line
+        drawLine(
+            color = tint,
+            start = Offset(center.x - radius, center.y),
+            end = Offset(center.x + radius, center.y),
+            strokeWidth = stroke * 0.85f
+        )
+
+        // Meridian oval
+        drawOval(
+            color = tint,
+            topLeft = Offset(center.x - radius * 0.46f, center.y - radius),
+            size = Size(radius * 0.92f, radius * 2f),
+            style = Stroke(width = stroke * 0.85f)
+        )
+    }
+}
+
+/**
+ * Upright Hourglass icon:
+ * - When idle: rests upright with sand settled cleanly in the bottom chamber.
+ * - When running: sand drains from the top bulb through the narrow neck into the bottom bulb,
+ *   and smoothly rotates 180° at the end of each cycle.
+ */
+@Composable
+private fun LiveHourglassIcon(
+    tint: Color,
+    isRunning: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "hourglassSandTransition")
+    val rawCycle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "hourglassCycle"
+    )
+
+    // Smooth flip rotation only during the final 14% of the cycle when running
+    val targetRotation = if (isRunning && rawCycle > 0.86f) {
+        ((rawCycle - 0.86f) / 0.14f) * 180f
+    } else {
+        0f
+    }
+
+    val sandProgress = if (isRunning) {
+        (rawCycle / 0.86f).coerceIn(0f, 1f)
+    } else {
+        1f // Settled upright at bottom when idle
+    }
+
+    Canvas(modifier = modifier) {
+        val stroke = 1.85.dp.toPx()
+        val w = size.width
+        val h = size.height
+
+        val topY = h * 0.14f
+        val bottomY = h * 0.86f
+        val midY = h * 0.50f
+        val leftX = w * 0.24f
+        val rightX = w * 0.76f
+        val neckHalf = w * 0.055f
+
+        rotate(degrees = targetRotation, pivot = Offset(w / 2f, midY)) {
+            // Top & bottom horizontal caps
+            drawLine(
+                color = tint,
+                start = Offset(w * 0.18f, topY),
+                end = Offset(w * 0.82f, topY),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = tint,
+                start = Offset(w * 0.18f, bottomY),
+                end = Offset(w * 0.82f, bottomY),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+
+            // Glass chamber path
+            val topChamber = Path().apply {
+                moveTo(leftX, topY)
+                lineTo(rightX, topY)
+                lineTo(w / 2f + neckHalf, midY)
+                lineTo(w / 2f - neckHalf, midY)
+                close()
+            }
+
+            val bottomChamber = Path().apply {
+                moveTo(w / 2f - neckHalf, midY)
+                lineTo(w / 2f + neckHalf, midY)
+                lineTo(rightX, bottomY)
+                lineTo(leftX, bottomY)
+                close()
+            }
+
+            // Sand inside top chamber (drains downward as sandProgress goes 0 -> 1)
+            val topFillFraction = (1f - sandProgress) * 0.82f
+            if (topFillFraction > 0.03f) {
+                clipPath(topChamber) {
+                    val sandTopY = midY - (midY - topY) * topFillFraction
+                    drawRect(
+                        color = tint.copy(alpha = 0.88f),
+                        topLeft = Offset(leftX, sandTopY),
+                        size = Size(rightX - leftX, midY - sandTopY)
+                    )
+                }
+            }
+
+            // Falling sand stream from neck to bottom pile while actively running
+            if (isRunning && sandProgress < 0.96f) {
+                val bottomPileTopY = bottomY - (bottomY - midY) * (sandProgress * 0.82f)
+                drawLine(
+                    color = tint.copy(alpha = 0.9f),
+                    start = Offset(w / 2f, midY),
+                    end = Offset(w / 2f, bottomPileTopY),
+                    strokeWidth = 1.4.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            // Sand inside bottom chamber (fills upward as sandProgress goes 0 -> 1)
+            val bottomFillFraction = 0.12f + (sandProgress * 0.72f)
+            clipPath(bottomChamber) {
+                val sandTopY = bottomY - (bottomY - midY) * bottomFillFraction
+                drawRect(
+                    color = tint.copy(alpha = 0.88f),
+                    topLeft = Offset(leftX, sandTopY),
+                    size = Size(rightX - leftX, bottomY - sandTopY)
+                )
+            }
+
+            // Hourglass outline
+            drawPath(path = topChamber, color = tint, style = Stroke(width = stroke, join = StrokeJoin.Round))
+            drawPath(path = bottomChamber, color = tint, style = Stroke(width = stroke, join = StrokeJoin.Round))
+        }
+    }
+}
+
+/**
+ * Live Stopwatch icon:
+ * - Sweeps needle 360° smoothly as seconds move while running.
+ * - Freezes at exact angle when paused.
+ * - Glides smoothly back to 12 o'clock (0°) when reset.
+ */
+@Composable
+private fun LiveStopwatchIcon(
+    tint: Color,
+    stopwatch: StopwatchState,
+    modifier: Modifier = Modifier
+) {
+    var needleDegrees by remember { mutableFloatStateOf(0f) }
+    var wasRunning by remember { mutableStateOf(false) }
+    var lastPausedState by remember { mutableStateOf(stopwatch) }
+
+    // Smooth 360° continuous sweep (6 degrees per second = 1 full 360° circle every 60s)
+    LaunchedEffect(stopwatch.running) {
+        if (stopwatch.running) {
+            wasRunning = true
+            var lastNanos = withFrameNanos { it }
+            while (true) {
+                val nowNanos = withFrameNanos { it }
+                val deltaSec = (nowNanos - lastNanos) / 1_000_000_000f
+                lastNanos = nowNanos
+                needleDegrees = (needleDegrees + deltaSec * 6f) % 360f
+            }
+        } else {
+            if (wasRunning) {
+                // Just paused: hold exact angle
+                wasRunning = false
+                lastPausedState = stopwatch
+            } else if (stopwatch != lastPausedState) {
+                // Reset triggered while stopped: return needle to 0°
+                lastPausedState = stopwatch
+                needleDegrees = 0f
+            }
+        }
+    }
+
+    val animatedAngle by animateFloatAsState(
+        targetValue = needleDegrees,
+        animationSpec = if (stopwatch.running) {
+            tween(durationMillis = 50, easing = LinearEasing)
+        } else {
+            dockFluidSpring()
+        },
+        label = "stopwatchNeedleAngle"
+    )
+
+    Canvas(modifier = modifier) {
+        val stroke = 1.85.dp.toPx()
+        val center = Offset(size.width / 2f, size.height * 0.56f)
+        val radius = size.minDimension * 0.35f
+
+        // Top crown stem & bar
+        drawLine(
+            color = tint,
+            start = Offset(center.x, center.y - radius),
+            end = Offset(center.x, center.y - radius - size.height * 0.11f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(center.x - size.width * 0.13f, center.y - radius - size.height * 0.11f),
+            end = Offset(center.x + size.width * 0.13f, center.y - radius - size.height * 0.11f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        // Top-right side pusher button
+        val pusherAngleRad = Math.toRadians(-45.0)
+        val pusherStart = Offset(
+            center.x + (radius * cos(pusherAngleRad)).toFloat(),
+            center.y + (radius * sin(pusherAngleRad)).toFloat()
+        )
+        val pusherEnd = Offset(
+            center.x + ((radius + size.width * 0.09f) * cos(pusherAngleRad)).toFloat(),
+            center.y + ((radius + size.width * 0.09f) * sin(pusherAngleRad)).toFloat()
+        )
+        drawLine(
+            color = tint,
+            start = pusherStart,
+            end = pusherEnd,
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        // Main dial circle
+        drawCircle(
+            color = tint,
+            radius = radius,
+            center = center,
+            style = Stroke(width = stroke)
+        )
+
+        // Center pivot dot
+        drawCircle(
+            color = tint,
+            radius = 1.6.dp.toPx(),
+            center = center
+        )
+
+        // Rotating 360° stopwatch hand
+        rotate(degrees = animatedAngle, pivot = center) {
+            drawLine(
+                color = tint,
+                start = center,
+                end = Offset(center.x, center.y - radius * 0.68f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+/* ── Inline Circular FAB (+ Button) ────────────────────────────────────────────────── */
+
+@Composable
+fun FloatingAddButton(
+    visible: Boolean,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandHorizontally(
+            animationSpec = dockFluidSpring(),
+            expandFrom = Alignment.Start
+        ) + scaleIn(
+            animationSpec = dockFluidSpring(),
+            initialScale = 0.72f
+        ) + fadeIn(animationSpec = tween(260)),
+        exit = shrinkHorizontally(
+            animationSpec = dockFluidSpring(),
+            shrinkTowards = Alignment.Start
+        ) + scaleOut(
+            animationSpec = dockFluidSpring(),
+            targetScale = 0.72f
+        ) + fadeOut(animationSpec = tween(200)),
+        modifier = modifier
+    ) {
+        val interactionSource = remember { MutableInteractionSource() }
+        val isPressed by interactionSource.collectIsPressedAsState()
+        val pressScale by animateFloatAsState(
+            targetValue = if (isPressed) 0.92f else 1f,
+            animationSpec = dockFluidSpring(),
+            label = "fabPressScale"
+        )
+
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 6.dp,
+            interactionSource = interactionSource,
+            modifier = Modifier
+                .size(66.dp)
+                .graphicsLayer {
+                    scaleX = pressScale
+                    scaleY = pressScale
+                }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = label,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
+}
