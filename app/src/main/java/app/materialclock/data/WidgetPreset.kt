@@ -15,7 +15,17 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
     /** The default: a filled circle, four numerals, dots between them. */
     CLASSIC(
         "Classic",
-        WidgetConfig(),
+        WidgetConfig(
+            look = AnalogLook.WATCH,
+            shape = FaceShape.CIRCLE,
+            hourHand = HandStyle.BATON,
+            minuteHand = HandStyle.BATON,
+            secondHand = HandStyle.NEEDLE,
+            centrePin = true,
+            numerals = NumeralSystem.NONE,
+            indexSet = IndexSet.ALL_TWELVE,
+            minorIndices = MinorIndex.TICKS_60,
+        ),
     ),
 
     /**
@@ -138,6 +148,7 @@ enum class WidgetPreset(val label: String, val config: WidgetConfig) {
                 backgroundOpacity = it.config.backgroundOpacity,
                 background = it.config.background,
                 faceFill = it.config.faceFill,
+                cardStyle = it.config.cardStyle,
             )
         }
     }
