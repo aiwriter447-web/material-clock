@@ -79,7 +79,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.materialclock.core.Alarm
 import app.materialclock.core.AlarmGroup
 import app.materialclock.data.WeekStart
@@ -96,11 +96,8 @@ import app.materialclock.data.order
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.dockFrostedGlass
 import app.materialclock.ui.sheets.systemFirstDay
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import java.time.DayOfWeek
 
-// Consistent delete color for BOTH light and dark themes.
 private val AlarmDeleteColor = Color(0xFFB3261E)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -125,7 +122,6 @@ fun AlarmsScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
-    val localHazeState = remember { HazeState() }
 
     var is24Hour by remember {
         mutableStateOf(android.text.format.DateFormat.is24HourFormat(context))
@@ -146,9 +142,7 @@ fun AlarmsScreen(
                 is24Hour = android.text.format.DateFormat.is24HourFormat(context)
             }
         }
-
         lifecycleOwner.lifecycle.addObserver(observer)
-
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
@@ -175,7 +169,6 @@ fun AlarmsScreen(
         selectedGroups = emptySet()
     }
 
-    // Living Flow: polished batch-delete confirmation.
     if (showBatchDeleteConfirm) {
         AlertDialog(
             onDismissRequest = {
@@ -220,7 +213,6 @@ fun AlarmsScreen(
                 }
             },
             dismissButton = {
-                // Transparent Cancel button with a stronger visible outline.
                 Surface(
                     onClick = {
                         showBatchDeleteConfirm = false
@@ -250,8 +242,6 @@ fun AlarmsScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-
-        // 1 column on phones held upright, 2 when turned sideways, 3 on wide unfolded screens.
         val columnCount = when {
             maxWidth >= 840.dp -> 3
             maxWidth >= 560.dp -> 2
@@ -260,12 +250,10 @@ fun AlarmsScreen(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(columnCount),
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = localHazeState),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = adjustedContentPadding,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (groups.isNotEmpty()) {
                 item(
@@ -296,7 +284,6 @@ fun AlarmsScreen(
                 key = { it.id },
                 contentType = { "alarm" }
             ) { alarm ->
-
                 val isSelected = alarm.id in selectedAlarms
 
                 AlarmRow(
@@ -324,7 +311,6 @@ fun AlarmsScreen(
             }
         }
 
-        // Fluid Animated Floating Toolbar with borderless Dock Frosted Glass effect.
         AnimatedVisibility(
             visible = inSelectionMode,
             enter =
@@ -374,7 +360,7 @@ fun AlarmsScreen(
                     expandedShadowElevation = 0.dp,
                     modifier = Modifier
                         .height(DOCK_HEIGHT)
-                        .dockFrostedGlass(hazeState = localHazeState),
+                        .dockFrostedGlass(),
                 ) {
                     val allSelected =
                         selectedAlarms.size == alarms.size &&
@@ -488,10 +474,10 @@ private fun ToolbarIconButton(
     }
 }
 
-private val GROUP_SECTION_PADDING_H = 4.dp
-private val GROUP_CARD_GAP = 10.dp
-private val GROUP_CARD_PADDING = 16.dp
-private val GROUP_CARD_CORNER = 32.dp
+private val GROUP_SECTION_PADDING_H = 2.dp
+private val GROUP_CARD_GAP = 12.dp
+private val GROUP_CARD_PADDING_H = 14.dp
+private val GROUP_CARD_PADDING_V = 12.dp
 
 @Composable
 private fun GroupCardsSection(
@@ -561,10 +547,10 @@ private fun GroupCard(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioHighBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "groupScale"
     )
@@ -575,7 +561,7 @@ private fun GroupCard(
         } else if (checked) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            MaterialTheme.colorScheme.surfaceContainerLow
         }
 
     val targetInk =
@@ -600,13 +586,13 @@ private fun GroupCard(
     )
 
     val titleFontWeight =
-        if (checked) FontWeight.SemiBold else FontWeight.Normal
+        if (checked) FontWeight.SemiBold else FontWeight.Medium
 
     val targetIconBackground =
         if (checked) {
             MaterialTheme.colorScheme.primary
         } else {
-            MaterialTheme.colorScheme.surfaceVariant
+            MaterialTheme.colorScheme.surfaceContainerHighest
         }
 
     val targetIconTint =
@@ -631,9 +617,17 @@ private fun GroupCard(
     val iconVector =
         if (checked) Icons.Rounded.Alarm else Icons.Rounded.AlarmOff
 
+    val pillBorderColor =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+        }
+
     Surface(
         color = container,
-        shape = RoundedCornerShape(GROUP_CARD_CORNER),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, pillBorderColor),
         modifier = modifier
             .graphicsLayer {
                 scaleX = scale
@@ -655,13 +649,16 @@ private fun GroupCard(
             ),
     ) {
         Row(
-            modifier = Modifier.padding(GROUP_CARD_PADDING),
+            modifier = Modifier.padding(
+                horizontal = GROUP_CARD_PADDING_H,
+                vertical = GROUP_CARD_PADDING_V
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
                 shape = CircleShape,
                 color = iconBackground,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -695,7 +692,7 @@ private fun GroupCard(
                 }
             }
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -711,7 +708,7 @@ private fun GroupCard(
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(3.dp))
 
                 GroupCount(
                     armed = armedCount,
@@ -737,7 +734,7 @@ private fun GroupCount(
             modifier = Modifier.size(14.dp)
         )
 
-        Spacer(Modifier.width(3.dp))
+        Spacer(Modifier.width(4.dp))
 
         Text(
             armed.toString(),
@@ -745,7 +742,7 @@ private fun GroupCount(
             color = ink
         )
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
 
         Icon(
             Icons.Rounded.AlarmOff,
@@ -754,7 +751,7 @@ private fun GroupCount(
             modifier = Modifier.size(14.dp)
         )
 
-        Spacer(Modifier.width(3.dp))
+        Spacer(Modifier.width(4.dp))
 
         Text(
             unarmed.toString(),
@@ -764,10 +761,10 @@ private fun GroupCount(
     }
 }
 
-private val ROW_HORIZONTAL_PADDING = 20.dp
-private val ROW_VERTICAL_PADDING = 16.dp
-private val ROW_CORNER_RADIUS = 32.dp
-private val ROW_LABEL_TO_TIME = 6.dp
+private val ROW_HORIZONTAL_PADDING = 22.dp
+private val ROW_VERTICAL_PADDING = 18.dp
+private val ROW_CORNER_RADIUS = 28.dp
+private val ROW_LABEL_TO_TIME = 4.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -788,10 +785,10 @@ private fun AlarmRow(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioHighBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "rowScale"
     )
@@ -811,7 +808,7 @@ private fun AlarmRow(
         } else if (enabled) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            MaterialTheme.colorScheme.surfaceContainerLow
         }
 
     val targetInk =
@@ -837,17 +834,20 @@ private fun AlarmRow(
 
     val outlineColor = MaterialTheme.colorScheme.outline
 
+    val cardBorderColor =
+        if (isSelected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)
+        }
+
     val hour12 =
         (alarm.time.hour % 12).takeIf { it != 0 } ?: 12
 
     val meridiem =
-        if (alarm.time.hour < 12) "AM" else "PM"
+        if (alarm.time.hour < 12) "am" else "pm"
 
-    val displayLabel =
-        if (alarm.label.isNotBlank()) alarm.label else " "
-
-    val labelColor =
-        if (alarm.label.isNotBlank()) ink else Color.Transparent
+    val hasLabel = alarm.label.isNotBlank()
 
     val timeFontWeight =
         if (enabled) FontWeight.Medium else FontWeight.Normal
@@ -858,6 +858,7 @@ private fun AlarmRow(
     Surface(
         color = container,
         shape = RoundedCornerShape(ROW_CORNER_RADIUS),
+        border = BorderStroke(1.dp, cardBorderColor),
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
@@ -882,7 +883,7 @@ private fun AlarmRow(
         BoxWithConstraints {
             val fontScale = LocalDensity.current.fontScale
             val rowInner = maxWidth - ROW_HORIZONTAL_PADDING * 2
-            val rowVPad = if (LocalConfiguration.current.screenHeightDp < 480) 10.dp else ROW_VERTICAL_PADDING
+            val rowVPad = if (LocalConfiguration.current.screenHeightDp < 480) 12.dp else ROW_VERTICAL_PADDING
             val timeNeed = (if (is24Hour) 95f else 130f) * fontScale
             val daysAvail = rowInner.value - timeNeed - 16f
             val daysScale = (daysAvail / (152f * fontScale)).coerceIn(0.55f, 1f)
@@ -902,36 +903,41 @@ private fun AlarmRow(
                             scaleX = timeBreathScale
                             scaleY = timeBreathScale
                         },
-                    verticalArrangement = Arrangement.Top,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = displayLabel,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = titleFontWeight
-                            ),
-                            color = labelColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
+                    if (hasLabel || alarm.pinnedAt != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (hasLabel) {
+                                Text(
+                                    text = alarm.label,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = titleFontWeight
+                                    ),
+                                    color = ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
 
-                        if (alarm.pinnedAt != null) {
-                            Spacer(Modifier.width(6.dp))
+                            if (alarm.pinnedAt != null) {
+                                if (hasLabel) Spacer(Modifier.width(6.dp))
 
-                            Icon(
-                                imageVector = Icons.Rounded.PushPin,
-                                contentDescription = "Pinned",
-                                tint = ink,
-                                modifier = Modifier.size(16.dp)
-                            )
+                                Icon(
+                                    imageVector = Icons.Rounded.PushPin,
+                                    contentDescription = "Pinned",
+                                    tint = ink,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
+                        Spacer(modifier = Modifier.height(ROW_LABEL_TO_TIME))
+                    }
 
                     val timeStyle =
                         MaterialTheme.typography.headlineLarge.copy(
+                            fontSize = 36.sp,
                             fontWeight = timeFontWeight,
                             fontFeatureSettings = "tnum"
                         )
@@ -955,7 +961,7 @@ private fun AlarmRow(
                     } else {
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "%02d:%02d".format(
+                                text = "%d:%02d".format(
                                     hour12,
                                     alarm.time.minute
                                 ),
@@ -973,18 +979,13 @@ private fun AlarmRow(
                                 color = ink,
                                 maxLines = 1,
                                 softWrap = false,
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                modifier = Modifier.padding(bottom = 5.dp)
                             )
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Top,
-                ) {
                     DayLetters(
                         alarm = alarm,
                         order = order,
@@ -992,31 +993,31 @@ private fun AlarmRow(
                         enabled = enabled,
                         scale = daysScale
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Switch(
-                        checked = enabled,
-                        onCheckedChange = {
-                            if (!inSelectionMode) onToggle()
-                        },
-                        enabled = !inSelectionMode,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = container,
-                            checkedTrackColor = ink,
-                            checkedBorderColor = Color.Transparent,
-                            uncheckedThumbColor = ink,
-                            uncheckedTrackColor = Color.Transparent,
-                            uncheckedBorderColor = outlineColor,
-                            disabledCheckedThumbColor = container,
-                            disabledCheckedTrackColor = ink,
-                            disabledCheckedBorderColor = Color.Transparent,
-                            disabledUncheckedThumbColor = ink,
-                            disabledUncheckedTrackColor = Color.Transparent,
-                            disabledUncheckedBorderColor = outlineColor,
-                        ),
-                    )
                 }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = {
+                        if (!inSelectionMode) onToggle()
+                    },
+                    enabled = !inSelectionMode,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = container,
+                        checkedTrackColor = ink,
+                        checkedBorderColor = Color.Transparent,
+                        uncheckedThumbColor = ink,
+                        uncheckedTrackColor = Color.Transparent,
+                        uncheckedBorderColor = outlineColor,
+                        disabledCheckedThumbColor = container,
+                        disabledCheckedTrackColor = ink,
+                        disabledCheckedBorderColor = Color.Transparent,
+                        disabledUncheckedThumbColor = ink,
+                        disabledUncheckedTrackColor = Color.Transparent,
+                        disabledUncheckedBorderColor = outlineColor,
+                    ),
+                )
             }
         }
     }
@@ -1052,7 +1053,7 @@ private fun DayLetters(
                         color = if (active) {
                             ink
                         } else {
-                            ink.copy(alpha = 0.30f)
+                            ink.copy(alpha = 0.32f)
                         },
                     )
                 ) {
@@ -1064,9 +1065,9 @@ private fun DayLetters(
 
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(
-            fontSize = (17f * scale).sp,
-            letterSpacing = (2.5f * scale).sp
+        style = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = (14.5f * scale).sp,
+            letterSpacing = (2.2f * scale).sp
         ),
         maxLines = 1,
         softWrap = false
