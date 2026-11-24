@@ -203,8 +203,8 @@ fun StopwatchScreen(
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     0.0f to Color.Transparent,
-                                    0.018f to Color.Black,
-                                    0.94f to Color.Black,
+                                    0.045f to Color.Black,
+                                    0.935f to Color.Black,
                                     1.0f to Color.Transparent
                                 ),
                                 blendMode = BlendMode.DstIn
@@ -213,8 +213,8 @@ fun StopwatchScreen(
                     contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
-                        top = 2.dp,
-                        bottom = 6.dp
+                        top = 8.dp,
+                        bottom = 8.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(LAP_GAP),
                 ) {
@@ -293,7 +293,7 @@ fun StopwatchScreen(
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     lapsViewport(Modifier.weight(1f))
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(12.dp))
                     FluidEntrance(delayMillis = 70) {
                         StopwatchControls(
                             idle = !stopwatch.running && elapsed.isZero,
@@ -315,14 +315,14 @@ fun StopwatchScreen(
                 }
             }
         } else {
-            val topOffset = minOf(8.dp, availH * 0.015f)
+            val topOffset = minOf(28.dp, availH * 0.042f)
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
                         top = contentPadding.calculateTopPadding(),
-                        bottom = contentPadding.calculateBottomPadding() + 54.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 48.dp,
                         start = contentPadding.calculateStartPadding(layoutDirection),
                         end = contentPadding.calculateEndPadding(layoutDirection)
                     )
@@ -343,11 +343,11 @@ fun StopwatchScreen(
                     )
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(14.dp))
 
                 lapsViewport(Modifier.weight(1f))
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(14.dp))
 
                 FluidEntrance(delayMillis = 70) {
                     StopwatchControls(
