@@ -10,13 +10,16 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -30,6 +33,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -40,6 +44,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -121,23 +126,21 @@ import app.materialclock.ui.sheets.StopwatchSettingsSheet
 import app.materialclock.ui.sheets.TimerSettingsSheet
 import app.materialclock.ui.sheets.WorldSettingsSheet
 import app.materialclock.ui.theme.ClockTheme
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private val DOCK_CLEARANCE = 8.dp
+private val DOCK_CLEARANCE = 6.dp
 private const val OPEN_SETTLE_DELAY_MS = 150L
 
 private val TICKER_END_INSET = 38.dp
 private val TICKER_START_GAP = 6.dp
 private val TICKER_EDGE_FADE = 18.dp
 
-// LIVING FLOW: Calm, weighted spring physics for all transitions
+// LIVING FLOW: Responsive, fluid spring physics for all transitions
 private fun <T> fluidSpringSpec() = spring<T>(
-    dampingRatio = 0.92f,
-    stiffness = 210f
+    dampingRatio = 0.85f,
+    stiffness = 290f
 )
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
@@ -166,7 +169,6 @@ fun ClockApp(
     )
 
     val timer by vm.timer.collectAsStateWithLifecycle()
-    val sw by vm.stopwatch.collectAsStateWithLifecycle()
 
     ClockTheme(settings.theme) {
         if (!isLoaded) {
@@ -333,8 +335,6 @@ fun ClockApp(
             onDispose { }
         }
 
-        val hazeState = remember { HazeState() }
-
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surface,
@@ -350,13 +350,13 @@ fun ClockApp(
                             AnimatedVisibility(
                                 visible = targetTab == Tab.ALARMS && marqueeText.isNotEmpty(),
                                 enter = slideInHorizontally(
-                                    initialOffsetX = { fullWidth -> fullWidth / 3 },
+                                    initialOffsetX = { fullWidth -> fullWidth / 4 },
                                     animationSpec = fluidSpringSpec()
-                                ) + fadeIn(animationSpec = tween(350)),
+                                ) + fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing)),
                                 exit = slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> fullWidth / 3 },
+                                    targetOffsetX = { fullWidth -> fullWidth / 4 },
                                     animationSpec = fluidSpringSpec()
-                                ) + fadeOut(animationSpec = tween(250)),
+                                ) + fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)),
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
                                     .fillMaxWidth()
@@ -387,17 +387,22 @@ fun ClockApp(
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
                                     .onSizeChanged { pillWidthPx = it.width }
-                                    .titlePillFrostedGlass(hazeState = hazeState)
+                                    .titlePillFrostedGlass()
+                                    .animateContentSize(animationSpec = fluidSpringSpec())
                             ) {
                                 AnimatedContent(
                                     targetState = targetTab,
                                     transitionSpec = {
                                         (slideInVertically(
                                             animationSpec = fluidSpringSpec()
-                                        ) { height -> height / 2 } + fadeIn(animationSpec = tween(400))) togetherWith
+                                        ) { height -> height / 3 } + fadeIn(
+                                            animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                        )) togetherWith
                                             (slideOutVertically(
                                                 animationSpec = fluidSpringSpec()
-                                            ) { height -> -height / 2 } + fadeOut(animationSpec = tween(300)))
+                                            ) { height -> -height / 3 } + fadeOut(
+                                                animationSpec = tween(200, easing = FastOutSlowInEasing)
+                                            ))
                                     },
                                     label = "TopBarTitleAnim"
                                 ) { tab ->
@@ -436,10 +441,10 @@ fun ClockApp(
             val underDock = if (landscape) {
                 padding.calculateBottomPadding() + 12.dp
             } else {
-                padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 14.dp
+                padding.calculateBottomPadding() + dockHeight + DOCK_CLEARANCE + 12.dp
             }
             val underDockAndFab = if (landscape) {
-                padding.calculateBottomPadding() + 92.dp
+                padding.calculateBottomPadding() + 100.dp
             } else {
                 underDock
             }
@@ -487,7 +492,7 @@ fun ClockApp(
                 enter = slideInVertically(
                     initialOffsetY = { it / 8 },
                     animationSpec = fluidSpringSpec()
-                ) + fadeIn(animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)),
+                ) + fadeIn(animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
                 Box(Modifier.fillMaxSize()) {
@@ -500,7 +505,6 @@ fun ClockApp(
                                 end = if (landscape) railWidth + padding.calculateEndPadding(ld) else 0.dp
                             )
                             .clipToBounds()
-                            .hazeSource(state = hazeState)
                             .clipScrollableContainer(Orientation.Horizontal),
                         beyondViewportPageCount = 1
                     ) { page ->
@@ -600,6 +604,7 @@ fun ClockApp(
                                 }
 
                                 Tab.STOPWATCH -> {
+                                    val sw by vm.stopwatch.collectAsStateWithLifecycle()
                                     val now by rememberElapsedTicker(
                                         active = isFocused && sw.running
                                     )
@@ -649,10 +654,6 @@ fun ClockApp(
                                     }
                                 },
                                 vertical = true,
-                                hazeState = hazeState,
-                                timerRunning = timer != null,
-                                stopwatchRunning = sw.running,
-                                stopwatchSnapshot = sw
                             )
                         }
 
@@ -665,7 +666,7 @@ fun ClockApp(
                                 .padding(
                                     end = railWidth + padding.calculateEndPadding(ld) + 16.dp,
                                     bottom = padding.calculateBottomPadding() + 16.dp,
-                                )
+                                ),
                         )
                     } else {
                         AnimatedVisibility(
@@ -687,7 +688,7 @@ fun ClockApp(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 ClockDock(
                                     destinations = Tab.entries,
@@ -701,10 +702,6 @@ fun ClockApp(
                                         }
                                     },
                                     vertical = false,
-                                    hazeState = hazeState,
-                                    timerRunning = timer != null,
-                                    stopwatchRunning = sw.running,
-                                    stopwatchSnapshot = sw,
                                     modifier = Modifier.onGloballyPositioned { coords ->
                                         with(density) {
                                             dockHeight = coords.size.height.toDp()
@@ -712,11 +709,30 @@ fun ClockApp(
                                     },
                                 )
 
-                                FloatingAddButton(
+                                AnimatedVisibility(
                                     visible = fabVisible,
-                                    label = fabLabel,
-                                    onClick = onFabClick
-                                )
+                                    enter = expandHorizontally(
+                                        animationSpec = fluidSpringSpec(),
+                                        expandFrom = Alignment.Start
+                                    ) + fadeIn(
+                                        animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                    ),
+                                    exit = shrinkHorizontally(
+                                        animationSpec = fluidSpringSpec(),
+                                        shrinkTowards = Alignment.Start
+                                    ) + fadeOut(
+                                        animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                    )
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        FloatingAddButton(
+                                            visible = true,
+                                            label = fabLabel,
+                                            onClick = onFabClick
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -823,9 +839,6 @@ fun ClockApp(
     }
 }
 
-/**
- * The "Alarm in 3 Hours 20 Minutes" line.
- */
 @Composable
 private fun LiveNewsHeadlineTicker(
     text: String,
