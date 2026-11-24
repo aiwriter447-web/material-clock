@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -408,9 +409,24 @@ fun rememberDockGlassBorder(): BorderStroke {
     return BorderStroke(width = 0.dp, color = Color.Transparent)
 }
 
-// Adaptive opacity surface for Dock Bar without system blur or corner light
+// Adaptive opacity surface for Dock Bar without system blur, shadow, or corner light
 @Composable
 fun Modifier.dockFrostedGlass(
+    hazeState: Any? = null,
+    shape: Shape = CircleShape,
+): Modifier {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val containerColor = MaterialTheme.colorScheme.primaryContainer.copy(
+        alpha = if (isDark) 0.92f else 0.94f
+    )
+    return this
+        .clip(shape)
+        .background(containerColor)
+}
+
+// Adaptive opacity surface for Title Pill without system blur or shadow
+@Composable
+fun Modifier.titlePillFrostedGlass(
     hazeState: Any? = null,
     shape: Shape = CircleShape,
 ): Modifier {
@@ -423,25 +439,10 @@ fun Modifier.dockFrostedGlass(
         .background(containerColor)
 }
 
-// Adaptive opacity surface for Title Pill without system blur
-@Composable
-fun Modifier.titlePillFrostedGlass(
-    hazeState: Any? = null,
-    shape: Shape = CircleShape,
-): Modifier {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val containerColor = MaterialTheme.colorScheme.primaryContainer.copy(
-        alpha = if (isDark) 0.88f else 0.90f
-    )
-    return this
-        .clip(shape)
-        .background(containerColor)
-}
-
-// Living Flow - Fluid Motion responsive spring physics
+// Living Flow - Fluid Motion live reactive spring physics
 private fun <T> dockFluidSpring() = spring<T>(
-    dampingRatio = 0.84f,
-    stiffness = 320f
+    dampingRatio = 0.80f,
+    stiffness = 380f
 )
 
 @Composable
@@ -459,7 +460,7 @@ fun ClockDock(
         contentAlignment = if (vertical) Alignment.Center else Alignment.BottomCenter,
     ) {
         val itemH = if (vertical) ((maxHeight - 16.dp) / destinations.size).coerceIn(44.dp, 76.dp) else 56.dp
-        val itemW = if (vertical) 56.dp else 56.dp
+        val itemW = 56.dp
 
         val buttonBounds = remember { mutableStateMapOf<Int, Rect>() }
         val targetRect = buttonBounds[selectedIndex]
@@ -494,7 +495,7 @@ fun ClockDock(
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             border = null,
-            shadowElevation = 4.dp,
+            shadowElevation = 0.dp,
             modifier = Modifier.dockFrostedGlass()
         ) {
             val tabs: @Composable () -> Unit = {
@@ -533,13 +534,13 @@ fun ClockDock(
                                 }
                             }
                         } else {
-                            iconRotation.animateTo(0f, tween(250, easing = FastOutSlowInEasing))
+                            iconRotation.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
                         }
                     }
 
                     val tabScale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.88f else 1f,
-                        animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+                        targetValue = if (isPressed) 0.85f else 1f,
+                        animationSpec = spring(dampingRatio = 0.72f, stiffness = 480f),
                         label = "tabScale"
                     )
 
@@ -549,7 +550,7 @@ fun ClockDock(
                         } else {
                             MaterialTheme.colorScheme.onPrimaryContainer
                         },
-                        animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing),
+                        animationSpec = tween(durationMillis = 180, easing = LinearOutSlowInEasing),
                         label = "contentColorBlend"
                     )
 
@@ -669,27 +670,19 @@ fun FloatingAddButton(
 ) {
     val grow by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = if (visible) {
-            spring(dampingRatio = 0.80f, stiffness = 300f)
-        } else {
-            tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        },
+        animationSpec = spring(dampingRatio = 0.76f, stiffness = 340f),
         label = "addGrow"
     )
 
     val glyph by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 380f),
         label = "addGlyph",
     )
 
     val rotation by animateFloatAsState(
-        targetValue = if (visible) 0f else -120f,
-        animationSpec = if (visible) {
-            spring(dampingRatio = 0.80f, stiffness = 280f)
-        } else {
-            tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        },
+        targetValue = if (visible) 0f else -90f,
+        animationSpec = spring(dampingRatio = 0.76f, stiffness = 340f),
         label = "addRotate"
     )
 
@@ -697,8 +690,8 @@ fun FloatingAddButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 480f),
         label = "fabPressScale"
     )
 
@@ -711,6 +704,12 @@ fun FloatingAddButton(
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp
+        ),
         modifier = modifier
             .size(FAB_SIZE)
             .graphicsLayer {
