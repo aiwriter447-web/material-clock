@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -73,7 +72,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -81,7 +79,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -89,6 +86,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -111,8 +109,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROW_HEIGHT_DP = 96
+// Matches Alarm card height & rounded shape
+private const val CITY_ROW_HEIGHT_DP = 96
 private val CITY_CARD_CORNER_RADIUS = 28.dp
+private val CITY_ROW_HORIZONTAL_PADDING = 20.dp
+private val CITY_ROW_VERTICAL_PADDING = 16.dp
 
 private val WorldClockDeleteColor = Color(0xFFB3261E)
 
@@ -177,26 +178,26 @@ private fun resolveHomeGeoLocation(zone: ZoneId): HomeGeoLocation {
 
     val exactCoords: Pair<Float, Float>? = when {
         // Asia
-        normalizedId.contains("Kolkata") || normalizedId.contains("Calcutta") -> 0.36f to 0.59f
+        normalizedId.contains("Kolkata") || normalizedId.contains("Calcutta") -> 0.36f to 0.56f
         normalizedId.contains("Colombo") -> 0.37f to 0.72f
-        normalizedId.contains("Kathmandu") -> 0.39f to 0.51f
-        normalizedId.contains("Dhaka") -> 0.43f to 0.56f
-        normalizedId.contains("Karachi") -> 0.28f to 0.52f
-        normalizedId.contains("Kabul") -> 0.27f to 0.44f
-        normalizedId.contains("Tashkent") || normalizedId.contains("Almaty") -> 0.31f to 0.36f
-        normalizedId.contains("Dubai") || normalizedId.contains("Muscat") -> 0.18f to 0.53f
-        normalizedId.contains("Riyadh") || normalizedId.contains("Kuwait") || normalizedId.contains("Qatar") -> 0.13f to 0.53f
-        normalizedId.contains("Tehran") -> 0.18f to 0.44f
-        normalizedId.contains("Jerusalem") || normalizedId.contains("Beirut") || normalizedId.contains("Amman") -> 0.07f to 0.46f
-        normalizedId.contains("Bangkok") || normalizedId.contains("Ho_Chi_Minh") -> 0.54f to 0.65f
-        normalizedId.contains("Singapore") || normalizedId.contains("Kuala_Lumpur") -> 0.54f to 0.76f
-        normalizedId.contains("Jakarta") -> 0.58f to 0.86f
-        normalizedId.contains("Manila") -> 0.73f to 0.65f
-        normalizedId.contains("Hong_Kong") || normalizedId.contains("Macau") -> 0.67f to 0.56f
-        normalizedId.contains("Taipei") -> 0.73f to 0.55f
-        normalizedId.contains("Shanghai") || normalizedId.contains("Beijing") -> 0.70f to 0.45f
-        normalizedId.contains("Seoul") -> 0.78f to 0.41f
-        normalizedId.contains("Tokyo") || normalizedId.contains("Osaka") -> 0.85f to 0.41f
+        normalizedId.contains("Kathmandu") -> 0.40f to 0.49f
+        normalizedId.contains("Dhaka") -> 0.44f to 0.53f
+        normalizedId.contains("Karachi") -> 0.29f to 0.51f
+        normalizedId.contains("Kabul") -> 0.27f to 0.43f
+        normalizedId.contains("Tashkent") || normalizedId.contains("Almaty") -> 0.31f to 0.35f
+        normalizedId.contains("Dubai") || normalizedId.contains("Muscat") -> 0.20f to 0.52f
+        normalizedId.contains("Riyadh") || normalizedId.contains("Kuwait") || normalizedId.contains("Qatar") -> 0.14f to 0.51f
+        normalizedId.contains("Tehran") -> 0.20f to 0.43f
+        normalizedId.contains("Jerusalem") || normalizedId.contains("Beirut") || normalizedId.contains("Amman") -> 0.08f to 0.44f
+        normalizedId.contains("Bangkok") || normalizedId.contains("Ho_Chi_Minh") -> 0.55f to 0.60f
+        normalizedId.contains("Singapore") || normalizedId.contains("Kuala_Lumpur") -> 0.54f to 0.71f
+        normalizedId.contains("Jakarta") -> 0.58f to 0.84f
+        normalizedId.contains("Manila") -> 0.74f to 0.61f
+        normalizedId.contains("Hong_Kong") || normalizedId.contains("Macau") -> 0.67f to 0.52f
+        normalizedId.contains("Taipei") -> 0.73f to 0.51f
+        normalizedId.contains("Shanghai") || normalizedId.contains("Beijing") -> 0.71f to 0.41f
+        normalizedId.contains("Seoul") -> 0.79f to 0.36f
+        normalizedId.contains("Tokyo") || normalizedId.contains("Osaka") -> 0.85f to 0.38f
 
         // Europe
         normalizedId.contains("London") || normalizedId.contains("Dublin") -> 0.24f to 0.49f
@@ -244,7 +245,7 @@ private fun resolveHomeGeoLocation(zone: ZoneId): HomeGeoLocation {
     val (fx, fy) = exactCoords ?: when (continent) {
         ContinentRegion.ASIA -> {
             val t = ((offsetHours - 2f) / 8f).coerceIn(0.08f, 0.90f)
-            t to 0.50f
+            t to 0.48f
         }
         ContinentRegion.EUROPE -> {
             val t = ((offsetHours + 1f) / 4.5f).coerceIn(0.18f, 0.82f)
@@ -276,19 +277,19 @@ private fun resolveHomeGeoLocation(zone: ZoneId): HomeGeoLocation {
     )
 }
 
-private fun DrawScope.drawContinentWatermark(
+private fun DrawScope.drawFullScreenContinentMap(
     geo: HomeGeoLocation,
-    mapLeft: Float,
-    mapTop: Float,
-    mapWidth: Float,
-    mapHeight: Float,
     fillColor: Color,
     strokeColor: Color,
     pinColor: Color,
-    measurer: TextMeasurer? = null,
-    labelColor: Color = Color.Transparent,
-    showLabel: Boolean = false
+    measurer: TextMeasurer,
+    labelColor: Color
 ) {
+    val mapLeft = 0f
+    val mapTop = 0f
+    val mapWidth = size.width
+    val mapHeight = size.height
+
     fun px(nx: Float) = mapLeft + nx * mapWidth
     fun py(ny: Float) = mapTop + ny * mapHeight
 
@@ -304,97 +305,114 @@ private fun DrawScope.drawContinentWatermark(
 
     val landmasses: List<Path> = when (geo.continent) {
         ContinentRegion.ASIA -> listOf(
+            // Main Asian landmass with recognizable Arabia, India, Bay of Bengal, SE Asia, China, Korea, Siberia
             polygonPath(
                 listOf(
-                    0.04f to 0.42f,
-                    0.12f to 0.35f,
-                    0.22f to 0.16f,
-                    0.46f to 0.09f,
-                    0.74f to 0.11f,
-                    0.90f to 0.14f,
-                    0.93f to 0.24f,
-                    0.83f to 0.27f,
-                    0.77f to 0.37f,
-                    0.80f to 0.44f,
-                    0.75f to 0.42f,
-                    0.74f to 0.52f,
-                    0.66f to 0.58f,
-                    0.59f to 0.67f,
-                    0.54f to 0.77f,
-                    0.50f to 0.63f,
-                    0.44f to 0.56f,
-                    0.43f to 0.61f,
-                    0.36f to 0.72f,
-                    0.30f to 0.56f,
-                    0.25f to 0.51f,
-                    0.19f to 0.50f,
-                    0.22f to 0.58f,
-                    0.13f to 0.63f,
-                    0.07f to 0.51f
+                    0.05f to 0.36f,
+                    0.14f to 0.33f,
+                    0.18f to 0.25f,
+                    0.20f to 0.14f,
+                    0.38f to 0.10f,
+                    0.60f to 0.09f,
+                    0.82f to 0.12f,
+                    0.95f to 0.16f,
+                    0.89f to 0.24f,
+                    0.82f to 0.23f,
+                    0.79f to 0.31f,
+                    0.81f to 0.37f,
+                    0.78f to 0.38f,
+                    0.77f to 0.33f,
+                    0.74f to 0.35f,
+                    0.77f to 0.43f,
+                    0.73f to 0.51f,
+                    0.66f to 0.54f,
+                    0.63f to 0.62f,
+                    0.58f to 0.63f,
+                    0.56f to 0.59f,
+                    0.54f to 0.63f,
+                    0.56f to 0.71f,
+                    0.53f to 0.72f,
+                    0.51f to 0.62f,
+                    0.48f to 0.55f,
+                    0.45f to 0.55f,
+                    0.41f to 0.61f,
+                    0.37f to 0.69f,
+                    0.35f to 0.69f,
+                    0.32f to 0.58f,
+                    0.30f to 0.54f,
+                    0.27f to 0.53f,
+                    0.21f to 0.50f,
+                    0.19f to 0.47f,
+                    0.22f to 0.52f,
+                    0.23f to 0.57f,
+                    0.14f to 0.61f,
+                    0.09f to 0.48f,
+                    0.07f to 0.44f,
+                    0.09f to 0.39f
                 )
             ),
             // Sri Lanka
             polygonPath(
                 listOf(
-                    0.38f to 0.72f,
-                    0.40f to 0.72f,
-                    0.40f to 0.76f,
-                    0.38f to 0.76f
+                    0.38f to 0.70f,
+                    0.40f to 0.70f,
+                    0.40f to 0.74f,
+                    0.38f to 0.74f
                 )
             ),
             // Japan
             polygonPath(
                 listOf(
-                    0.85f to 0.33f,
-                    0.88f to 0.36f,
-                    0.86f to 0.44f,
-                    0.81f to 0.45f,
-                    0.83f to 0.39f
+                    0.85f to 0.31f,
+                    0.88f to 0.34f,
+                    0.86f to 0.42f,
+                    0.82f to 0.43f,
+                    0.84f to 0.37f
                 )
             ),
             // Taiwan
             polygonPath(
                 listOf(
-                    0.72f to 0.54f,
-                    0.74f to 0.54f,
-                    0.74f to 0.58f,
-                    0.72f to 0.58f
+                    0.73f to 0.50f,
+                    0.75f to 0.50f,
+                    0.75f to 0.54f,
+                    0.73f to 0.54f
                 )
             ),
             // Sumatra
             polygonPath(
                 listOf(
-                    0.48f to 0.76f,
-                    0.51f to 0.76f,
-                    0.56f to 0.84f,
-                    0.53f to 0.85f
+                    0.48f to 0.73f,
+                    0.51f to 0.73f,
+                    0.56f to 0.81f,
+                    0.53f to 0.82f
                 )
             ),
             // Java
             polygonPath(
                 listOf(
-                    0.56f to 0.87f,
-                    0.65f to 0.88f,
-                    0.65f to 0.90f,
-                    0.56f to 0.89f
+                    0.56f to 0.84f,
+                    0.65f to 0.85f,
+                    0.65f to 0.87f,
+                    0.56f to 0.86f
                 )
             ),
             // Borneo
             polygonPath(
                 listOf(
-                    0.61f to 0.76f,
-                    0.68f to 0.77f,
-                    0.67f to 0.84f,
-                    0.60f to 0.83f
+                    0.61f to 0.73f,
+                    0.68f to 0.74f,
+                    0.67f to 0.81f,
+                    0.60f to 0.80f
                 )
             ),
             // Philippines
             polygonPath(
                 listOf(
-                    0.72f to 0.62f,
-                    0.75f to 0.63f,
-                    0.76f to 0.72f,
-                    0.73f to 0.71f
+                    0.73f to 0.58f,
+                    0.76f to 0.59f,
+                    0.77f to 0.68f,
+                    0.74f to 0.67f
                 )
             )
         )
@@ -586,36 +604,36 @@ private fun DrawScope.drawContinentWatermark(
 
     val pinCenter = Offset(px(geo.x), py(geo.y))
 
-    // Soft radar halo around selected home city
+    // Radar halo around selected home city
     drawCircle(
-        color = pinColor.copy(alpha = pinColor.alpha * 0.22f),
-        radius = 18.dp.toPx(),
+        color = pinColor.copy(alpha = pinColor.alpha * 0.20f),
+        radius = 20.dp.toPx(),
         center = pinCenter
     )
     drawCircle(
         color = pinColor.copy(alpha = pinColor.alpha * 0.45f),
-        radius = 9.dp.toPx(),
+        radius = 10.dp.toPx(),
         center = pinCenter,
-        style = Stroke(width = 1.2.dp.toPx())
+        style = Stroke(width = 1.25.dp.toPx())
     )
     drawCircle(
         color = pinColor,
-        radius = 4.dp.toPx(),
+        radius = 4.5.dp.toPx(),
         center = pinCenter
     )
 
-    if (showLabel && measurer != null && geo.label.isNotBlank()) {
+    if (geo.label.isNotBlank()) {
         val textLayout = measurer.measure(
             text = geo.label,
-            style = androidx.compose.ui.text.TextStyle(
+            style = TextStyle(
                 color = labelColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp
             )
         )
-        val labelX = (pinCenter.x + 11.dp.toPx())
-            .coerceAtMost(mapLeft + mapWidth - textLayout.size.width - 8.dp.toPx())
+        val labelX = (pinCenter.x + 12.dp.toPx())
+            .coerceAtMost(mapWidth - textLayout.size.width - 12.dp.toPx())
         val labelY = pinCenter.y - textLayout.size.height / 2f
         drawText(
             textLayoutResult = textLayout,
@@ -694,7 +712,7 @@ fun WorldClockScreen(
                     shape = CircleShape,
                     color = WorldClockDeleteColor,
                     contentColor = Color.White,
-                    shadowElevation = 1.dp
+                    shadowElevation = 0.dp
                 ) {
                     Text(
                         text = "Delete",
@@ -738,45 +756,30 @@ fun WorldClockScreen(
         )
     }
 
-    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.065f)
-    val mapStrokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.055f)
+    val mapStrokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     val mapPinColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
     val mapLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
 
-        // Background Continent Watermark + Home City Pin
+        // Full-screen Continent Watermark Map + Home City Pin across entire World Clock background
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val availW = size.width - 24.dp.toPx()
-            val availH = if (wide) size.height * 0.78f else size.height * 0.44f
-            val side = minOf(availW, availH)
-            val left = (size.width - side) / 2f
-            val top = if (wide) {
-                (size.height - side) / 2f
-            } else {
-                contentPadding.calculateTopPadding().toPx() + 8.dp.toPx()
-            }
-
-            drawContinentWatermark(
+            drawFullScreenContinentMap(
                 geo = homeGeo,
-                mapLeft = left,
-                mapTop = top,
-                mapWidth = side,
-                mapHeight = side,
                 fillColor = mapFillColor,
                 strokeColor = mapStrokeColor,
                 pinColor = mapPinColor,
                 measurer = measurer,
-                labelColor = mapLabelColor,
-                showLabel = true
+                labelColor = mapLabelColor
             )
         }
 
         val headerBlock: @Composable (Dp?) -> Unit = { dialSize ->
             Crossfade(
                 targetState = settings.style,
-                animationSpec = tween(durationMillis = 500),
+                animationSpec = tween(durationMillis = 420),
                 label = "clockStyleCrossfade"
             ) { style ->
                 if (style == WorldClockStyle.DIGITAL) {
@@ -795,25 +798,30 @@ fun WorldClockScreen(
                             ),
                     )
                 } else {
-                    CityDial(
-                        cities = cities,
-                        homeGeo = homeGeo,
-                        nowUtcMillis = nowUtcMillis,
-                        measurer = measurer,
-                        modifier = if (dialSize != null) {
-                            Modifier.size(dialSize)
-                        } else {
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    start = 54.dp,
-                                    end = 54.dp,
-                                    top = 4.dp,
-                                    bottom = 12.dp
-                                )
-                                .aspectRatio(1f)
-                        },
-                    )
+                    // Analog clock face reduced by 20%
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CityDial(
+                            cities = cities,
+                            nowUtcMillis = nowUtcMillis,
+                            measurer = measurer,
+                            modifier = if (dialSize != null) {
+                                Modifier.size(dialSize * 0.80f)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth(0.80f)
+                                    .padding(
+                                        start = 44.dp,
+                                        end = 44.dp,
+                                        top = 4.dp,
+                                        bottom = 12.dp
+                                    )
+                                    .aspectRatio(1f)
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -842,7 +850,11 @@ fun WorldClockScreen(
                                 selectedCities + city.zone
                             }
                     },
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(dampingRatio = 0.82f, stiffness = 360f),
+                        placementSpec = spring(dampingRatio = 0.82f, stiffness = 360f),
+                        fadeOutSpec = spring(dampingRatio = 0.86f, stiffness = 380f)
+                    ),
                 )
             }
         }
@@ -873,7 +885,7 @@ fun WorldClockScreen(
                         bottom = contentPadding.calculateBottomPadding(),
                         end = 16.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     cityItems()
                 }
@@ -882,7 +894,7 @@ fun WorldClockScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item(
                     key = "main-clock",
@@ -898,32 +910,22 @@ fun WorldClockScreen(
             visible = inSelectionMode,
             enter =
                 fadeIn(
-                    spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy
-                    )
+                    spring(dampingRatio = 0.82f, stiffness = 360f)
                 ) +
                 slideInVertically(
-                    spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
+                    spring(dampingRatio = 0.78f, stiffness = 340f)
                 ) { it } +
                 scaleIn(
-                    spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
+                    spring(dampingRatio = 0.78f, stiffness = 340f),
                     initialScale = 0.88f
                 ),
             exit =
-                fadeOut(spring()) +
+                fadeOut(spring(dampingRatio = 0.86f, stiffness = 380f)) +
                 slideOutVertically(
-                    spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy
-                    )
+                    spring(dampingRatio = 0.86f, stiffness = 380f)
                 ) { it } +
                 scaleOut(
-                    spring(),
+                    spring(dampingRatio = 0.86f, stiffness = 380f),
                     targetScale = 0.88f
                 ),
             modifier = Modifier
@@ -1027,10 +1029,10 @@ private fun ToolbarIconButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.80f else 1f,
+        targetValue = if (isPressed) 0.82f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessHigh
+            dampingRatio = 0.72f,
+            stiffness = 480f
         ),
         label = "toolbarIconScale"
     )
@@ -1173,7 +1175,6 @@ private fun HomeDigitalClock(
 @Composable
 private fun CityDial(
     cities: List<WorldCity>,
-    homeGeo: HomeGeoLocation,
     nowUtcMillis: Long,
     measurer: TextMeasurer,
     modifier: Modifier = Modifier
@@ -1183,12 +1184,12 @@ private fun CityDial(
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val ghost = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val hourStyle = MaterialTheme.typography.headlineMedium.copy(
+    val hourStyle = MaterialTheme.typography.titleLarge.copy(
         color = ghost.copy(alpha = 0.45f),
         fontWeight = FontWeight(450)
     )
 
-    val pillStyle = MaterialTheme.typography.labelMedium.copy(
+    val pillStyle = MaterialTheme.typography.labelSmall.copy(
         color = onAccent,
         fontWeight = FontWeight(450)
     )
@@ -1217,33 +1218,6 @@ private fun CityDial(
             center = centerPoint
         )
 
-        // Subtle continent watermark + home city pin inside the analog clock dial
-        val dialClip = Path().apply {
-            addOval(
-                Rect(
-                    left = centerPoint.x - radius,
-                    top = centerPoint.y - radius,
-                    right = centerPoint.x + radius,
-                    bottom = centerPoint.y + radius
-                )
-            )
-        }
-
-        clipPath(dialClip) {
-            val mapSpan = radius * 1.48f
-            drawContinentWatermark(
-                geo = homeGeo,
-                mapLeft = centerPoint.x - mapSpan / 2f,
-                mapTop = centerPoint.y - mapSpan / 2f,
-                mapWidth = mapSpan,
-                mapHeight = mapSpan,
-                fillColor = accent.copy(alpha = 0.075f),
-                strokeColor = accent.copy(alpha = 0.16f),
-                pinColor = accent.copy(alpha = 0.55f),
-                showLabel = false
-            )
-        }
-
         for (i in 0 until 12) {
             val angle =
                 (i / 12f) * 2f * PI.toFloat() -
@@ -1251,9 +1225,9 @@ private fun CityDial(
 
             val position = Offset(
                 x = centerPoint.x +
-                    cos(angle) * (radius - 44.dp.toPx()),
+                    cos(angle) * (radius - 35.dp.toPx()),
                 y = centerPoint.y +
-                    sin(angle) * (radius - 44.dp.toPx())
+                    sin(angle) * (radius - 35.dp.toPx())
             )
 
             val measuredText = hourLabels[i]
@@ -1271,7 +1245,7 @@ private fun CityDial(
             } else {
                 drawCircle(
                     accent.copy(alpha = 0.45f),
-                    radius = 3.5.dp.toPx(),
+                    radius = 3.dp.toPx(),
                     center = position
                 )
             }
@@ -1284,7 +1258,7 @@ private fun CityDial(
 
             val angle = hours12 / 12f * 360f - 90f
             val rad = angle * PI.toFloat() / 180f
-            val lineLength = radius - 62.dp.toPx()
+            val lineLength = radius - 48.dp.toPx()
 
             val tip = Offset(
                 x = centerPoint.x + cos(rad) * lineLength,
@@ -1301,9 +1275,9 @@ private fun CityDial(
             val measuredCityText =
                 measurer.measure(city.city, pillStyle)
 
-            val padH = 7.dp.toPx()
+            val padH = 6.dp.toPx()
             val w = measuredCityText.size.width + padH * 2
-            val h = measuredCityText.size.height + 5.dp.toPx()
+            val h = measuredCityText.size.height + 4.dp.toPx()
 
             val flip =
                 if (angle.mod(360f) in 90f..270f) 180f else 0f
@@ -1334,7 +1308,7 @@ private fun CityDial(
 
         drawCircle(
             accent,
-            radius = 7.dp.toPx(),
+            radius = 6.dp.toPx(),
             center = centerPoint
         )
     }
@@ -1363,10 +1337,10 @@ private fun CityRow(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+        targetValue = if (isPressed) 0.93f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = 0.74f,
+            stiffness = 440f
         ),
         label = "cityRowScale"
     )
@@ -1394,19 +1368,19 @@ private fun CityRow(
 
     val containerColor by animateColorAsState(
         targetContainer,
-        spring(stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "containerColor"
     )
 
     val contentColor by animateColorAsState(
         targetContent,
-        spring(stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "contentColor"
     )
 
     val timeTextColor by animateColorAsState(
         targetTimeColor,
-        spring(stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "timeTextColor"
     )
 
@@ -1430,13 +1404,13 @@ private fun CityRow(
 
     val badgeBg by animateColorAsState(
         targetBadgeBg,
-        spring(stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "badgeBg"
     )
 
     val badgeTint by animateColorAsState(
         targetBadgeTint,
-        spring(stiffness = Spring.StiffnessLow),
+        spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "badgeTint"
     )
 
@@ -1464,7 +1438,7 @@ private fun CityRow(
             append(
                 String.format(
                     Locale.getDefault(),
-                    "%d:%02d",
+                    "%02d:%02d",
                     h,
                     local.minute
                 )
@@ -1484,7 +1458,7 @@ private fun CityRow(
 
     val amPmString =
         if (!use24h) {
-            if (local.hour < 12) "am" else "pm"
+            if (local.hour < 12) "AM" else "PM"
         } else {
             ""
         }
@@ -1510,6 +1484,9 @@ private fun CityRow(
             "${hStr}${mStr}$dir"
         }
 
+    val compactRows = LocalConfiguration.current.screenHeightDp < 480
+    val rowVPad = if (compactRows) 10.dp else CITY_ROW_VERTICAL_PADDING
+
     Surface(
         color = containerColor,
         shape = RoundedCornerShape(CITY_CARD_CORNER_RADIUS),
@@ -1517,7 +1494,7 @@ private fun CityRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .heightIn(min = if (LocalConfiguration.current.screenHeightDp < 480) 78.dp else ROW_HEIGHT_DP.dp)
+            .heightIn(min = if (compactRows) 76.dp else CITY_ROW_HEIGHT_DP.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1539,8 +1516,8 @@ private fun CityRow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    horizontal = 20.dp,
-                    vertical = 12.dp
+                    horizontal = CITY_ROW_HORIZONTAL_PADDING,
+                    vertical = rowVPad
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1554,11 +1531,11 @@ private fun CityRow(
                         targetState = night,
                         transitionSpec = {
                             (
-                                fadeIn(tween(220)) +
+                                fadeIn(tween(200)) +
                                 scaleIn(
                                     spring(
-                                        dampingRatio =
-                                            Spring.DampingRatioMediumBouncy
+                                        dampingRatio = 0.74f,
+                                        stiffness = 400f
                                     )
                                 )
                             ) togetherWith (
@@ -1591,7 +1568,7 @@ private fun CityRow(
                     .weight(1f)
                     .padding(
                         start = 16.dp,
-                        end = 8.dp
+                        end = 12.dp
                     ),
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -1623,13 +1600,10 @@ private fun CityRow(
                     }
                 }
 
-                val compactRows = LocalConfiguration.current.screenHeightDp < 480
+                Spacer(Modifier.height(2.dp))
+
                 Text(
-                    text = if (compactRows) {
-                        "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}"
-                    } else {
-                        "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}"
-                    },
+                    text = "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontFeatureSettings = "tnum"
                     ),
@@ -1639,7 +1613,7 @@ private fun CityRow(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
 
                 Text(
@@ -1661,7 +1635,7 @@ private fun CityRow(
             ) {
                 Text(
                     text = timeOnly,
-                    style = MaterialTheme.typography.headlineMedium.copy(
+                    style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Medium,
                         fontFeatureSettings = "tnum"
                     ),
@@ -1671,10 +1645,11 @@ private fun CityRow(
                 )
 
                 if (amPmString.isNotEmpty()) {
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(6.dp))
+
                     Text(
                         text = amPmString,
-                        style = MaterialTheme.typography.titleSmall.copy(
+                        style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
                         color = timeTextColor,
