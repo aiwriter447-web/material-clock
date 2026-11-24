@@ -19,6 +19,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -137,10 +139,10 @@ private val TICKER_END_INSET = 38.dp
 private val TICKER_START_GAP = 6.dp
 private val TICKER_EDGE_FADE = 18.dp
 
-// LIVING FLOW: Responsive, fluid spring physics for all transitions
+// LIVING FLOW: Live reactive, responsive fluid spring physics
 private fun <T> fluidSpringSpec() = spring<T>(
-    dampingRatio = 0.85f,
-    stiffness = 290f
+    dampingRatio = 0.82f,
+    stiffness = 360f
 )
 
 enum class Tab(val label: String, val icon: ImageVector, val key: String) {
@@ -352,11 +354,11 @@ fun ClockApp(
                                 enter = slideInHorizontally(
                                     initialOffsetX = { fullWidth -> fullWidth / 4 },
                                     animationSpec = fluidSpringSpec()
-                                ) + fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing)),
+                                ) + fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)),
                                 exit = slideOutHorizontally(
                                     targetOffsetX = { fullWidth -> fullWidth / 4 },
                                     animationSpec = fluidSpringSpec()
-                                ) + fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)),
+                                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)),
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
                                     .fillMaxWidth()
@@ -396,12 +398,12 @@ fun ClockApp(
                                         (slideInVertically(
                                             animationSpec = fluidSpringSpec()
                                         ) { height -> height / 3 } + fadeIn(
-                                            animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                            animationSpec = tween(240, easing = FastOutSlowInEasing)
                                         )) togetherWith
                                             (slideOutVertically(
                                                 animationSpec = fluidSpringSpec()
                                             ) { height -> -height / 3 } + fadeOut(
-                                                animationSpec = tween(200, easing = FastOutSlowInEasing)
+                                                animationSpec = tween(180, easing = FastOutSlowInEasing)
                                             ))
                                     },
                                     label = "TopBarTitleAnim"
@@ -492,7 +494,7 @@ fun ClockApp(
                 enter = slideInVertically(
                     initialOffsetY = { it / 8 },
                     animationSpec = fluidSpringSpec()
-                ) + fadeIn(animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)),
+                ) + fadeIn(animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)),
                 modifier = Modifier.fillMaxSize()
             ) {
                 Box(Modifier.fillMaxSize()) {
@@ -709,17 +711,38 @@ fun ClockApp(
                                     },
                                 )
 
+                                // Living Flow droplet expansion without curtain clipping
                                 AnimatedVisibility(
                                     visible = fabVisible,
                                     enter = expandHorizontally(
-                                        animationSpec = fluidSpringSpec(),
-                                        expandFrom = Alignment.Start
+                                        animationSpec = spring(
+                                            dampingRatio = 0.78f,
+                                            stiffness = 340f
+                                        ),
+                                        expandFrom = Alignment.Start,
+                                        clip = false
+                                    ) + scaleIn(
+                                        initialScale = 0.25f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.74f,
+                                            stiffness = 360f
+                                        )
                                     ) + fadeIn(
-                                        animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                        animationSpec = tween(200, easing = FastOutSlowInEasing)
                                     ),
                                     exit = shrinkHorizontally(
-                                        animationSpec = fluidSpringSpec(),
-                                        shrinkTowards = Alignment.Start
+                                        animationSpec = spring(
+                                            dampingRatio = 0.86f,
+                                            stiffness = 380f
+                                        ),
+                                        shrinkTowards = Alignment.Start,
+                                        clip = false
+                                    ) + scaleOut(
+                                        targetScale = 0.25f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.86f,
+                                            stiffness = 380f
+                                        )
                                     ) + fadeOut(
                                         animationSpec = tween(180, easing = FastOutSlowInEasing)
                                     )
@@ -727,7 +750,7 @@ fun ClockApp(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Spacer(modifier = Modifier.width(12.dp))
                                         FloatingAddButton(
-                                            visible = true,
+                                            visible = fabVisible,
                                             label = fabLabel,
                                             onClick = onFabClick
                                         )
