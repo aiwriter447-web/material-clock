@@ -10,10 +10,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,6 +56,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -90,8 +92,8 @@ private val FluidPlacementSpring = spring<IntOffset>(
 )
 
 private val JellySpring = spring<Float>(
-    dampingRatio = 0.45f,
-    stiffness = 550f
+    dampingRatio = 0.44f,
+    stiffness = 520f
 )
 
 /**
@@ -171,6 +173,8 @@ fun StopwatchScreen(
     val fastest = stopwatch.fastest
     val slowest = stopwatch.slowest
 
+    var readoutKickTrigger by remember { mutableIntStateOf(0) }
+
     val listState = rememberLazyListState()
     LaunchedEffect(stopwatch.laps.size) {
         if (stopwatch.laps.isNotEmpty()) listState.animateScrollToItem(0)
@@ -184,8 +188,8 @@ fun StopwatchScreen(
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
         val horizontalCap = minOf(
             HORIZONTAL_READOUT_CAP,
-            ((if (wide) maxWidth * 0.46f else maxWidth - 48.dp) / 4.8f)
-        ).coerceAtLeast(32.dp)
+            ((if (wide) maxWidth * 0.48f else maxWidth - 36.dp) / 4.6f)
+        ).coerceAtLeast(34.dp)
 
         val lapsViewport: @Composable (Modifier) -> Unit = { listModifier ->
             if (showList) {
@@ -199,8 +203,8 @@ fun StopwatchScreen(
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     0.0f to Color.Transparent,
-                                    0.04f to Color.Black,
-                                    0.86f to Color.Black,
+                                    0.018f to Color.Black,
+                                    0.94f to Color.Black,
                                     1.0f to Color.Transparent
                                 ),
                                 blendMode = BlendMode.DstIn
@@ -209,8 +213,8 @@ fun StopwatchScreen(
                     contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
-                        top = 6.dp,
-                        bottom = 24.dp
+                        top = 2.dp,
+                        bottom = 6.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(LAP_GAP),
                 ) {
@@ -229,7 +233,7 @@ fun StopwatchScreen(
                                 isSlowest = false,
                                 isCurrent = true,
                                 modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(260, easing = EaseOutSine),
+                                    fadeInSpec = tween(240, easing = EaseOutSine),
                                     placementSpec = FluidPlacementSpring
                                 )
                             )
@@ -243,7 +247,7 @@ fun StopwatchScreen(
                             isSlowest = slowest == lap.index,
                             isCurrent = false,
                             modifier = Modifier.animateItem(
-                                fadeInSpec = tween(260, easing = EaseOutSine),
+                                fadeInSpec = tween(240, easing = EaseOutSine),
                                 placementSpec = FluidPlacementSpring
                             )
                         )
@@ -260,7 +264,7 @@ fun StopwatchScreen(
                     .fillMaxSize()
                     .padding(
                         top = contentPadding.calculateTopPadding(),
-                        bottom = contentPadding.calculateBottomPadding() + 12.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 28.dp,
                         start = contentPadding.calculateStartPadding(layoutDirection),
                         end = contentPadding.calculateEndPadding(layoutDirection)
                     ),
@@ -276,6 +280,7 @@ fun StopwatchScreen(
                             seconds = b,
                             hundredths = c,
                             running = stopwatch.running,
+                            kickTrigger = readoutKickTrigger,
                             capHeight = horizontalCap,
                             label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                                 if (stopwatch.running) ", running" else ", stopped",
@@ -288,27 +293,36 @@ fun StopwatchScreen(
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     lapsViewport(Modifier.weight(1f))
-                    Spacer(Modifier.height(10.dp))
-                    FluidEntrance(delayMillis = 80) {
+                    Spacer(Modifier.height(6.dp))
+                    FluidEntrance(delayMillis = 70) {
                         StopwatchControls(
                             idle = !stopwatch.running && elapsed.isZero,
                             running = stopwatch.running,
-                            onToggle = onToggle,
-                            onLap = onLap,
-                            onReset = onReset,
+                            onToggle = {
+                                readoutKickTrigger++
+                                onToggle()
+                            },
+                            onLap = {
+                                readoutKickTrigger++
+                                onLap()
+                            },
+                            onReset = {
+                                readoutKickTrigger++
+                                onReset()
+                            },
                         )
                     }
                 }
             }
         } else {
-            val topOffset = minOf(12.dp, availH * 0.02f)
+            val topOffset = minOf(8.dp, availH * 0.015f)
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
                         top = contentPadding.calculateTopPadding(),
-                        bottom = contentPadding.calculateBottomPadding() + 14.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 54.dp,
                         start = contentPadding.calculateStartPadding(layoutDirection),
                         end = contentPadding.calculateEndPadding(layoutDirection)
                     )
@@ -321,6 +335,7 @@ fun StopwatchScreen(
                         seconds = b,
                         hundredths = c,
                         running = stopwatch.running,
+                        kickTrigger = readoutKickTrigger,
                         capHeight = horizontalCap,
                         label = "Stopwatch, $a minutes $b seconds $c hundredths" +
                             if (stopwatch.running) ", running" else ", stopped",
@@ -328,19 +343,28 @@ fun StopwatchScreen(
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(4.dp))
 
                 lapsViewport(Modifier.weight(1f))
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
 
-                FluidEntrance(delayMillis = 80) {
+                FluidEntrance(delayMillis = 70) {
                     StopwatchControls(
                         idle = !stopwatch.running && elapsed.isZero,
                         running = stopwatch.running,
-                        onToggle = onToggle,
-                        onLap = onLap,
-                        onReset = onReset,
+                        onToggle = {
+                            readoutKickTrigger++
+                            onToggle()
+                        },
+                        onLap = {
+                            readoutKickTrigger++
+                            onLap()
+                        },
+                        onReset = {
+                            readoutKickTrigger++
+                            onReset()
+                        },
                     )
                 }
             }
@@ -349,7 +373,7 @@ fun StopwatchScreen(
 }
 
 /* ───────────────────────────────────────────────
-   LIVING FLOW: STAGGERED ENTRANCE & HORIZONTAL READOUT
+   LIVING FLOW: STAGGERED ENTRANCE & CLEAN READOUT
    ─────────────────────────────────────────────── */
 
 @Composable
@@ -366,7 +390,7 @@ private fun FluidEntrance(
 
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 360, easing = EaseOutSine),
+        animationSpec = tween(durationMillis = 340, easing = EaseOutSine),
         label = "fluidEntranceAlpha"
     )
 
@@ -377,7 +401,7 @@ private fun FluidEntrance(
     )
 
     val translationY by animateFloatAsState(
-        targetValue = if (visible) 0f else 36f,
+        targetValue = if (visible) 0f else 32f,
         animationSpec = FluidSpring,
         label = "fluidEntranceTranslation"
     )
@@ -400,17 +424,29 @@ private fun LivingHorizontalReadout(
     seconds: String,
     hundredths: String,
     running: Boolean,
+    kickTrigger: Int,
     capHeight: Dp,
     label: String,
     modifier: Modifier = Modifier
 ) {
-    val infinite = rememberInfiniteTransition(label = "stopwatchLivingPulse")
+    val haptic = LocalHapticFeedback.current
+    var isPressed by remember { mutableStateOf(false) }
+    var kickActive by remember { mutableStateOf(false) }
 
+    LaunchedEffect(kickTrigger) {
+        if (kickTrigger > 0) {
+            kickActive = true
+            delay(95)
+            kickActive = false
+        }
+    }
+
+    val infinite = rememberInfiniteTransition(label = "stopwatchLivingPulse")
     val rawBreath by infinite.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200, easing = EaseInOutSine),
+            animation = tween(durationMillis = 2100, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "rawBreath"
@@ -422,67 +458,52 @@ private fun LivingHorizontalReadout(
         label = "activeReadoutWeight"
     )
 
-    val breathingScale = 1f + (rawBreath * 0.018f * activeWeight)
-    val auraAlpha = 0.07f + (rawBreath * 0.13f * activeWeight)
-
-    val primary = MaterialTheme.colorScheme.primary
-    val highlightContainer by animateColorAsState(
-        targetValue = if (running) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
-        } else {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+    val interactionScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.93f
+            kickActive -> 1.045f
+            else -> 1f
         },
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 220f),
-        label = "readoutHighlightContainer"
+        animationSpec = JellySpring,
+        label = "readoutInteractionScale"
     )
+
+    val breathingScale = 1f + (rawBreath * 0.016f * activeWeight)
+    val combinedScale = breathingScale * interactionScale
+    val primary = MaterialTheme.colorScheme.primary
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .clearAndSetSemantics { contentDescription = label }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    isPressed = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                    isPressed = false
+                }
+            }
             .graphicsLayer {
-                scaleX = breathingScale
-                scaleY = breathingScale
+                scaleX = combinedScale
+                scaleY = combinedScale
             }
+            .padding(vertical = 4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(width = capHeight * 6.4f, height = capHeight * 2.4f)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            primary.copy(alpha = auraAlpha),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
+        Numerals(
+            text = "$minutes:$seconds:$hundredths",
+            capHeight = capHeight,
+            color = primary,
+            width = ClockFace.TIMER_WIDTH,
+            weight = ClockFace.TIMER_WEIGHT,
+            slashedZero = true
         )
-
-        Surface(
-            color = highlightContainer,
-            shape = CircleShape,
-            modifier = Modifier.padding(horizontal = 20.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
-            ) {
-                Numerals(
-                    text = "$minutes:$seconds:$hundredths",
-                    capHeight = capHeight,
-                    color = primary,
-                    width = ClockFace.TIMER_WIDTH,
-                    weight = ClockFace.TIMER_WEIGHT,
-                    slashedZero = true
-                )
-            }
-        }
     }
 }
 
 /* ───────────────────────────────────────────────
-   LIVING FLOW: TACTILE JELLY CONTROLS
+   LIVING FLOW: REAL-TIME INTERACTIVE JELLY CONTROLS
    ─────────────────────────────────────────────── */
 
 @Composable
@@ -494,14 +515,7 @@ private fun JellyActionWrapper(
     content: @Composable (onTriggeredClick: () -> Unit) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    var squished by remember { mutableStateOf(false) }
-
-    LaunchedEffect(squished) {
-        if (squished) {
-            delay(110)
-            squished = false
-        }
-    }
+    var isPressed by remember { mutableStateOf(false) }
 
     val infinite = rememberInfiniteTransition(label = "controlPulse")
     val rawPulse by infinite.animateFloat(
@@ -515,7 +529,7 @@ private fun JellyActionWrapper(
     )
 
     val targetScale = when {
-        squished -> 0.90f
+        isPressed -> 0.88f
         pulseActive -> rawPulse
         else -> 1f
     }
@@ -527,13 +541,21 @@ private fun JellyActionWrapper(
     )
 
     Box(
-        modifier = modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
+        modifier = modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    isPressed = true
+                    waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                    isPressed = false
+                }
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
     ) {
         content {
-            squished = true
             haptic.performHapticFeedback(hapticType)
             onClick()
         }
@@ -713,7 +735,7 @@ private fun StopwatchControls(
 }
 
 private val IDLE_PADDING_H = 48.dp
-private val HORIZONTAL_READOUT_CAP = 52.dp
+private val HORIZONTAL_READOUT_CAP = 54.dp
 private val GAP = 8.dp
 private val ROW_HEIGHT = 64.dp
 private val LAP_ROW_HEIGHT = 56.dp
@@ -729,25 +751,23 @@ private fun LapRow(
 ) {
     val (badgeBg, badgeFg) = getLapColors(lap.index)
     val haptic = LocalHapticFeedback.current
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
+        targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = JellySpring,
         label = "lapScale"
     )
 
-    val targetContainerColor = if (isCurrent) {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
+    val targetContainerColor = when {
+        isPressed -> MaterialTheme.colorScheme.surfaceContainerHighest
+        isCurrent -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> MaterialTheme.colorScheme.surfaceContainer
     }
 
     val containerColor by animateColorAsState(
         targetValue = targetContainerColor,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 220f),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 240f),
         label = "lapContainerColor"
     )
 
@@ -759,7 +779,7 @@ private fun LapRow(
 
     val timeColor by animateColorAsState(
         targetValue = targetTimeColor,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 220f),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 240f),
         label = "timeColor"
     )
 
@@ -772,17 +792,19 @@ private fun LapRow(
         modifier = modifier
             .fillMaxWidth()
             .height(LAP_ROW_HEIGHT)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    isPressed = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                    isPressed = false
+                }
+            }
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                }
-            ),
+            },
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
