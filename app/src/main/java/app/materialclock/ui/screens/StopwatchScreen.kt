@@ -77,9 +77,9 @@ import app.materialclock.ui.theme.Numerals
 import kotlinx.coroutines.delay
 import java.time.Duration
 
-/* ───────────────────────────────────────────────
-   LIVING FLOW: FLUID ANIMATION CONFIGURATION
-   ─────────────────────────────────────────────── */
+// -----------------------------------------------------------------
+// LIVING FLOW: FLUID ANIMATION CONFIGURATION
+// -----------------------------------------------------------------
 
 private val FluidSpring = spring<Float>(
     dampingRatio = 0.65f,
@@ -203,8 +203,8 @@ fun StopwatchScreen(
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     0.0f to Color.Transparent,
-                                    0.045f to Color.Black,
-                                    0.935f to Color.Black,
+                                    0.04f to Color.Black,
+                                    0.92f to Color.Black,
                                     1.0f to Color.Transparent
                                 ),
                                 blendMode = BlendMode.DstIn
@@ -213,8 +213,8 @@ fun StopwatchScreen(
                     contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
-                        top = 8.dp,
-                        bottom = 8.dp
+                        top = 12.dp,
+                        bottom = 14.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(LAP_GAP),
                 ) {
@@ -293,7 +293,7 @@ fun StopwatchScreen(
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     lapsViewport(Modifier.weight(1f))
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
                     FluidEntrance(delayMillis = 70) {
                         StopwatchControls(
                             idle = !stopwatch.running && elapsed.isZero,
@@ -315,14 +315,14 @@ fun StopwatchScreen(
                 }
             }
         } else {
-            val topOffset = minOf(28.dp, availH * 0.042f)
+            val topOffset = minOf(46.dp, availH * 0.068f)
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
                         top = contentPadding.calculateTopPadding(),
-                        bottom = contentPadding.calculateBottomPadding() + 48.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 54.dp,
                         start = contentPadding.calculateStartPadding(layoutDirection),
                         end = contentPadding.calculateEndPadding(layoutDirection)
                     )
@@ -343,11 +343,11 @@ fun StopwatchScreen(
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 lapsViewport(Modifier.weight(1f))
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(8.dp))
 
                 FluidEntrance(delayMillis = 70) {
                     StopwatchControls(
@@ -372,9 +372,9 @@ fun StopwatchScreen(
     }
 }
 
-/* ───────────────────────────────────────────────
-   LIVING FLOW: STAGGERED ENTRANCE & CLEAN READOUT
-   ─────────────────────────────────────────────── */
+// -----------------------------------------------------------------
+// LIVING FLOW: STAGGERED ENTRANCE & CLEAN READOUT
+// -----------------------------------------------------------------
 
 @Composable
 private fun FluidEntrance(
@@ -502,9 +502,9 @@ private fun LivingHorizontalReadout(
     }
 }
 
-/* ───────────────────────────────────────────────
-   LIVING FLOW: REAL-TIME INTERACTIVE JELLY CONTROLS
-   ─────────────────────────────────────────────── */
+// -----------------------------------------------------------------
+// LIVING FLOW: REAL-TIME INTERACTIVE JELLY CONTROLS
+// -----------------------------------------------------------------
 
 @Composable
 private fun JellyActionWrapper(
