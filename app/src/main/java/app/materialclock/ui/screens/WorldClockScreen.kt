@@ -29,8 +29,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -75,20 +73,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -111,541 +101,13 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-// 100% matched with Alarm cards geometry
+// Matches Alarm card shape & dimensions 100%
 private val CITY_CARD_CORNER_RADIUS = 28.dp
 private val CITY_ROW_HORIZONTAL_PADDING = 20.dp
 private val CITY_ROW_VERTICAL_PADDING = 16.dp
+private val CITY_LIST_HORIZONTAL_MARGIN = 16.dp
 
 private val WorldClockDeleteColor = Color(0xFFB3261E)
-
-private enum class ContinentRegion {
-    ASIA,
-    EUROPE,
-    NORTH_AMERICA,
-    SOUTH_AMERICA,
-    AFRICA,
-    OCEANIA
-}
-
-private data class HomeGeoLocation(
-    val continent: ContinentRegion,
-    val x: Float,
-    val y: Float,
-    val label: String
-)
-
-private fun resolveHomeGeoLocation(zone: ZoneId): HomeGeoLocation {
-    val rawId = zone.id
-    val normalizedId = when (rawId.uppercase(Locale.US)) {
-        "IST" -> "Asia/Kolkata"
-        "JST" -> "Asia/Tokyo"
-        "CST" -> "Asia/Shanghai"
-        "GMT", "UTC", "UCT", "Z" -> "Europe/London"
-        "CET", "ECT" -> "Europe/Paris"
-        "EET" -> "Europe/Athens"
-        "EST", "US/EASTERN" -> "America/New_York"
-        "US/CENTRAL" -> "America/Chicago"
-        "MST", "US/MOUNTAIN" -> "America/Denver"
-        "PST", "US/PACIFIC" -> "America/Los_Angeles"
-        "AET" -> "Australia/Sydney"
-        "NST" -> "Pacific/Auckland"
-        else -> rawId
-    }
-
-    val cityName = normalizedId.substringAfterLast('/').replace('_', ' ')
-    val offsetHours = zone.rules.getOffset(Instant.now()).totalSeconds / 3600f
-
-    val southAmericaCities = setOf(
-        "Buenos_Aires", "Sao_Paulo", "Lima", "Bogota", "Santiago",
-        "Caracas", "Montevideo", "Asuncion", "La_Paz", "Quito", "Guayaquil",
-        "Manaus", "Recife", "Fortaleza", "Belem", "Cayenne", "Paramaribo", "Guyana"
-    )
-
-    val continent = when {
-        normalizedId.startsWith("Asia/") -> ContinentRegion.ASIA
-        normalizedId.startsWith("Europe/") -> ContinentRegion.EUROPE
-        normalizedId.startsWith("Africa/") -> ContinentRegion.AFRICA
-        normalizedId.startsWith("Australia/") || normalizedId.startsWith("Pacific/") -> ContinentRegion.OCEANIA
-        normalizedId.startsWith("America/Argentina/") ||
-            southAmericaCities.any { normalizedId.endsWith(it) } -> ContinentRegion.SOUTH_AMERICA
-        normalizedId.startsWith("America/") ||
-            normalizedId.startsWith("Canada/") ||
-            normalizedId.startsWith("US/") ||
-            normalizedId.startsWith("Mexico/") -> ContinentRegion.NORTH_AMERICA
-        normalizedId.startsWith("Indian/") -> ContinentRegion.ASIA
-        normalizedId.startsWith("Atlantic/") -> ContinentRegion.EUROPE
-        else -> ContinentRegion.ASIA
-    }
-
-    val exactCoords: Pair<Float, Float>? = when {
-        // Asia
-        normalizedId.contains("Kolkata") || normalizedId.contains("Calcutta") -> 0.365f to 0.565f
-        normalizedId.contains("Colombo") -> 0.385f to 0.725f
-        normalizedId.contains("Kathmandu") -> 0.405f to 0.485f
-        normalizedId.contains("Dhaka") -> 0.445f to 0.535f
-        normalizedId.contains("Karachi") -> 0.295f to 0.515f
-        normalizedId.contains("Kabul") -> 0.275f to 0.435f
-        normalizedId.contains("Tashkent") || normalizedId.contains("Almaty") -> 0.315f to 0.355f
-        normalizedId.contains("Dubai") || normalizedId.contains("Muscat") -> 0.205f to 0.525f
-        normalizedId.contains("Riyadh") || normalizedId.contains("Kuwait") || normalizedId.contains("Qatar") -> 0.145f to 0.515f
-        normalizedId.contains("Tehran") -> 0.205f to 0.435f
-        normalizedId.contains("Jerusalem") || normalizedId.contains("Beirut") || normalizedId.contains("Amman") -> 0.085f to 0.445f
-        normalizedId.contains("Bangkok") || normalizedId.contains("Ho_Chi_Minh") -> 0.555f to 0.605f
-        normalizedId.contains("Singapore") || normalizedId.contains("Kuala_Lumpur") -> 0.545f to 0.715f
-        normalizedId.contains("Jakarta") -> 0.585f to 0.845f
-        normalizedId.contains("Manila") -> 0.745f to 0.615f
-        normalizedId.contains("Hong_Kong") || normalizedId.contains("Macau") -> 0.675f to 0.525f
-        normalizedId.contains("Taipei") -> 0.735f to 0.515f
-        normalizedId.contains("Shanghai") || normalizedId.contains("Beijing") -> 0.715f to 0.415f
-        normalizedId.contains("Seoul") -> 0.795f to 0.365f
-        normalizedId.contains("Tokyo") || normalizedId.contains("Osaka") -> 0.855f to 0.385f
-
-        // Europe
-        normalizedId.contains("London") || normalizedId.contains("Dublin") -> 0.24f to 0.49f
-        normalizedId.contains("Lisbon") || normalizedId.contains("Madrid") -> 0.18f to 0.72f
-        normalizedId.contains("Paris") || normalizedId.contains("Brussels") || normalizedId.contains("Amsterdam") -> 0.31f to 0.55f
-        normalizedId.contains("Berlin") || normalizedId.contains("Zurich") || normalizedId.contains("Vienna") -> 0.43f to 0.53f
-        normalizedId.contains("Rome") -> 0.45f to 0.68f
-        normalizedId.contains("Stockholm") || normalizedId.contains("Oslo") || normalizedId.contains("Copenhagen") -> 0.46f to 0.34f
-        normalizedId.contains("Helsinki") || normalizedId.contains("Warsaw") -> 0.56f to 0.43f
-        normalizedId.contains("Athens") || normalizedId.contains("Bucharest") -> 0.58f to 0.71f
-        normalizedId.contains("Istanbul") -> 0.66f to 0.69f
-        normalizedId.contains("Moscow") || normalizedId.contains("Kiev") || normalizedId.contains("Kyiv") -> 0.73f to 0.42f
-
-        // North America
-        normalizedId.contains("New_York") || normalizedId.contains("Toronto") || normalizedId.contains("Montreal") -> 0.65f to 0.47f
-        normalizedId.contains("Chicago") || normalizedId.contains("Winnipeg") -> 0.52f to 0.47f
-        normalizedId.contains("Denver") || normalizedId.contains("Phoenix") || normalizedId.contains("Edmonton") -> 0.37f to 0.48f
-        normalizedId.contains("Los_Angeles") || normalizedId.contains("San_Francisco") || normalizedId.contains("Vancouver") -> 0.25f to 0.48f
-        normalizedId.contains("Anchorage") -> 0.14f to 0.23f
-        normalizedId.contains("Mexico_City") -> 0.42f to 0.70f
-
-        // South America
-        normalizedId.contains("Bogota") || normalizedId.contains("Lima") || normalizedId.contains("Quito") -> 0.33f to 0.32f
-        normalizedId.contains("Sao_Paulo") || normalizedId.contains("Rio_de_Janeiro") -> 0.64f to 0.53f
-        normalizedId.contains("Buenos_Aires") || normalizedId.contains("Montevideo") -> 0.53f to 0.68f
-        normalizedId.contains("Santiago") -> 0.39f to 0.68f
-
-        // Africa
-        normalizedId.contains("Cairo") -> 0.61f to 0.22f
-        normalizedId.contains("Casablanca") || normalizedId.contains("Algiers") || normalizedId.contains("Tunis") -> 0.30f to 0.17f
-        normalizedId.contains("Lagos") || normalizedId.contains("Accra") -> 0.36f to 0.47f
-        normalizedId.contains("Nairobi") || normalizedId.contains("Addis_Ababa") -> 0.68f to 0.50f
-        normalizedId.contains("Johannesburg") || normalizedId.contains("Cape_Town") -> 0.54f to 0.83f
-
-        // Oceania
-        normalizedId.contains("Perth") -> 0.23f to 0.56f
-        normalizedId.contains("Darwin") -> 0.42f to 0.31f
-        normalizedId.contains("Brisbane") -> 0.62f to 0.47f
-        normalizedId.contains("Sydney") || normalizedId.contains("Melbourne") -> 0.59f to 0.60f
-        normalizedId.contains("Auckland") || normalizedId.contains("Wellington") -> 0.80f to 0.70f
-
-        else -> null
-    }
-
-    val (fx, fy) = exactCoords ?: when (continent) {
-        ContinentRegion.ASIA -> {
-            val t = ((offsetHours - 2f) / 8f).coerceIn(0.08f, 0.90f)
-            t to 0.48f
-        }
-        ContinentRegion.EUROPE -> {
-            val t = ((offsetHours + 1f) / 4.5f).coerceIn(0.18f, 0.82f)
-            t to 0.52f
-        }
-        ContinentRegion.NORTH_AMERICA -> {
-            val t = ((offsetHours + 9f) / 5.5f).coerceIn(0.16f, 0.72f)
-            t to 0.48f
-        }
-        ContinentRegion.SOUTH_AMERICA -> {
-            val t = ((offsetHours + 5.5f) / 3f).coerceIn(0.30f, 0.68f)
-            t to 0.50f
-        }
-        ContinentRegion.AFRICA -> {
-            val t = ((offsetHours + 1f) / 4.5f).coerceIn(0.22f, 0.76f)
-            t to 0.48f
-        }
-        ContinentRegion.OCEANIA -> {
-            val t = ((offsetHours - 8f) / 4.5f).coerceIn(0.22f, 0.82f)
-            t to 0.54f
-        }
-    }
-
-    return HomeGeoLocation(
-        continent = continent,
-        x = fx,
-        y = fy,
-        label = cityName
-    )
-}
-
-private fun DrawScope.drawFullScreenContinentMap(
-    geo: HomeGeoLocation,
-    fillColor: Color,
-    strokeColor: Color,
-    pinColor: Color,
-    measurer: TextMeasurer,
-    labelColor: Color
-) {
-    val mapWidth = size.width
-    val mapHeight = size.height
-
-    fun px(nx: Float) = nx * mapWidth
-    fun py(ny: Float) = ny * mapHeight
-
-    // Smooth organic closed spline (Catmull-Rom -> Cubic Bezier) for natural coastlines
-    fun smoothCoastlinePath(points: List<Pair<Float, Float>>, tension: Float = 0.24f): Path {
-        val path = Path()
-        val n = points.size
-        if (n < 3) return path
-
-        path.moveTo(px(points[0].first), py(points[0].second))
-        for (i in 0 until n) {
-            val p0 = points[(i - 1 + n) % n]
-            val p1 = points[i]
-            val p2 = points[(i + 1) % n]
-            val p3 = points[(i + 2) % n]
-
-            val c1x = px(p1.first + (p2.first - p0.first) * tension)
-            val c1y = py(p1.second + (p2.second - p0.second) * tension)
-            val c2x = px(p2.first - (p3.first - p1.first) * tension)
-            val c2y = py(p2.second - (p3.second - p1.second) * tension)
-
-            path.cubicTo(c1x, c1y, c2x, c2y, px(p2.first), py(p2.second))
-        }
-        path.close()
-        return path
-    }
-
-    val landmasses: List<Path> = when (geo.continent) {
-        ContinentRegion.ASIA -> listOf(
-            // Smooth Eurasian / Asian coastline featuring Anatolia, Arabia, Indian Peninsula, Bay of Bengal, SE Asia, China, Korea, Siberia
-            smoothCoastlinePath(
-                listOf(
-                    0.04f to 0.35f,
-                    0.13f to 0.32f,
-                    0.17f to 0.23f,
-                    0.22f to 0.12f,
-                    0.42f to 0.09f,
-                    0.66f to 0.09f,
-                    0.88f to 0.13f,
-                    0.96f to 0.18f,
-                    0.87f to 0.25f,
-                    0.80f to 0.24f,
-                    0.78f to 0.32f,
-                    0.81f to 0.38f,
-                    0.77f to 0.39f,
-                    0.75f to 0.34f,
-                    0.73f to 0.38f,
-                    0.77f to 0.45f,
-                    0.72f to 0.52f,
-                    0.65f to 0.55f,
-                    0.62f to 0.63f,
-                    0.57f to 0.63f,
-                    0.55f to 0.59f,
-                    0.53f to 0.64f,
-                    0.56f to 0.72f,
-                    0.52f to 0.72f,
-                    0.50f to 0.61f,
-                    0.47f to 0.54f,
-                    0.44f to 0.55f,
-                    0.41f to 0.62f,
-                    0.365f to 0.70f,
-                    0.345f to 0.69f,
-                    0.315f to 0.58f,
-                    0.295f to 0.53f,
-                    0.25f to 0.52f,
-                    0.20f to 0.48f,
-                    0.185f to 0.46f,
-                    0.225f to 0.52f,
-                    0.23f to 0.575f,
-                    0.14f to 0.615f,
-                    0.095f to 0.52f,
-                    0.075f to 0.44f,
-                    0.09f to 0.39f
-                )
-            ),
-            // Sri Lanka
-            smoothCoastlinePath(
-                listOf(
-                    0.382f to 0.705f,
-                    0.402f to 0.708f,
-                    0.398f to 0.742f,
-                    0.380f to 0.738f
-                )
-            ),
-            // Japan archipelago
-            smoothCoastlinePath(
-                listOf(
-                    0.855f to 0.305f,
-                    0.885f to 0.340f,
-                    0.865f to 0.425f,
-                    0.822f to 0.435f,
-                    0.840f to 0.370f
-                )
-            ),
-            // Taiwan
-            smoothCoastlinePath(
-                listOf(
-                    0.730f to 0.502f,
-                    0.748f to 0.505f,
-                    0.746f to 0.542f,
-                    0.728f to 0.538f
-                )
-            ),
-            // Sumatra
-            smoothCoastlinePath(
-                listOf(
-                    0.480f to 0.732f,
-                    0.508f to 0.735f,
-                    0.558f to 0.812f,
-                    0.530f to 0.820f
-                )
-            ),
-            // Java
-            smoothCoastlinePath(
-                listOf(
-                    0.562f to 0.842f,
-                    0.652f to 0.852f,
-                    0.650f to 0.872f,
-                    0.560f to 0.862f
-                )
-            ),
-            // Borneo
-            smoothCoastlinePath(
-                listOf(
-                    0.610f to 0.732f,
-                    0.680f to 0.742f,
-                    0.672f to 0.812f,
-                    0.602f to 0.802f
-                )
-            ),
-            // Philippines
-            smoothCoastlinePath(
-                listOf(
-                    0.732f to 0.582f,
-                    0.762f to 0.592f,
-                    0.770f to 0.682f,
-                    0.738f to 0.672f
-                )
-            )
-        )
-
-        ContinentRegion.EUROPE -> listOf(
-            smoothCoastlinePath(
-                listOf(
-                    0.13f to 0.75f,
-                    0.17f to 0.64f,
-                    0.27f to 0.60f,
-                    0.37f to 0.51f,
-                    0.42f to 0.44f,
-                    0.55f to 0.47f,
-                    0.64f to 0.28f,
-                    0.74f to 0.20f,
-                    0.88f to 0.25f,
-                    0.85f to 0.58f,
-                    0.74f to 0.66f,
-                    0.61f to 0.78f,
-                    0.52f to 0.68f,
-                    0.49f to 0.78f,
-                    0.44f to 0.76f,
-                    0.43f to 0.66f,
-                    0.33f to 0.69f,
-                    0.22f to 0.78f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.37f to 0.36f,
-                    0.51f to 0.14f,
-                    0.60f to 0.20f,
-                    0.50f to 0.41f,
-                    0.42f to 0.40f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.22f to 0.42f,
-                    0.26f to 0.43f,
-                    0.28f to 0.54f,
-                    0.21f to 0.54f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.16f to 0.46f,
-                    0.19f to 0.46f,
-                    0.19f to 0.52f,
-                    0.16f to 0.52f
-                )
-            )
-        )
-
-        ContinentRegion.NORTH_AMERICA -> listOf(
-            smoothCoastlinePath(
-                listOf(
-                    0.09f to 0.22f,
-                    0.34f to 0.14f,
-                    0.56f to 0.16f,
-                    0.58f to 0.28f,
-                    0.78f to 0.33f,
-                    0.67f to 0.52f,
-                    0.62f to 0.66f,
-                    0.56f to 0.61f,
-                    0.48f to 0.64f,
-                    0.46f to 0.76f,
-                    0.55f to 0.86f,
-                    0.51f to 0.88f,
-                    0.35f to 0.70f,
-                    0.28f to 0.58f,
-                    0.23f to 0.41f,
-                    0.16f to 0.28f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.68f to 0.08f,
-                    0.86f to 0.08f,
-                    0.82f to 0.24f,
-                    0.70f to 0.22f
-                )
-            )
-        )
-
-        ContinentRegion.SOUTH_AMERICA -> listOf(
-            smoothCoastlinePath(
-                listOf(
-                    0.34f to 0.12f,
-                    0.54f to 0.17f,
-                    0.75f to 0.34f,
-                    0.65f to 0.55f,
-                    0.54f to 0.69f,
-                    0.45f to 0.89f,
-                    0.39f to 0.92f,
-                    0.36f to 0.66f,
-                    0.27f to 0.36f
-                )
-            )
-        )
-
-        ContinentRegion.AFRICA -> listOf(
-            smoothCoastlinePath(
-                listOf(
-                    0.23f to 0.14f,
-                    0.46f to 0.15f,
-                    0.63f to 0.20f,
-                    0.73f to 0.37f,
-                    0.83f to 0.44f,
-                    0.68f to 0.64f,
-                    0.62f to 0.79f,
-                    0.50f to 0.90f,
-                    0.44f to 0.70f,
-                    0.42f to 0.50f,
-                    0.18f to 0.45f,
-                    0.16f to 0.29f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.72f to 0.71f,
-                    0.76f to 0.71f,
-                    0.75f to 0.83f,
-                    0.71f to 0.83f
-                )
-            )
-        )
-
-        ContinentRegion.OCEANIA -> listOf(
-            smoothCoastlinePath(
-                listOf(
-                    0.19f to 0.43f,
-                    0.32f to 0.31f,
-                    0.44f to 0.28f,
-                    0.56f to 0.26f,
-                    0.65f to 0.51f,
-                    0.55f to 0.66f,
-                    0.39f to 0.58f,
-                    0.22f to 0.61f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.53f to 0.71f,
-                    0.58f to 0.71f,
-                    0.57f to 0.76f,
-                    0.53f to 0.76f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.79f to 0.65f,
-                    0.83f to 0.67f,
-                    0.81f to 0.73f,
-                    0.78f to 0.71f
-                )
-            ),
-            smoothCoastlinePath(
-                listOf(
-                    0.75f to 0.75f,
-                    0.79f to 0.76f,
-                    0.74f to 0.84f,
-                    0.71f to 0.82f
-                )
-            )
-        )
-    }
-
-    landmasses.forEach { path ->
-        drawPath(path = path, color = fillColor)
-        drawPath(
-            path = path,
-            color = strokeColor,
-            style = Stroke(
-                width = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round
-            )
-        )
-    }
-
-    val pinCenter = Offset(px(geo.x), py(geo.y))
-
-    // Subtle home location pulse marker
-    drawCircle(
-        color = pinColor.copy(alpha = pinColor.alpha * 0.22f),
-        radius = 18.dp.toPx(),
-        center = pinCenter
-    )
-    drawCircle(
-        color = pinColor.copy(alpha = pinColor.alpha * 0.45f),
-        radius = 9.dp.toPx(),
-        center = pinCenter,
-        style = Stroke(width = 1.dp.toPx())
-    )
-    drawCircle(
-        color = pinColor,
-        radius = 4.dp.toPx(),
-        center = pinCenter
-    )
-
-    if (geo.label.isNotBlank()) {
-        val textLayout = measurer.measure(
-            text = geo.label,
-            style = TextStyle(
-                color = labelColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.4.sp
-            )
-        )
-        val labelX = (pinCenter.x + 11.dp.toPx())
-            .coerceAtMost(mapWidth - textLayout.size.width - 12.dp.toPx())
-        val labelY = pinCenter.y - textLayout.size.height / 2f
-        drawText(
-            textLayoutResult = textLayout,
-            topLeft = Offset(labelX, labelY)
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -669,9 +131,7 @@ fun WorldClockScreen(
         HourFormat.H24 -> true
     }
 
-    val layoutDirection = LocalLayoutDirection.current
     val measurer = rememberTextMeasurer()
-    val homeGeo = remember(home) { resolveHomeGeoLocation(home) }
 
     var selectedCities by remember {
         mutableStateOf(emptySet<ZoneId>())
@@ -762,26 +222,27 @@ fun WorldClockScreen(
         )
     }
 
-    // Soft continent map colors visible across screen and through translucent city cards
-    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-    val mapStrokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-    val mapPinColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
-    val mapLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.50f)
+    // Atlas map colors tuned so landmasses are clear and visible through translucent city cards
+    val mapLandFill = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
+    val mapCoastStroke = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+    val mapGridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f)
+    val mapPinColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+    val mapLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
 
-        // Full-screen Continent Watermark Map across entire World Clock background
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawFullScreenContinentMap(
-                geo = homeGeo,
-                fillColor = mapFillColor,
-                strokeColor = mapStrokeColor,
-                pinColor = mapPinColor,
-                measurer = measurer,
-                labelColor = mapLabelColor
-            )
-        }
+        // Full-screen 2D Atlas Continent Map behind everything
+        WorldContinentMapBackground(
+            homeZone = home,
+            landFillColor = mapLandFill,
+            coastlineStrokeColor = mapCoastStroke,
+            gridLineColor = mapGridColor,
+            pinColor = mapPinColor,
+            labelColor = mapLabelColor,
+            measurer = measurer,
+            modifier = Modifier.fillMaxSize()
+        )
 
         val headerBlock: @Composable (Dp?) -> Unit = { dialSize ->
             Crossfade(
@@ -818,8 +279,8 @@ fun WorldClockScreen(
                                 Modifier
                                     .fillMaxWidth(0.88f)
                                     .padding(
-                                        start = 28.dp,
-                                        end = 28.dp,
+                                        start = 24.dp,
+                                        end = 24.dp,
                                         top = 4.dp,
                                         bottom = 12.dp
                                     )
@@ -878,7 +339,7 @@ fun WorldClockScreen(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    val dial = minOf(maxWidth - 32.dp, maxHeight - 16.dp).coerceAtLeast(120.dp)
+                    val dial = minOf(maxWidth - 24.dp, maxHeight - 16.dp).coerceAtLeast(120.dp)
                     headerBlock(dial)
                 }
                 LazyColumn(
@@ -886,9 +347,9 @@ fun WorldClockScreen(
                         .weight(1.1f)
                         .fillMaxHeight(),
                     contentPadding = PaddingValues(
-                        top = contentPadding.calculateTopPadding(),
+                        top = contentPadding.calculateTopPadding() + 10.dp,
                         bottom = contentPadding.calculateBottomPadding(),
-                        start = 16.dp,
+                        start = 8.dp,
                         end = 16.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -897,15 +358,14 @@ fun WorldClockScreen(
                 }
             }
         } else {
-            val portraitPadding = PaddingValues(
-                start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
-                end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp,
-                top = contentPadding.calculateTopPadding(),
-                bottom = contentPadding.calculateBottomPadding()
-            )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = portraitPadding,
+                contentPadding = PaddingValues(
+                    top = contentPadding.calculateTopPadding(),
+                    bottom = contentPadding.calculateBottomPadding(),
+                    start = CITY_LIST_HORIZONTAL_MARGIN,
+                    end = CITY_LIST_HORIZONTAL_MARGIN
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item(
@@ -1107,7 +567,7 @@ private fun HomeDigitalClock(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // Digital clock size increased by 10% (52f -> 57f, 76f -> 84f)
+        // Digital clock size increased by 10% (76f -> 84f, 52f -> 57f)
         val baseTime = if (showSeconds) 57f else 84f
         val baseAmPm = if (showSeconds) 26f else 35f
         val fontScale = LocalDensity.current.fontScale
@@ -1121,7 +581,7 @@ private fun HomeDigitalClock(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 32.dp),
+                .padding(top = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -1163,7 +623,7 @@ private fun HomeDigitalClock(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             val formatter = remember(home) {
                 DateTimeFormatter
@@ -1192,7 +652,7 @@ private fun CityDial(
     measurer: TextMeasurer,
     modifier: Modifier = Modifier
 ) {
-    val face = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+    val face = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f)
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
     val ghost = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1358,12 +818,12 @@ private fun CityRow(
         label = "cityRowScale"
     )
 
-    // Translucent surface so background continent map softly shines through like Pic 4
+    // Translucent cards so the 2D Atlas background map subtly shines through
     val targetContainer =
         if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.84f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.86f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.76f)
+            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.74f)
         }
 
     val targetContent =
@@ -1435,12 +895,18 @@ private fun CityRow(
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)
         }
 
-    val hourMinuteText = if (use24h) {
-        String.format(Locale.getDefault(), "%02d:%02d", local.hour, local.minute)
+    val hourValue = if (use24h) {
+        local.hour
     } else {
-        val h = (local.hour % 12).takeIf { it != 0 } ?: 12
-        String.format(Locale.getDefault(), "%02d:%02d", h, local.minute)
+        (local.hour % 12).takeIf { it != 0 } ?: 12
     }
+
+    val hhMmText = String.format(
+        Locale.getDefault(),
+        "%02d:%02d",
+        hourValue,
+        local.minute
+    )
 
     val secondsText = if (showSeconds) {
         String.format(Locale.getDefault(), ":%02d", local.second)
@@ -1448,11 +914,12 @@ private fun CityRow(
         ""
     }
 
-    val amPmString = if (!use24h) {
-        if (local.hour < 12) "am" else "pm"
-    } else {
-        ""
-    }
+    val amPmString =
+        if (!use24h) {
+            if (local.hour < 12) "AM" else "PM"
+        } else {
+            ""
+        }
 
     val inst = Instant.ofEpochMilli(nowUtcMillis)
 
@@ -1484,7 +951,7 @@ private fun CityRow(
         border = BorderStroke(1.dp, cardBorderColor),
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = if (compactRows) 76.dp else 94.dp)
+            .heightIn(min = if (compactRows) 84.dp else 104.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1511,6 +978,7 @@ private fun CityRow(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Day/Night status circle badge
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
@@ -1553,6 +1021,7 @@ private fun CityRow(
                 }
             }
 
+            // Full City Information preserved without truncation
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1585,7 +1054,7 @@ private fun CityRow(
                             } else {
                                 MaterialTheme.colorScheme.primary
                             },
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -1598,7 +1067,7 @@ private fun CityRow(
                         fontFeatureSettings = "tnum"
                     ),
                     color = if (isSelected) {
-                        contentColor
+                        contentColor.copy(alpha = 0.90f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
@@ -1606,11 +1075,13 @@ private fun CityRow(
                     overflow = TextOverflow.Ellipsis
                 )
 
+                Spacer(Modifier.height(1.dp))
+
                 Text(
                     text = diffString,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isSelected) {
-                        contentColor
+                        contentColor.copy(alpha = 0.85f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
@@ -1619,7 +1090,7 @@ private fun CityRow(
                 )
             }
 
-            // Expressive compact time stack: keeps full city details spacious for both 12/24h & seconds
+            // Expressive, steady-width Time Column (zero jitter/glitch when seconds tick)
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Center
@@ -1629,9 +1100,15 @@ private fun CityRow(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = hourMinuteText,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Medium,
+                        text = hhMmText,
+                        style = (
+                            if (showSeconds) {
+                                MaterialTheme.typography.headlineSmall
+                            } else {
+                                MaterialTheme.typography.headlineMedium
+                            }
+                        ).copy(
+                            fontWeight = FontWeight.SemiBold,
                             fontFeatureSettings = "tnum"
                         ),
                         color = timeTextColor,
@@ -1646,20 +1123,21 @@ private fun CityRow(
                                 fontWeight = FontWeight.Medium,
                                 fontFeatureSettings = "tnum"
                             ),
-                            color = timeTextColor.copy(alpha = 0.85f),
+                            color = timeTextColor.copy(alpha = 0.80f),
                             maxLines = 1,
                             softWrap = false,
-                            modifier = Modifier.padding(bottom = 3.dp)
+                            modifier = Modifier.padding(bottom = 2.dp)
                         )
                     }
                 }
 
                 if (amPmString.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = amPmString,
-                        style = MaterialTheme.typography.labelLarge.copy(
+                        style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.6.sp
+                            letterSpacing = 0.8.sp
                         ),
                         color = timeTextColor.copy(alpha = 0.85f),
                         maxLines = 1,
