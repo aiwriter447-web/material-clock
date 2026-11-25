@@ -315,7 +315,7 @@ fun StopwatchScreen(
                 }
             }
         } else {
-            val topOffset = minOf(46.dp, availH * 0.068f)
+            val topOffset = minOf(128.dp, availH * 0.18f)
 
             Column(
                 modifier = Modifier
