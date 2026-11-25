@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -88,8 +89,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
-private val CONTROL_PILL_SHAPE = RoundedCornerShape(percent = 50)
-private val DEFAULT_BEGINNER_PRESETS = listOf(
+
+private val EXCLUDED_PRESET_NAMES = setOf("study", "sport", "sports", "sleep")
+
+private val DEFAULT_TIMER_PRESETS = listOf(
     TimerPreset(1L, "Short Break", 5 * 60),
     TimerPreset(2L, "Long Break", 15 * 60),
     TimerPreset(3L, "Focus", 25 * 60),
@@ -117,13 +120,19 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // Living Flow: Direction-Aware Shared Axis (Y) Glide Transition
+    // Living Flow - Fluid Motion: Smooth direction-aware shared axis transition
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
             val forward = targetState
-            val slideSpec = spring<IntOffset>(dampingRatio = 0.88f, stiffness = Spring.StiffnessLow)
-            val fadeSpec = tween<Float>(durationMillis = 360, easing = FastOutSlowInEasing)
+            val slideSpec = spring<IntOffset>(
+                dampingRatio = 0.88f,
+                stiffness = Spring.StiffnessLow
+            )
+            val fadeSpec = tween<Float>(
+                durationMillis = 360,
+                easing = FastOutSlowInEasing
+            )
 
             if (forward) {
                 (slideInVertically(slideSpec) { it / 6 } + fadeIn(fadeSpec)) togetherWith
@@ -137,16 +146,21 @@ fun TimersScreen(
         modifier = modifier.fillMaxSize(),
     ) { running ->
         if (running && timer != null) {
-            RunningTimer(timer, nowElapsedMillis, onPauseResume, onAddTen, onCancel, contentPadding)
+            RunningTimer(
+                timer = timer,
+                nowElapsedMillis = nowElapsedMillis,
+                onPauseResume = onPauseResume,
+                onAddTen = onAddTen,
+                onCancel = onCancel,
+                contentPadding = contentPadding,
+            )
         } else {
             val displayPresets = remember(presets) {
-                val filtered = (if (presets.isEmpty()) DEFAULT_BEGINNER_PRESETS else presets)
-                    .filterNot { preset ->
-                        val name = preset.name.trim().lowercase()
-                        name == "study" || name == "sleep" || name == "sport" || name == "sports"
-                    }
-                (if (filtered.isEmpty()) DEFAULT_BEGINNER_PRESETS else filtered)
+                val source = if (presets.isEmpty()) DEFAULT_TIMER_PRESETS else presets
+                source
+                    .filterNot { it.name.trim().lowercase() in EXCLUDED_PRESET_NAMES }
                     .sortedBy { it.totalSeconds }
+                    .ifEmpty { DEFAULT_TIMER_PRESETS.sortedBy { it.totalSeconds } }
             }
 
             SetTimer(
@@ -197,22 +211,25 @@ private fun SetTimer(
     var isStarting by remember { mutableStateOf(false) }
 
     val colonColor by animateColorAsState(
-        targetValue = if (armed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.22f),
-        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        targetValue = if (armed) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.24f)
+        },
+        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
         label = "colonBulbColor"
     )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val setTop = contentPadding.calculateTopPadding()
         val setBottom = contentPadding.calculateBottomPadding() + 16.dp
-        val wheelGap = 22.dp
 
         val wheelsBlock: @Composable () -> Unit = {
-            // LABELS
+            // LABELS with balanced spacing between columns
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
@@ -220,7 +237,7 @@ private fun SetTimer(
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp
                 )
-                val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+                val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
 
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
@@ -232,7 +249,7 @@ private fun SetTimer(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(Modifier.width(wheelGap))
+                Spacer(Modifier.width(22.dp))
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         "Minutes",
@@ -243,7 +260,7 @@ private fun SetTimer(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(Modifier.width(wheelGap))
+                Spacer(Modifier.width(22.dp))
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         "Seconds",
@@ -256,7 +273,8 @@ private fun SetTimer(
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            // Extra breathing space below labels expanding downward into freed preset area
+            Spacer(Modifier.height(22.dp))
 
             // STRICT ALIGNMENT CONTAINER
             Box(
@@ -270,18 +288,30 @@ private fun SetTimer(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 20.dp)
                 ) {
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..99, initialValue = hours, onValueChange = { hours = it })
+                        InfiniteWheelPicker(
+                            range = 0..99,
+                            initialValue = hours,
+                            onValueChange = { hours = it }
+                        )
                     }
-                    Spacer(Modifier.width(wheelGap))
+                    Spacer(Modifier.width(22.dp))
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..59, initialValue = mins, onValueChange = { mins = it })
+                        InfiniteWheelPicker(
+                            range = 0..59,
+                            initialValue = mins,
+                            onValueChange = { mins = it }
+                        )
                     }
-                    Spacer(Modifier.width(wheelGap))
+                    Spacer(Modifier.width(22.dp))
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        InfiniteWheelPicker(range = 0..59, initialValue = secs, onValueChange = { secs = it })
+                        InfiniteWheelPicker(
+                            range = 0..59,
+                            initialValue = secs,
+                            onValueChange = { secs = it }
+                        )
                     }
                 }
 
@@ -291,10 +321,10 @@ private fun SetTimer(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 20.dp)
                 ) {
                     Spacer(Modifier.weight(1f))
-                    Box(modifier = Modifier.width(wheelGap), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(22.dp), contentAlignment = Alignment.Center) {
                         Text(
                             ":",
                             style = MaterialTheme.typography.displayLarge,
@@ -303,7 +333,7 @@ private fun SetTimer(
                         )
                     }
                     Spacer(Modifier.weight(1f))
-                    Box(modifier = Modifier.width(wheelGap), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(22.dp), contentAlignment = Alignment.Center) {
                         Text(
                             ":",
                             style = MaterialTheme.typography.displayLarge,
@@ -324,7 +354,7 @@ private fun SetTimer(
                 compact = compactPresets
             )
 
-            Spacer(Modifier.height(if (compactPresets) 12.dp else 18.dp))
+            Spacer(Modifier.height(14.dp))
 
             Text(
                 text = "Long press a preset to edit it",
@@ -333,11 +363,10 @@ private fun SetTimer(
             )
         }
 
-        val startBlock: @Composable (Int) -> Unit = { pad ->
+        val startBlock: @Composable () -> Unit = {
             Box(
-                modifier = Modifier
-                    .padding(horizontal = pad.dp)
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
                 AnimatedStartButton(
                     armed = armed && !isStarting,
@@ -393,9 +422,9 @@ private fun SetTimer(
                             presetsBlock(true)
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    startBlock(24)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(12.dp))
+                    startBlock()
+                    Spacer(Modifier.height(6.dp))
                 }
             }
         } else {
@@ -408,7 +437,7 @@ private fun SetTimer(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 wheelsBlock()
 
@@ -416,11 +445,11 @@ private fun SetTimer(
 
                 presetsBlock(false)
 
-                Spacer(Modifier.height(34.dp))
+                Spacer(Modifier.height(28.dp))
 
-                startBlock(44)
+                startBlock()
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
             }
         }
     }
@@ -482,7 +511,7 @@ private fun InfiniteWheelPicker(
             }
             val animatedColor by animateColorAsState(
                 targetValue = targetColor,
-                animationSpec = tween(durationMillis = 220),
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                 label = "colorAnim"
             )
 
@@ -504,7 +533,7 @@ private fun InfiniteWheelPicker(
                         color = animatedColor,
                         width = ClockFace.TIMER_WIDTH,
                         weight = ClockFace.TIMER_WEIGHT,
-                        slashedZero = false
+                        slashedZero = true
                     )
                 }
             }
@@ -520,23 +549,29 @@ private fun PresetGrid(
     onEdit: (TimerPreset) -> Unit,
     compact: Boolean = false
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(
-            if (compact) 10.dp else 14.dp,
-            Alignment.CenterHorizontally
-        ),
-        verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 16.dp),
+    // 3 columns per row for clean, uncrowded rhythm
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = if (compact) 10.dp else 24.dp)
+            .padding(horizontal = if (compact) 12.dp else 24.dp)
     ) {
-        presets.forEach { preset ->
-            PresetChip(
-                preset = preset,
-                onClick = { onStart(preset) },
-                onLongClick = { onEdit(preset) },
-                compact = compact
-            )
+        val gap = if (compact) 10.dp else 12.dp
+        val chipWidth = ((maxWidth - gap * 2) / 3f).coerceAtLeast(88.dp)
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(gap),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            presets.forEach { preset ->
+                PresetChip(
+                    preset = preset,
+                    chipWidth = chipWidth,
+                    onClick = { onStart(preset) },
+                    onLongClick = { onEdit(preset) },
+                    compact = compact
+                )
+            }
         }
     }
 }
@@ -545,6 +580,7 @@ private fun PresetGrid(
 @Composable
 private fun PresetChip(
     preset: TimerPreset,
+    chipWidth: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     compact: Boolean = false
@@ -571,11 +607,11 @@ private fun PresetChip(
     )
 
     Surface(
-        shape = CONTROL_PILL_SHAPE,
+        shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = Modifier
-            .width(106.dp)
-            .heightIn(min = if (compact) 48.dp else 58.dp)
+            .width(chipWidth)
+            .heightIn(min = if (compact) 48.dp else 56.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -631,26 +667,35 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
     )
 
     val containerColor by animateColorAsState(
-        if (armed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        targetValue = if (armed) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "startContainer"
     )
     val contentColor by animateColorAsState(
-        if (armed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (armed) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "startContent"
     )
 
+    // Compact pill/circle button matching Pause & +10s proportions (bold icon only)
     Surface(
         onClick = onClick,
         enabled = armed,
         interactionSource = interactionSource,
-        shape = CONTROL_PILL_SHAPE,
+        shape = CircleShape,
         color = containerColor,
         contentColor = contentColor,
         modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .width(156.dp)
+            .requiredHeight(68.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -661,7 +706,12 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Rounded.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier.size(34.dp)
+                modifier = Modifier
+                    .size(34.dp)
+                    .graphicsLayer {
+                        scaleX = 1.12f
+                        scaleY = 1.12f
+                    }
             )
         }
     }
@@ -690,12 +740,12 @@ private fun RunningTimer(
     val scope = rememberCoroutineScope()
     var isCanceling by remember { mutableStateOf(false) }
 
-    // Fill progress advances smoothly from 0f to 1f as the set timer completes
-    val elapsedFillProgress = (1f - timer.fractionLeft(nowElapsedMillis)).coerceIn(0f, 1f)
+    // Fill progress smoothly from 0f to 1f as time elapses toward completion
+    val rawCompletedFraction = (1f - timer.fractionLeft(nowElapsedMillis)).coerceIn(0f, 1f)
     val animatedFillProgress by animateFloatAsState(
-        targetValue = elapsedFillProgress,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
-        label = "timerRingFillProgress"
+        targetValue = rawCompletedFraction,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "timerFillProgress"
     )
 
     val context = LocalContext.current
@@ -715,7 +765,7 @@ private fun RunningTimer(
         capHeight = 62.dp,
         width = ClockFace.TIMER_WIDTH,
         weight = ClockFace.TIMER_WEIGHT,
-        slashedZero = false
+        slashedZero = true
     )
     val strokeWidthPx = with(density) { 18.dp.toPx() }
 
@@ -725,7 +775,7 @@ private fun RunningTimer(
         val ringSize = if (wide) {
             minOf(RING_SIZE_DP.dp, (maxWidth - 48.dp) * 0.5f, availH - 16.dp).coerceAtLeast(140.dp)
         } else {
-            minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 190.dp).coerceAtLeast(160.dp)
+            minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 176.dp).coerceAtLeast(160.dp)
         }
 
         val capHeight = remember(hasHours, density, refStyle, ringSize) {
@@ -748,7 +798,7 @@ private fun RunningTimer(
 
                 val waveSpeedFactor by animateFloatAsState(
                     targetValue = if (running) 1f else 0f,
-                    animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+                    animationSpec = tween(durationMillis = 850, easing = FastOutSlowInEasing),
                     label = "waveSpeedFactor"
                 )
 
@@ -772,7 +822,7 @@ private fun RunningTimer(
                         color = MaterialTheme.colorScheme.onSurface,
                         width = ClockFace.TIMER_WIDTH,
                         weight = ClockFace.TIMER_WEIGHT,
-                        slashedZero = false,
+                        slashedZero = true,
                     )
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -797,27 +847,31 @@ private fun RunningTimer(
         }
 
         val buttonsBlock: @Composable () -> Unit = {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f)) {
-                    PauseResumeButton(running = running, onClick = onPauseResume)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    PauseResumeIconButton(running = running, onClick = onPauseResume)
                 }
-                Box(Modifier.weight(1f)) {
-                    AddTenSecondsButton(onClick = onAddTen)
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    PlusTenTextButton(onClick = onAddTen)
+                }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    CancelIconButton(
+                        onClick = {
+                            if (isCanceling) return@CancelIconButton
+                            isCanceling = true
+                            scope.launch {
+                                onCancel()
+                                delay(500)
+                                isCanceling = false
+                            }
+                        }
+                    )
                 }
             }
-            Spacer(Modifier.height(12.dp))
-
-            CancelTimerButton(
-                onClick = {
-                    if (isCanceling) return@CancelTimerButton
-                    isCanceling = true
-                    scope.launch {
-                        onCancel()
-                        delay(500)
-                        isCanceling = false
-                    }
-                }
-            )
         }
 
         if (wide) {
@@ -862,22 +916,22 @@ private fun RunningTimer(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.weight(0.7f))
+                Spacer(Modifier.weight(0.75f))
 
                 ringBlock()
 
-                Spacer(Modifier.weight(0.8f))
+                Spacer(Modifier.weight(0.85f))
 
                 buttonsBlock()
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(28.dp))
             }
         }
     }
 }
 
 @Composable
-private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
+private fun PauseResumeIconButton(running: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -887,12 +941,20 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         label = "pauseResumeScale"
     )
     val containerColor by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+        targetValue = if (running) {
+            MaterialTheme.colorScheme.errorContainer
+        } else {
+            MaterialTheme.colorScheme.primaryContainer
+        },
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "pauseResumeContainer"
     )
     val contentColor by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+        targetValue = if (running) {
+            MaterialTheme.colorScheme.onErrorContainer
+        } else {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        },
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "pauseResumeContent"
     )
@@ -900,12 +962,12 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = CONTROL_PILL_SHAPE,
+        shape = CircleShape,
         color = containerColor,
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(68.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -917,8 +979,8 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         AnimatedContent(
             targetState = running,
             transitionSpec = {
-                val slideSpec = spring<IntOffset>(dampingRatio = 0.9f, stiffness = Spring.StiffnessLow)
-                val fadeSpec = tween<Float>(durationMillis = 300)
+                val slideSpec = spring<IntOffset>(dampingRatio = 0.88f, stiffness = Spring.StiffnessLow)
+                val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
                 if (targetState) {
                     (slideInVertically(slideSpec) { it / 2 } + fadeIn(fadeSpec)) togetherWith
                         (slideOutVertically(slideSpec) { -it / 2 } + fadeOut(fadeSpec))
@@ -927,13 +989,18 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
                         (slideOutVertically(slideSpec) { it / 2 } + fadeOut(fadeSpec))
                 }
             },
-            label = "pauseResumeIcon"
+            label = "pauseResumeIconAnim"
         ) { isRunning ->
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier
+                        .size(30.dp)
+                        .graphicsLayer {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                        }
                 )
             }
         }
@@ -941,25 +1008,25 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AddTenSecondsButton(onClick: () -> Unit) {
+private fun PlusTenTextButton(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
-        label = "addTenScale"
+        label = "plusTenScale"
     )
 
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = CONTROL_PILL_SHAPE,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(68.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -969,32 +1036,37 @@ private fun AddTenSecondsButton(onClick: () -> Unit) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = "+10s",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold)
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.2.sp
+                ),
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
 }
 
 @Composable
-private fun CancelTimerButton(onClick: () -> Unit) {
+private fun CancelIconButton(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
-        label = "cancelButtonScale"
+        label = "cancelScale"
     )
 
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = CONTROL_PILL_SHAPE,
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(68.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1005,7 +1077,12 @@ private fun CancelTimerButton(onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = null,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier
+                    .size(28.dp)
+                    .graphicsLayer {
+                        scaleX = 1.12f
+                        scaleY = 1.12f
+                    }
             )
         }
     }
