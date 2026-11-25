@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Pause
@@ -68,6 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -120,7 +122,7 @@ fun TimersScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    // Living Flow - Fluid Motion: Smooth direction-aware shared axis transition
+    // Living Flow - Fluid Motion: Direction-Aware Shared Axis (Y) Glide Transition
     AnimatedContent(
         targetState = timer != null,
         transitionSpec = {
@@ -225,7 +227,7 @@ private fun SetTimer(
         val setBottom = contentPadding.calculateBottomPadding() + 16.dp
 
         val wheelsBlock: @Composable () -> Unit = {
-            // LABELS with balanced spacing between columns
+            // LABELS with balanced horizontal spacing between columns
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -273,8 +275,8 @@ private fun SetTimer(
                 }
             }
 
-            // Extra breathing space below labels expanding downward into freed preset area
-            Spacer(Modifier.height(22.dp))
+            // Compact gap between labels and numbers matching vertical number rhythm
+            Spacer(Modifier.height(8.dp))
 
             // STRICT ALIGNMENT CONTAINER
             Box(
@@ -365,7 +367,9 @@ private fun SetTimer(
 
         val startBlock: @Composable () -> Unit = {
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 AnimatedStartButton(
@@ -441,7 +445,7 @@ private fun SetTimer(
 
                 wheelsBlock()
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(34.dp))
 
                 presetsBlock(false)
 
@@ -685,7 +689,6 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         label = "startContent"
     )
 
-    // Compact pill/circle button matching Pause & +10s proportions (bold icon only)
     Surface(
         onClick = onClick,
         enabled = armed,
@@ -694,24 +697,26 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         color = containerColor,
         contentColor = contentColor,
         modifier = Modifier
-            .width(156.dp)
-            .requiredHeight(68.dp)
+            .fillMaxWidth()
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clearAndSetSemantics { contentDescription = "Start timer" }
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(
                 imageVector = Icons.Rounded.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier
-                    .size(34.dp)
-                    .graphicsLayer {
-                        scaleX = 1.12f
-                        scaleY = 1.12f
-                    }
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "Start",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
         }
     }
@@ -775,7 +780,7 @@ private fun RunningTimer(
         val ringSize = if (wide) {
             minOf(RING_SIZE_DP.dp, (maxWidth - 48.dp) * 0.5f, availH - 16.dp).coerceAtLeast(140.dp)
         } else {
-            minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 176.dp).coerceAtLeast(160.dp)
+            minOf(RING_SIZE_DP.dp, maxWidth - 48.dp, availH - 190.dp).coerceAtLeast(160.dp)
         }
 
         val capHeight = remember(hasHours, density, refStyle, ringSize) {
@@ -847,31 +852,43 @@ private fun RunningTimer(
         }
 
         val buttonsBlock: @Composable () -> Unit = {
+            // Top row: Pause/Resume and +10s side by side
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    PauseResumeIconButton(running = running, onClick = onPauseResume)
+                Box(Modifier.weight(1f)) {
+                    PauseResumeButton(running = running, onClick = onPauseResume)
                 }
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    PlusTenTextButton(onClick = onAddTen)
-                }
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    CancelIconButton(
-                        onClick = {
-                            if (isCanceling) return@CancelIconButton
-                            isCanceling = true
-                            scope.launch {
-                                onCancel()
-                                delay(500)
-                                isCanceling = false
-                            }
-                        }
+                Box(Modifier.weight(1f)) {
+                    RunningActionPillButton(
+                        text = "+10s",
+                        icon = Icons.Rounded.Add,
+                        onClick = onAddTen,
+                        container = MaterialTheme.colorScheme.secondaryContainer,
+                        content = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Second row: Cancel below Pause & +10s with matching pill shape & height
+            RunningActionPillButton(
+                text = "Cancel",
+                icon = Icons.Rounded.Close,
+                onClick = {
+                    if (isCanceling) return@RunningActionPillButton
+                    isCanceling = true
+                    scope.launch {
+                        onCancel()
+                        delay(500)
+                        isCanceling = false
+                    }
+                },
+                container = MaterialTheme.colorScheme.surfaceContainer,
+                content = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (wide) {
@@ -916,22 +933,22 @@ private fun RunningTimer(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.weight(0.75f))
+                Spacer(Modifier.weight(0.7f))
 
                 ringBlock()
 
-                Spacer(Modifier.weight(0.85f))
+                Spacer(Modifier.weight(0.8f))
 
                 buttonsBlock()
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(32.dp))
             }
         }
     }
 }
 
 @Composable
-private fun PauseResumeIconButton(running: Boolean, onClick: () -> Unit) {
+private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -967,20 +984,17 @@ private fun PauseResumeIconButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(68.dp)
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
-            .clearAndSetSemantics {
-                contentDescription = if (running) "Pause timer" else "Resume timer"
             }
     ) {
         AnimatedContent(
             targetState = running,
             transitionSpec = {
                 val slideSpec = spring<IntOffset>(dampingRatio = 0.88f, stiffness = Spring.StiffnessLow)
-                val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+                val fadeSpec = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
                 if (targetState) {
                     (slideInVertically(slideSpec) { it / 2 } + fadeIn(fadeSpec)) togetherWith
                         (slideOutVertically(slideSpec) { -it / 2 } + fadeOut(fadeSpec))
@@ -989,18 +1003,24 @@ private fun PauseResumeIconButton(running: Boolean, onClick: () -> Unit) {
                         (slideOutVertically(slideSpec) { it / 2 } + fadeOut(fadeSpec))
                 }
             },
-            label = "pauseResumeIconAnim"
+            label = "pauseResumeLabel"
         ) { isRunning ->
-            Box(contentAlignment = Alignment.Center) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clearAndSetSemantics {
+                    contentDescription = if (isRunning) "Pause timer" else "Resume timer"
+                }
+            ) {
                 Icon(
                     imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .graphicsLayer {
-                            scaleX = 1.12f
-                            scaleY = 1.12f
-                        }
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isRunning) "Pause" else "Resume",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }
@@ -1008,82 +1028,44 @@ private fun PauseResumeIconButton(running: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PlusTenTextButton(onClick: () -> Unit) {
+private fun RunningActionPillButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    container: Color,
+    content: Color
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
-        label = "plusTenScale"
+        label = "pillButtonScale"
     )
 
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        color = container,
+        contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(68.dp)
+            .requiredHeight(72.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clearAndSetSemantics { contentDescription = "Add 10 seconds" }
+            .clearAndSetSemantics { contentDescription = "$text button" }
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = "+10s",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.2.sp
-                ),
-                maxLines = 1,
-                softWrap = false
-            )
-        }
-    }
-}
-
-@Composable
-private fun CancelIconButton(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
-        label = "cancelScale"
-    )
-
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(68.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clearAndSetSemantics { contentDescription = "Cancel timer" }
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Rounded.Close,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(28.dp)
-                    .graphicsLayer {
-                        scaleX = 1.12f
-                        scaleY = 1.12f
-                    }
-            )
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }
     }
 }
