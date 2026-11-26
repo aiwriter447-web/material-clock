@@ -18,8 +18,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.MarqueeSpacing
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -106,9 +104,9 @@ import kotlin.math.sin
 
 // Matched directly to Alarm Card shape & dimensions
 private val CITY_CARD_CORNER_RADIUS = 28.dp
-private val CITY_CARD_MIN_HEIGHT = 114.dp
-private val CITY_ROW_HORIZONTAL_PADDING = 20.dp
-private val CITY_ROW_VERTICAL_PADDING = 18.dp
+private val CITY_CARD_MIN_HEIGHT = 112.dp
+private val CITY_ROW_HORIZONTAL_PADDING = 18.dp
+private val CITY_ROW_VERTICAL_PADDING = 16.dp
 private val CITY_LIST_HORIZONTAL_MARGIN = 16.dp
 
 private val WorldClockDeleteColor = Color(0xFFB3261E)
@@ -127,9 +125,10 @@ fun WorldClockScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val use24h = when (settings.hourFormat) {
         HourFormat.SYSTEM ->
-            android.text.format.DateFormat.is24HourFormat(LocalContext.current)
+            android.text.format.DateFormat.is24HourFormat(context)
 
         HourFormat.H12 -> false
         HourFormat.H24 -> true
@@ -226,23 +225,13 @@ fun WorldClockScreen(
         )
     }
 
-    val mapLandFill = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
-    val mapCoastStroke = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-    val mapGridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f)
-    val mapPinColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
-    val mapLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
 
-        WorldContinentMapBackground(
-            homeZone = home,
-            landFillColor = mapLandFill,
-            coastlineStrokeColor = mapCoastStroke,
-            gridLineColor = mapGridColor,
-            pinColor = mapPinColor,
-            labelColor = mapLabelColor,
-            measurer = measurer,
+        ThemedWorldMap(
+            mapColor = mapFillColor,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -900,7 +889,6 @@ private fun CityRow(
         (local.hour % 12).takeIf { it != 0 } ?: 12
     }
 
-    // Seconds kept at the exact same size and weight as HH:MM
     val displayTimeText = buildString {
         append(
             String.format(
@@ -944,16 +932,16 @@ private fun CityRow(
             val dir = if (diffSeconds > 0) "Ahead" else "Behind"
 
             val hStr = if (h > 0) "$h hours " else ""
-            val mStr = if (m > 0) "$m Minutes " else ""
+            val mStr = if (m > 0) "$m min " else ""
 
-            "${hStr}${mStr}$dir"
+            "${hStr}${mStr}$dir".trim()
         }
 
     val countryAndUtc = "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}"
 
     val compactRows = LocalConfiguration.current.screenHeightDp < 480
     val rowVPad = if (compactRows) 12.dp else CITY_ROW_VERTICAL_PADDING
-    val minCardHeight = if (compactRows) 96.dp else CITY_CARD_MIN_HEIGHT
+    val minCardHeight = if (compactRows) 92.dp else CITY_CARD_MIN_HEIGHT
 
     Surface(
         color = containerColor,
@@ -986,13 +974,14 @@ private fun CityRow(
                     horizontal = CITY_ROW_HORIZONTAL_PADDING,
                     vertical = rowVPad
                 ),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            // Day/Night status circle badge
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     AnimatedContent(
@@ -1031,7 +1020,6 @@ private fun CityRow(
                 }
             }
 
-            // Full City Information with smooth news-ticker scrolling when wide
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1039,7 +1027,7 @@ private fun CityRow(
                         start = 14.dp,
                         end = 10.dp
                     ),
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -1049,14 +1037,8 @@ private fun CityRow(
                         ),
                         color = contentColor,
                         maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                spacing = MarqueeSpacing(24.dp),
-                                velocity = 28.dp
-                            )
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
 
                     if (city.pinnedAt != null) {
@@ -1075,8 +1057,6 @@ private fun CityRow(
                     }
                 }
 
-                Spacer(Modifier.height(3.dp))
-
                 Text(
                     text = countryAndUtc,
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -1088,15 +1068,8 @@ private fun CityRow(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.basicMarquee(
-                        iterations = Int.MAX_VALUE,
-                        spacing = MarqueeSpacing(24.dp),
-                        velocity = 28.dp
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
-
-                Spacer(Modifier.height(2.dp))
 
                 Text(
                     text = diffString,
@@ -1107,19 +1080,13 @@ private fun CityRow(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.basicMarquee(
-                        iterations = Int.MAX_VALUE,
-                        spacing = MarqueeSpacing(24.dp),
-                        velocity = 28.dp
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Uniform-size Time (HH:MM or HH:MM:SS) + stacked AM/PM without shrinking seconds
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top
             ) {
                 Text(
                     text = displayTimeText,
