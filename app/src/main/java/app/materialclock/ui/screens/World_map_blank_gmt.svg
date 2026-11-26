@@ -1,0 +1,83 @@
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.caverock.androidsvg.SVG
+
+@Composable
+fun ThemedWorldMap(
+    modifier: Modifier = Modifier,
+    height: Dp = 190.dp,
+    mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+    dotColor: Color = MaterialTheme.colorScheme.primary,
+    cityNormalizedPos: Offset? = null
+) {
+    val context = LocalContext.current
+
+    val svg = remember {
+        context.assets.open("World_map_blank_gmt.svg").use { inputStream ->
+            SVG.getFromInputStream(inputStream)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val widthPx = size.width.toInt().coerceAtLeast(1)
+            val heightPx = size.height.toInt().coerceAtLeast(1)
+
+            val baseBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val baseCanvas = Canvas(baseBitmap)
+
+            svg.setDocumentWidth(widthPx.toFloat())
+            svg.setDocumentHeight(heightPx.toFloat())
+            svg.renderToCanvas(baseCanvas)
+
+            val tintedBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val tintedCanvas = Canvas(tintedBitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = PorterDuffColorFilter(mapColor.toArgb(), PorterDuff.Mode.SRC_IN)
+            }
+            tintedCanvas.drawBitmap(baseBitmap, 0f, 0f, paint)
+
+            drawImage(image = tintedBitmap.asImageBitmap())
+
+            cityNormalizedPos?.let { pos ->
+                val center = Offset(
+                    x = size.width * pos.x.coerceIn(0f, 1f),
+                    y = size.height * pos.y.coerceIn(0f, 1f)
+                )
+                drawCircle(
+                    color = dotColor.copy(alpha = 0.25f),
+                    radius = 10.dp.toPx(),
+                    center = center
+                )
+                drawCircle(
+                    color = dotColor,
+                    radius = 4.5.dp.toPx(),
+                    center = center
+                )
+            }
+        }
+    }
+}
