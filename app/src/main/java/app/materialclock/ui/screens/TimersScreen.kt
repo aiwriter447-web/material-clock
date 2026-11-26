@@ -78,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +92,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
+private val TIMER_BUTTON_VERTICAL_SIZE = 72.dp
+private val TIMER_BUTTON_HORIZONTAL_INSET = 48.dp
 
 private val EXCLUDED_PRESET_NAMES = setOf("study", "sport", "sports", "sleep")
 
@@ -227,7 +230,6 @@ private fun SetTimer(
         val setBottom = contentPadding.calculateBottomPadding() + 16.dp
 
         val wheelsBlock: @Composable () -> Unit = {
-            // LABELS with balanced horizontal spacing between columns
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -275,10 +277,8 @@ private fun SetTimer(
                 }
             }
 
-            // Compact gap between labels and numbers matching vertical number rhythm
             Spacer(Modifier.height(8.dp))
 
-            // STRICT ALIGNMENT CONTAINER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -317,7 +317,6 @@ private fun SetTimer(
                     }
                 }
 
-                // ABSOLUTE COLONS OVERLAY
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -365,11 +364,11 @@ private fun SetTimer(
             )
         }
 
-        val startBlock: @Composable () -> Unit = {
+        val startBlock: @Composable (Dp) -> Unit = { horizontalInset ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp),
+                    .padding(horizontal = horizontalInset),
                 contentAlignment = Alignment.Center
             ) {
                 AnimatedStartButton(
@@ -427,7 +426,7 @@ private fun SetTimer(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    startBlock()
+                    startBlock(24.dp)
                     Spacer(Modifier.height(6.dp))
                 }
             }
@@ -451,7 +450,7 @@ private fun SetTimer(
 
                 Spacer(Modifier.height(28.dp))
 
-                startBlock()
+                startBlock(TIMER_BUTTON_HORIZONTAL_INSET)
 
                 Spacer(Modifier.height(14.dp))
             }
@@ -553,7 +552,6 @@ private fun PresetGrid(
     onEdit: (TimerPreset) -> Unit,
     compact: Boolean = false
 ) {
-    // 3 columns per row for clean, uncrowded rhythm
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -584,7 +582,7 @@ private fun PresetGrid(
 @Composable
 private fun PresetChip(
     preset: TimerPreset,
-    chipWidth: androidx.compose.ui.unit.Dp,
+    chipWidth: Dp,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     compact: Boolean = false
@@ -698,7 +696,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -745,7 +743,6 @@ private fun RunningTimer(
     val scope = rememberCoroutineScope()
     var isCanceling by remember { mutableStateOf(false) }
 
-    // Fill progress smoothly from 0f to 1f as time elapses toward completion
     val rawCompletedFraction = (1f - timer.fractionLeft(nowElapsedMillis)).coerceIn(0f, 1f)
     val animatedFillProgress by animateFloatAsState(
         targetValue = rawCompletedFraction,
@@ -852,7 +849,6 @@ private fun RunningTimer(
         }
 
         val buttonsBlock: @Composable () -> Unit = {
-            // Top row: Pause/Resume and +10s side by side
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -873,7 +869,6 @@ private fun RunningTimer(
 
             Spacer(Modifier.height(12.dp))
 
-            // Second row: Cancel below Pause & +10s with matching pill shape & height
             RunningActionPillButton(
                 text = "Cancel",
                 icon = Icons.Rounded.Close,
@@ -984,7 +979,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1052,7 +1047,7 @@ private fun RunningActionPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(72.dp)
+            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
