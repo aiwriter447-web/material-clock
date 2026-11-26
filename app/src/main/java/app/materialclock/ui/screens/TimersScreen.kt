@@ -93,7 +93,7 @@ import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
 
-// Matches Stopwatch button vertical thickness ("width" in 170851.jpg)
+// Matches Stopwatch button vertical height ("width" in 170851.jpg)
 private val BUTTON_VERTICAL_HEIGHT = 64.dp
 
 // Living Flow - Fluid Motion spring bounce matching StopwatchScreen
@@ -372,34 +372,34 @@ private fun SetTimer(
         }
 
         val startBlock: @Composable () -> Unit = {
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val halfLength = ((maxWidth - 12.dp) / 2f).coerceAtLeast(120.dp)
-                    Box(
-                        modifier = Modifier.width(halfLength),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AnimatedStartButton(
-                            armed = armed && !isStarting,
-                            onClick = {
-                                if (isStarting) return@AnimatedStartButton
-                                isStarting = true
-                                scope.launch {
-                                    repeat(6) { onBackspace() }
-                                    val digits = "%02d%02d%02d".format(hours, mins, secs)
-                                    digits.forEach { onDigit(it) }
-                                    onStart()
-                                    delay(600)
-                                    isStarting = false
-                                }
+                val halfLength = ((maxWidth - 12.dp) / 2f).coerceAtLeast(120.dp)
+                Box(
+                    modifier = Modifier
+                        .width(halfLength)
+                        .align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedStartButton(
+                        armed = armed && !isStarting,
+                        onClick = {
+                            if (isStarting) return@AnimatedStartButton
+                            isStarting = true
+                            scope.launch {
+                                repeat(6) { onBackspace() }
+                                val digits = "%02d%02d%02d".format(hours, mins, secs)
+                                digits.forEach { onDigit(it) }
+                                onStart()
+                                delay(600)
+                                isStarting = false
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         }
@@ -887,10 +887,15 @@ private fun RunningTimer(
 
             Spacer(Modifier.height(12.dp))
 
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 val halfLength = ((maxWidth - 12.dp) / 2f).coerceAtLeast(120.dp)
                 Box(
-                    modifier = Modifier.width(halfLength),
+                    modifier = Modifier
+                        .width(halfLength)
+                        .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
                     RunningActionPillButton(
