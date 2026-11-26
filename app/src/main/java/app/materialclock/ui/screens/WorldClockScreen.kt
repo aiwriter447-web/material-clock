@@ -3,8 +3,10 @@ package app.materialclock.ui.screens
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Picture
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
+import android.util.Xml
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -95,13 +97,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.PathParser
 import app.materialclock.core.WorldCity
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.dockFrostedGlass
-import com.caverock.androidsvg.SVG
+import org.xmlpull.v1.XmlPullParser
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -485,6 +488,66 @@ fun WorldClockScreen(
     }
 }
 
+private data class ParsedSvgMap(
+    val width: Float,
+    val height: Float,
+    val paths: List<android.graphics.Path>
+)
+
+private fun parseSvgPathsFromAssets(context: android.content.Context, assetName: String): ParsedSvgMap {
+    return runCatching {
+        context.assets.open(assetName).use { inputStream ->
+            val parser = Xml.newPullParser().apply {
+                setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
+                setInput(inputStream, null)
+            }
+            var width = 5365f
+            var height = 2796f
+            val paths = mutableListOf<android.graphics.Path>()
+
+            var eventType = parser.eventType
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG) {
+                    when (parser.name) {
+                        "svg" -> {
+                            parser.getAttributeValue(null, "width")?.let { w ->
+                                w.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.let { width = it }
+                            }
+                            parser.getAttributeValue(null, "height")?.let { h ->
+                                h.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.let { height = it }
+                            }
+                            if (parser.getAttributeValue(null, "width") == null) {
+                                parser.getAttributeValue(null, "viewBox")?.split(Regex("[,\\s]+"))?.let { parts ->
+                                    if (parts.size == 4) {
+                                        parts[2].toFloatOrNull()?.let { width = it }
+                                        parts[3].toFloatOrNull()?.let { height = it }
+                                    }
+                                }
+                            }
+                        }
+                        "path" -> {
+                            val d = parser.getAttributeValue(null, "d")
+                            if (!d.isNullOrBlank()) {
+                                runCatching { PathParser.createPathFromPathData(d) }.getOrNull()?.let {
+                                    paths.add(it)
+                                }
+                            }
+                        }
+                    }
+                }
+                eventType = parser.next()
+            }
+            ParsedSvgMap(
+                width = width.coerceAtLeast(1f),
+                height = height.coerceAtLeast(1f),
+                paths = paths
+            )
+        }
+    }.getOrElse {
+        ParsedSvgMap(width = 5365f, height = 2796f, paths = emptyList())
+    }
+}
+
 @Composable
 private fun ThemedWorldMap(
     modifier: Modifier = Modifier,
@@ -492,11 +555,8 @@ private fun ThemedWorldMap(
     mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
 ) {
     val context = LocalContext.current
-
-    val svg = remember {
-        context.assets.open("World_map_blank_gmt.svg").use { inputStream ->
-            SVG.getFromInputStream(inputStream)
-        }
+    val parsedSvg = remember {
+        parseSvgPathsFromAssets(context, "World_map_blank_gmt.svg")
     }
 
     Box(
@@ -508,19 +568,32 @@ private fun ThemedWorldMap(
             val widthPx = size.width.toInt().coerceAtLeast(1)
             val heightPx = size.height.toInt().coerceAtLeast(1)
 
-            val baseBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
-            val baseCanvas = Canvas(baseBitmap)
+            val picture = Picture()
+            val picCanvas = picture.beginRecording(widthPx, heightPx)
 
-            svg.setDocumentWidth(widthPx.toFloat())
-            svg.setDocumentHeight(heightPx.toFloat())
-            svg.renderToCanvas(baseCanvas)
+            val scaleX = widthPx.toFloat() / parsedSvg.width
+            val scaleY = heightPx.toFloat() / parsedSvg.height
+            picCanvas.scale(scaleX, scaleY)
+
+            val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = mapColor.toArgb()
+            }
+            parsedSvg.paths.forEach { path ->
+                picCanvas.drawPath(path, fillPaint)
+            }
+            picture.endRecording()
+
+            val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val bitmapCanvas = Canvas(bitmap)
+            bitmapCanvas.drawPicture(picture)
 
             val tintedBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
             val tintedCanvas = Canvas(tintedBitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            val tintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 colorFilter = PorterDuffColorFilter(mapColor.toArgb(), PorterDuff.Mode.SRC_IN)
             }
-            tintedCanvas.drawBitmap(baseBitmap, 0f, 0f, paint)
+            tintedCanvas.drawBitmap(bitmap, 0f, 0f, tintPaint)
 
             drawImage(image = tintedBitmap.asImageBitmap())
         }
