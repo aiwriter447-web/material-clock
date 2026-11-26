@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -37,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -74,8 +77,8 @@ import app.materialclock.core.Stopwatch
 import app.materialclock.core.stopwatchParts
 import app.materialclock.ui.theme.ClockFace
 import app.materialclock.ui.theme.Numerals
-import kotlinx.coroutines.delay
 import java.time.Duration
+import kotlinx.coroutines.delay
 
 // -----------------------------------------------------------------
 // LIVING FLOW: FLUID ANIMATION CONFIGURATION
@@ -563,6 +566,54 @@ private fun JellyActionWrapper(
 }
 
 @Composable
+private fun StopwatchPillButton(
+    text: String,
+    icon: ImageVector? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    container: Color = MaterialTheme.colorScheme.secondaryContainer,
+    content: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    outlined: Boolean = false,
+    contentAlpha: Float = 1f,
+) {
+    val border = if (outlined) {
+        androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    } else {
+        null
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (outlined) Color.Transparent else container,
+        contentColor = content.copy(alpha = contentAlpha),
+        border = border,
+        modifier = modifier.fillMaxSize()
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
+@Composable
 private fun StopwatchControls(
     idle: Boolean,
     running: Boolean,
@@ -598,7 +649,7 @@ private fun StopwatchControls(
 
     val e = expand.coerceIn(0f, 1f)
 
-    val startStop: @Composable (Boolean) -> Unit = { compact ->
+    val startStop: @Composable () -> Unit = {
         val containerColor by animateColorAsState(
             targetValue = if (running) {
                 MaterialTheme.colorScheme.tertiaryContainer
@@ -621,39 +672,29 @@ private fun StopwatchControls(
         JellyActionWrapper(
             onClick = onToggle,
             hapticType = HapticFeedbackType.LongPress,
-            pulseActive = running
+            pulseActive = running,
+            modifier = Modifier.fillMaxSize()
         ) { triggeredClick ->
-            WidePill(
+            StopwatchPillButton(
                 text = if (running) "Stop" else "Start",
                 icon = if (running) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 onClick = triggeredClick,
                 container = containerColor,
                 content = contentColor,
-                height = ROW_HEIGHT,
-                compact = compact,
             )
         }
     }
 
     SubcomposeLayout(
-        Modifier.fillMaxWidth().height(ROW_HEIGHT),
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_HEIGHT),
     ) { constraints ->
         val full = constraints.maxWidth
         val h = ROW_HEIGHT.roundToPx()
 
-        val natural = subcompose("probe") {
-            WidePill(
-                text = "Start",
-                icon = Icons.Rounded.PlayArrow,
-                onClick = {},
-                height = ROW_HEIGHT,
-                compact = true,
-                fillWidth = false,
-                contentPaddingH = IDLE_PADDING_H,
-            )
-        }.first().measure(Constraints(minHeight = h, maxHeight = h)).width
-
-        val collapsedW = natural.coerceAtMost(full)
+        val idleInsetPx = IDLE_PADDING_H.roundToPx()
+        val collapsedW = (full - idleInsetPx * 2).coerceAtLeast(h)
         val collapsedX = (full - collapsedW) / 2
 
         val expandedW = full - 40.dp.roundToPx()
@@ -664,20 +705,22 @@ private fun StopwatchControls(
 
         val single = if (split < 1f) {
             subcompose("single") {
-                Box(Modifier.graphicsLayer { alpha = 1f - split }) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = 1f - split }
+                ) {
                     JellyActionWrapper(
                         onClick = onToggle,
-                        hapticType = HapticFeedbackType.LongPress
+                        hapticType = HapticFeedbackType.LongPress,
+                        modifier = Modifier.fillMaxSize()
                     ) { triggeredClick ->
-                        WidePill(
+                        StopwatchPillButton(
                             text = "Start",
                             icon = Icons.Rounded.PlayArrow,
                             onClick = triggeredClick,
                             container = MaterialTheme.colorScheme.primaryContainer,
                             content = MaterialTheme.colorScheme.onPrimaryContainer,
-                            height = ROW_HEIGHT,
-                            compact = true,
-                            contentPaddingH = IDLE_PADDING_H,
                             contentAlpha = label,
                         )
                     }
@@ -689,37 +732,44 @@ private fun StopwatchControls(
 
         val trio = if (split > 0f) {
             subcompose("trio") {
-                Box(Modifier.graphicsLayer { alpha = split }) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(GAP * split)) {
-                        Box(Modifier.weight(1f)) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = split }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(GAP * split)
+                    ) {
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
                             JellyActionWrapper(
                                 onClick = onLap,
-                                hapticType = HapticFeedbackType.TextHandleMove
+                                hapticType = HapticFeedbackType.TextHandleMove,
+                                modifier = Modifier.fillMaxSize()
                             ) { triggeredClick ->
-                                WidePill(
+                                StopwatchPillButton(
                                     text = "Lap",
                                     onClick = triggeredClick,
-                                    height = ROW_HEIGHT,
-                                    compact = true
                                 )
                             }
                         }
-                        Box(Modifier.weight(1f)) {
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
                             JellyActionWrapper(
                                 onClick = onReset,
-                                hapticType = HapticFeedbackType.LongPress
+                                hapticType = HapticFeedbackType.LongPress,
+                                modifier = Modifier.fillMaxSize()
                             ) { triggeredClick ->
-                                WidePill(
+                                StopwatchPillButton(
                                     text = "Reset",
                                     onClick = triggeredClick,
                                     outlined = true,
                                     content = MaterialTheme.colorScheme.onSurface,
-                                    height = ROW_HEIGHT,
-                                    compact = true,
                                 )
                             }
                         }
-                        Box(Modifier.weight(1f)) { startStop(true) }
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
+                            startStop()
+                        }
                     }
                 }
             }.first().measure(Constraints.fixed(expandedW, h))
@@ -737,7 +787,7 @@ private fun StopwatchControls(
 private val IDLE_PADDING_H = 48.dp
 private val HORIZONTAL_READOUT_CAP = 54.dp
 private val GAP = 8.dp
-private val ROW_HEIGHT = 64.dp
+private val ROW_HEIGHT = 72.dp
 private val LAP_ROW_HEIGHT = 56.dp
 private val LAP_GAP = 6.dp
 
