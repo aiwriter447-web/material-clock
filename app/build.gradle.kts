@@ -1,139 +1,136 @@
-
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+alias(libs.plugins.android.application)
+alias(libs.plugins.kotlin.compose)
 }
 
 android {
-    namespace = "app.materialclock"
-    compileSdk = 37
+namespace = "app.materialclock"
+compileSdk = 37
 
-    defaultConfig {
-        applicationId = "app.materialclock"
-        minSdk = 29
-        targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
-    }
+defaultConfig {  
+    applicationId = "app.materialclock"  
+    minSdk = 29  
+    targetSdk = 36  
+    versionCode = 1  
+    versionName = "0.1.0"  
+}  
 
-    val releaseStore = (findProperty("clockStoreFile") as String?)
-        ?.let(::file)
-        ?.takeIf { it.exists() }
+val releaseStore = (findProperty("clockStoreFile") as String?)  
+    ?.let(::file)  
+    ?.takeIf { it.exists() }  
 
-    if (releaseStore != null) {
-        signingConfigs.create("release") {
-            storeFile = releaseStore
-            storePassword = findProperty("clockStorePassword") as String?
-            keyAlias = findProperty("clockKeyAlias") as String?
-            keyPassword = findProperty("clockKeyPassword") as String?
-        }
-    }
+if (releaseStore != null) {  
+    signingConfigs.create("release") {  
+        storeFile = releaseStore  
+        storePassword = findProperty("clockStorePassword") as String?  
+        keyAlias = findProperty("clockKeyAlias") as String?  
+        keyPassword = findProperty("clockKeyPassword") as String?  
+    }  
+}  
 
-    signingConfigs.getByName("debug") {
-        storeFile = file("debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
-    }
+signingConfigs.getByName("debug") {  
+    storeFile = file("debug.keystore")  
+    storePassword = "android"  
+    keyAlias = "androiddebugkey"  
+    keyPassword = "android"  
+}  
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.findByName("release")
-                ?: signingConfigs.getByName("debug")
+buildTypes {  
+    release {  
+        signingConfig = signingConfigs.findByName("release")  
+            ?: signingConfigs.getByName("debug")  
 
-            isMinifyEnabled = true
-            isShrinkResources = true
+        isMinifyEnabled = true  
+        isShrinkResources = true  
 
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
-        }
+        proguardFiles(  
+            getDefaultProguardFile("proguard-android-optimize.txt"),  
+            "proguard-rules.pro",  
+        )  
+    }  
 
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+    debug {  
+        applicationIdSuffix = ".debug"  
+        versionNameSuffix = "-debug"  
 
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-    }
+        isMinifyEnabled = false  
+        isShrinkResources = false  
+    }  
+}  
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+compileOptions {  
+    sourceCompatibility = JavaVersion.VERSION_17  
+    targetCompatibility = JavaVersion.VERSION_17  
+}  
 
-    buildFeatures {
-        compose = true
-        buildConfig = true
-    }
+buildFeatures {  
+    compose = true  
+    buildConfig = true  
+}  
 
-    androidResources {
-        localeFilters += listOf("en")
-    }
+androidResources {  
+    localeFilters += listOf("en")  
+}  
 
-    dependenciesInfo {
-        includeInApk = false
-        includeInBundle = true
-    }
+dependenciesInfo {  
+    includeInApk = false  
+    includeInBundle = true  
+}  
 
-    packaging {
-        resources {
-            excludes += setOf(
-                "/META-INF/{AL2.0,LGPL2.1}",
-                "/META-INF/*.version",
-                "/META-INF/com.android.tools/",
-                "/kotlin/",
-                "/DebugProbesKt.bin",
-            )
-        }
-    }
+packaging {  
+    resources {  
+        excludes += setOf(  
+            "/META-INF/{AL2.0,LGPL2.1}",  
+            "/META-INF/*.version",  
+            "/META-INF/com.android.tools/",  
+            "/kotlin/",  
+            "/DebugProbesKt.bin",  
+        )  
+    }  
+}  
 
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            isReturnDefaultValues = true
-        }
-    }
+testOptions {  
+    unitTests {  
+        isIncludeAndroidResources = true  
+        isReturnDefaultValues = true  
+    }  
+}
+
 }
 
 kotlin {
-    compilerOptions {
-        optIn.addAll(
-            "androidx.compose.material3.ExperimentalMaterial3Api",
-            "androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
-            "androidx.compose.foundation.ExperimentalFoundationApi",
-            "androidx.compose.ui.text.ExperimentalTextApi",
-        )
-    }
+compilerOptions {
+optIn.addAll(
+"androidx.compose.material3.ExperimentalMaterial3Api",
+"androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
+"androidx.compose.foundation.ExperimentalFoundationApi",
+"androidx.compose.ui.text.ExperimentalTextApi",
+)
+}
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
+implementation(platform(libs.androidx.compose.bom))
 
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.text)
-    implementation(libs.androidx.compose.ui.tooling.preview)
+implementation(libs.androidx.material3)  
+implementation(libs.androidx.compose.ui)  
+implementation(libs.androidx.compose.ui.text)  
+implementation(libs.androidx.compose.ui.tooling.preview)  
 
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+implementation("androidx.compose.material:material-icons-extended")  
+implementation("androidx.datastore:datastore-preferences:1.1.1")  
+implementation("androidx.core:core-splashscreen:1.0.1")  
+implementation(libs.androidx.graphics.shapes)  
 
-    // AndroidSVG
-    implementation("com.caverock:androidsvg-aar:1.4")
+implementation(libs.androidx.core.ktx)  
+implementation(libs.androidx.activity.compose)  
+implementation(libs.androidx.lifecycle.viewmodel.compose)  
+implementation(libs.androidx.lifecycle.runtime.compose)  
 
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation(libs.androidx.graphics.shapes)
+debugImplementation(libs.androidx.compose.ui.tooling)  
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
+testImplementation(libs.junit)  
+testImplementation(libs.kotlin.test)  
+testImplementation(libs.androidx.test.core)
 
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlin.test)
-    testImplementation(libs.androidx.test.core)
 }
