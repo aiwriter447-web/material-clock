@@ -92,8 +92,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
-private val TIMER_BUTTON_VERTICAL_SIZE = 72.dp
-private val TIMER_BUTTON_HORIZONTAL_INSET = 48.dp
+
+// Matches Stopwatch button vertical thickness ("width" in 170851.jpg)[span_2](start_span)[span_2](end_span)
+private val BUTTON_VERTICAL_THICKNESS = 64.dp
+private val START_BUTTON_HORIZONTAL_INSET = 48.dp
 
 private val EXCLUDED_PRESET_NAMES = setOf("study", "sport", "sports", "sleep")
 
@@ -450,7 +452,7 @@ private fun SetTimer(
 
                 Spacer(Modifier.height(28.dp))
 
-                startBlock(TIMER_BUTTON_HORIZONTAL_INSET)
+                startBlock(START_BUTTON_HORIZONTAL_INSET)
 
                 Spacer(Modifier.height(14.dp))
             }
@@ -696,7 +698,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
+            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -979,7 +981,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
+            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1047,7 +1049,7 @@ private fun RunningActionPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(TIMER_BUTTON_VERTICAL_SIZE)
+            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
