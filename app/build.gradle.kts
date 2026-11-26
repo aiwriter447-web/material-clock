@@ -1,3 +1,17 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    // Your existing Android configuration
+}
+
+kotlin {
+    // Your existing Kotlin configuration
+}
+
+// IMPORTANT: Keep dependencies outside android {} and kotlin {}
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
 
@@ -8,6 +22,8 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // AndroidSVG library
     implementation("com.caverock:androidsvg-aar:1.4")
 
     implementation("androidx.core:core-splashscreen:1.0.1")
