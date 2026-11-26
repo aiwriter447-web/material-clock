@@ -1,10 +1,10 @@
 package app.materialclock.ui.screens
 
-import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
-import android.util.Xml
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -78,9 +78,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -95,14 +95,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.PathParser
 import app.materialclock.core.WorldCity
 import app.materialclock.data.HourFormat
 import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.dockFrostedGlass
-import org.xmlpull.v1.XmlPullParser
+import com.caverock.androidsvg.SVG
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -112,10 +111,11 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
+// Restored card dimensions and spacing
 private val CITY_CARD_CORNER_RADIUS = 28.dp
 private val CITY_CARD_MIN_HEIGHT = 114.dp
-private val CITY_ROW_HORIZONTAL_PADDING = 20.dp
-private val CITY_ROW_VERTICAL_PADDING = 18.dp
+private val CITY_ROW_HORIZONTAL_PADDING = 18.dp
+private val CITY_ROW_VERTICAL_PADDING = 16.dp
 private val CITY_LIST_HORIZONTAL_MARGIN = 16.dp
 
 private val WorldClockDeleteColor = Color(0xFFB3261E)
@@ -486,134 +486,66 @@ fun WorldClockScreen(
     }
 }
 
-private data class ParsedSvgMap(
-    val width: Float,
-    val height: Float,
-    val paths: List<Path>
-)
-
-private fun buildFallbackContinents(width: Float, height: Float): List<Path> {
-    // बिना देश की सीमाओं के केवल महाद्वीपों के सामान्य आकार (नॉर्मलाइज़्ड 0..1 कोऑर्डिनेट्स पर)
-    val normPolygons = listOf(
-        // North America
-        listOf(0.06f to 0.16f, 0.27f to 0.14f, 0.34f to 0.25f, 0.26f to 0.43f, 0.18f to 0.44f, 0.11f to 0.31f),
-        // South America
-        listOf(0.26f to 0.47f, 0.36f to 0.51f, 0.39f to 0.64f, 0.31f to 0.84f, 0.27f to 0.77f, 0.25f to 0.58f),
-        // Europe + Asia
-        listOf(0.45f to 0.16f, 0.84f to 0.15f, 0.90f to 0.34f, 0.83f to 0.52f, 0.72f to 0.55f, 0.65f to 0.46f, 0.54f to 0.41f, 0.45f to 0.36f),
-        // Africa
-        listOf(0.45f to 0.43f, 0.58f to 0.44f, 0.63f to 0.58f, 0.57f to 0.77f, 0.51f to 0.76f, 0.46f to 0.57f),
-        // Australia
-        listOf(0.76f to 0.63f, 0.89f to 0.63f, 0.91f to 0.77f, 0.78f to 0.78f)
-    )
-
-    return normPolygons.map { pts ->
-        Path().apply {
-            pts.forEachIndexed { idx, (nx, ny) ->
-                val px = nx * width
-                val py = ny * height
-                if (idx == 0) moveTo(px, py) else lineTo(px, py)
-            }
-            close()
-        }
-    }
-}
-
-private fun parseSvgPathsFromAssets(context: Context, assetName: String): ParsedSvgMap {
-    var width = 1000f
-    var height = 500f
-    val paths = mutableListOf<Path>()
-
-    runCatching {
-        context.assets.open(assetName).use { inputStream ->
-            val parser = Xml.newPullParser().apply {
-                setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
-                setInput(inputStream, null)
-            }
-
-            var eventType = parser.eventType
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                if (eventType == XmlPullParser.START_TAG) {
-                    when (parser.name) {
-                        "svg" -> {
-                            val viewBox = parser.getAttributeValue(null, "viewBox")
-                            val vbParts = viewBox?.trim()?.split(Regex("[,\\s]+"))
-                            if (vbParts != null && vbParts.size == 4) {
-                                vbParts[2].toFloatOrNull()?.takeIf { it > 0f }?.let { width = it }
-                                vbParts[3].toFloatOrNull()?.takeIf { it > 0f }?.let { height = it }
-                            } else {
-                                parser.getAttributeValue(null, "width")?.let { w ->
-                                    w.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.takeIf { it > 0f }?.let { width = it }
-                                }
-                                parser.getAttributeValue(null, "height")?.let { h ->
-                                    h.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.takeIf { it > 0f }?.let { height = it }
-                                }
-                            }
-                        }
-                        "path" -> {
-                            val d = parser.getAttributeValue(null, "d")
-                            if (!d.isNullOrBlank()) {
-                                runCatching { PathParser.createPathFromPathData(d) }
-                                    .getOrNull()
-                                    ?.let { paths.add(it) }
-                            }
-                        }
-                    }
-                }
-                eventType = parser.next()
-            }
-        }
-    }
-
-    if (paths.isEmpty()) {
-        width = 1000f
-        height = 500f
-        paths.addAll(buildFallbackContinents(width, height))
-    }
-
-    return ParsedSvgMap(
-        width = width.coerceAtLeast(1f),
-        height = height.coerceAtLeast(1f),
-        paths = paths
-    )
-}
-
 @Composable
 private fun ThemedWorldMap(
     modifier: Modifier = Modifier,
     mapColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 ) {
     val context = LocalContext.current
-    val parsedSvg = remember {
-        parseSvgPathsFromAssets(context, "World_map_blank_gmt.svg")
-    }
 
-    val fillPaint = remember(mapColor) {
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = mapColor.toArgb()
-        }
+    // Load SVG directly from assets using AndroidSVG
+    val svg = remember {
+        runCatching {
+            context.assets.open("World_map_blank_gmt.svg").use { stream ->
+                SVG.getFromInputStream(stream)
+            }
+        }.getOrNull()
     }
 
     Canvas(modifier = modifier) {
-        if (parsedSvg.paths.isEmpty() || size.width <= 0f || size.height <= 0f) return@Canvas
+        val currentSvg = svg ?: return@Canvas
+        val widthPx = size.width.toInt().coerceAtLeast(1)
+        val heightPx = size.height.toInt().coerceAtLeast(1)
 
-        val nativeCanvas: Canvas = drawContext.canvas.nativeCanvas
-        val scale = min(size.width / parsedSvg.width, size.height / parsedSvg.height)
-        val drawnWidth = parsedSvg.width * scale
-        val drawnHeight = parsedSvg.height * scale
-        val dx = (size.width - drawnWidth) / 2f
-        val dy = (size.height - drawnHeight) / 2f
-
-        val saveCount = nativeCanvas.save()
-        nativeCanvas.translate(dx, dy)
-        nativeCanvas.scale(scale, scale)
-
-        for (path in parsedSvg.paths) {
-            nativeCanvas.drawPath(path, fillPaint)
+        val svgAspect = currentSvg.documentAspectRatio
+        val drawWidth: Float
+        val drawHeight: Float
+        if (svgAspect > 0f) {
+            val canvasAspect = widthPx.toFloat() / heightPx.toFloat()
+            if (canvasAspect > svgAspect) {
+                drawHeight = heightPx.toFloat()
+                drawWidth = drawHeight * svgAspect
+            } else {
+                drawWidth = widthPx.toFloat()
+                drawHeight = drawWidth / svgAspect
+            }
+        } else {
+            drawWidth = widthPx.toFloat()
+            drawHeight = heightPx.toFloat()
         }
 
-        nativeCanvas.restoreToCount(saveCount)
+        val targetW = drawWidth.toInt().coerceAtLeast(1)
+        val targetH = drawHeight.toInt().coerceAtLeast(1)
+
+        val baseBitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        val baseCanvas = Canvas(baseBitmap)
+        currentSvg.setDocumentWidth(targetW.toFloat())
+        currentSvg.setDocumentHeight(targetH.toFloat())
+        currentSvg.renderToCanvas(baseCanvas)
+
+        val tintedBitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        val tintedCanvas = Canvas(tintedBitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = PorterDuffColorFilter(mapColor.toArgb(), PorterDuff.Mode.SRC_IN)
+        }
+        tintedCanvas.drawBitmap(baseBitmap, 0f, 0f, paint)
+
+        val left = ((widthPx - targetW) / 2f)
+        val top = ((heightPx - targetH) / 2f)
+        drawImage(
+            image = tintedBitmap.asImageBitmap(),
+            topLeft = Offset(left, top)
+        )
     }
 }
 
@@ -1029,6 +961,7 @@ private fun CityRow(
         (local.hour % 12).takeIf { it != 0 } ?: 12
     }
 
+    // Keep uniform time formatting with tabular figures for stable seconds
     val displayTimeText = buildString {
         append(
             String.format(
@@ -1072,7 +1005,7 @@ private fun CityRow(
             val dir = if (diffSeconds > 0) "Ahead" else "Behind"
 
             val hStr = if (h > 0) "$h hours " else ""
-            val mStr = if (m > 0) "$m Minutes " else ""
+            val mStr = if (m > 0) "$m minutes " else ""
 
             "${hStr}${mStr}$dir".trim()
         }
@@ -1114,12 +1047,15 @@ private fun CityRow(
                     horizontal = CITY_ROW_HORIZONTAL_PADDING,
                     vertical = rowVPad
                 ),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
+            // Day/Night icon badge with original size
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     AnimatedContent(
@@ -1158,8 +1094,9 @@ private fun CityRow(
                 }
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
 
+            // Middle column given maximum width without extra horizontal padding
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -1208,7 +1145,9 @@ private fun CityRow(
 
                 Text(
                     text = diffString,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFeatureSettings = "tnum"
+                    ),
                     color = if (isSelected) {
                         contentColor.copy(alpha = 0.85f)
                     } else {
@@ -1219,8 +1158,9 @@ private fun CityRow(
                 )
             }
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
 
+            // Right time column aligned at top with AM/PM on the second line
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Top
@@ -1229,9 +1169,9 @@ private fun CityRow(
                     text = displayTimeText,
                     style = (
                         if (showSeconds) {
-                            MaterialTheme.typography.headlineSmall
+                            MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp)
                         } else {
-                            MaterialTheme.typography.headlineMedium
+                            MaterialTheme.typography.headlineSmall
                         }
                     ).copy(
                         fontWeight = FontWeight.SemiBold,
