@@ -1,5 +1,10 @@
 package app.materialclock.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -73,8 +78,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -94,6 +101,7 @@ import app.materialclock.data.WorldClockSettings
 import app.materialclock.data.WorldClockStyle
 import app.materialclock.ui.DOCK_HEIGHT
 import app.materialclock.ui.dockFrostedGlass
+import com.caverock.androidsvg.SVG
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -473,6 +481,48 @@ fun WorldClockScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ThemedWorldMap(
+    modifier: Modifier = Modifier,
+    height: Dp = 190.dp,
+    mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+) {
+    val context = LocalContext.current
+
+    val svg = remember {
+        context.assets.open("World_map_blank_gmt.svg").use { inputStream ->
+            SVG.getFromInputStream(inputStream)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val widthPx = size.width.toInt().coerceAtLeast(1)
+            val heightPx = size.height.toInt().coerceAtLeast(1)
+
+            val baseBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val baseCanvas = Canvas(baseBitmap)
+
+            svg.setDocumentWidth(widthPx.toFloat())
+            svg.setDocumentHeight(heightPx.toFloat())
+            svg.renderToCanvas(baseCanvas)
+
+            val tintedBitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val tintedCanvas = Canvas(tintedBitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = PorterDuffColorFilter(mapColor.toArgb(), PorterDuff.Mode.SRC_IN)
+            }
+            tintedCanvas.drawBitmap(baseBitmap, 0f, 0f, paint)
+
+            drawImage(image = tintedBitmap.asImageBitmap())
         }
     }
 }
