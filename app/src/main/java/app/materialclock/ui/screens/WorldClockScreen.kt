@@ -112,10 +112,10 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-private val CITY_CARD_CORNER_RADIUS = 26.dp
-private val CITY_CARD_MIN_HEIGHT = 104.dp
-private val CITY_ROW_HORIZONTAL_PADDING = 16.dp
-private val CITY_ROW_VERTICAL_PADDING = 14.dp
+private val CITY_CARD_CORNER_RADIUS = 28.dp
+private val CITY_CARD_MIN_HEIGHT = 114.dp
+private val CITY_ROW_HORIZONTAL_PADDING = 20.dp
+private val CITY_ROW_VERTICAL_PADDING = 18.dp
 private val CITY_LIST_HORIZONTAL_MARGIN = 16.dp
 
 private val WorldClockDeleteColor = Color(0xFFB3261E)
@@ -234,7 +234,7 @@ fun WorldClockScreen(
         )
     }
 
-    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+    val mapFillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val wide = maxWidth > maxHeight || maxWidth >= 600.dp
@@ -351,7 +351,7 @@ fun WorldClockScreen(
                         start = 8.dp,
                         end = 16.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     cityItems()
                 }
@@ -365,7 +365,7 @@ fun WorldClockScreen(
                     start = CITY_LIST_HORIZONTAL_MARGIN,
                     end = CITY_LIST_HORIZONTAL_MARGIN
                 ),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(
                     key = "main-clock",
@@ -492,16 +492,44 @@ private data class ParsedSvgMap(
     val paths: List<Path>
 )
 
+private fun buildFallbackContinents(width: Float, height: Float): List<Path> {
+    // बिना देश की सीमाओं के केवल महाद्वीपों के सामान्य आकार (नॉर्मलाइज़्ड 0..1 कोऑर्डिनेट्स पर)
+    val normPolygons = listOf(
+        // North America
+        listOf(0.06f to 0.16f, 0.27f to 0.14f, 0.34f to 0.25f, 0.26f to 0.43f, 0.18f to 0.44f, 0.11f to 0.31f),
+        // South America
+        listOf(0.26f to 0.47f, 0.36f to 0.51f, 0.39f to 0.64f, 0.31f to 0.84f, 0.27f to 0.77f, 0.25f to 0.58f),
+        // Europe + Asia
+        listOf(0.45f to 0.16f, 0.84f to 0.15f, 0.90f to 0.34f, 0.83f to 0.52f, 0.72f to 0.55f, 0.65f to 0.46f, 0.54f to 0.41f, 0.45f to 0.36f),
+        // Africa
+        listOf(0.45f to 0.43f, 0.58f to 0.44f, 0.63f to 0.58f, 0.57f to 0.77f, 0.51f to 0.76f, 0.46f to 0.57f),
+        // Australia
+        listOf(0.76f to 0.63f, 0.89f to 0.63f, 0.91f to 0.77f, 0.78f to 0.78f)
+    )
+
+    return normPolygons.map { pts ->
+        Path().apply {
+            pts.forEachIndexed { idx, (nx, ny) ->
+                val px = nx * width
+                val py = ny * height
+                if (idx == 0) moveTo(px, py) else lineTo(px, py)
+            }
+            close()
+        }
+    }
+}
+
 private fun parseSvgPathsFromAssets(context: Context, assetName: String): ParsedSvgMap {
-    return runCatching {
+    var width = 1000f
+    var height = 500f
+    val paths = mutableListOf<Path>()
+
+    runCatching {
         context.assets.open(assetName).use { inputStream ->
             val parser = Xml.newPullParser().apply {
                 setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
                 setInput(inputStream, null)
             }
-            var width = 5365f
-            var height = 2796f
-            val paths = mutableListOf<Path>()
 
             var eventType = parser.eventType
             while (eventType != XmlPullParser.END_DOCUMENT) {
@@ -511,14 +539,14 @@ private fun parseSvgPathsFromAssets(context: Context, assetName: String): Parsed
                             val viewBox = parser.getAttributeValue(null, "viewBox")
                             val vbParts = viewBox?.trim()?.split(Regex("[,\\s]+"))
                             if (vbParts != null && vbParts.size == 4) {
-                                vbParts[2].toFloatOrNull()?.let { width = it }
-                                vbParts[3].toFloatOrNull()?.let { height = it }
+                                vbParts[2].toFloatOrNull()?.takeIf { it > 0f }?.let { width = it }
+                                vbParts[3].toFloatOrNull()?.takeIf { it > 0f }?.let { height = it }
                             } else {
                                 parser.getAttributeValue(null, "width")?.let { w ->
-                                    w.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.let { width = it }
+                                    w.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.takeIf { it > 0f }?.let { width = it }
                                 }
                                 parser.getAttributeValue(null, "height")?.let { h ->
-                                    h.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.let { height = it }
+                                    h.filter { it.isDigit() || it == '.' }.toFloatOrNull()?.takeIf { it > 0f }?.let { height = it }
                                 }
                             }
                         }
@@ -534,21 +562,26 @@ private fun parseSvgPathsFromAssets(context: Context, assetName: String): Parsed
                 }
                 eventType = parser.next()
             }
-            ParsedSvgMap(
-                width = width.coerceAtLeast(1f),
-                height = height.coerceAtLeast(1f),
-                paths = paths
-            )
         }
-    }.getOrElse {
-        ParsedSvgMap(width = 5365f, height = 2796f, paths = emptyList())
     }
+
+    if (paths.isEmpty()) {
+        width = 1000f
+        height = 500f
+        paths.addAll(buildFallbackContinents(width, height))
+    }
+
+    return ParsedSvgMap(
+        width = width.coerceAtLeast(1f),
+        height = height.coerceAtLeast(1f),
+        paths = paths
+    )
 }
 
 @Composable
 private fun ThemedWorldMap(
     modifier: Modifier = Modifier,
-    mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+    mapColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 ) {
     val context = LocalContext.current
     val parsedSvg = remember {
@@ -906,7 +939,7 @@ private fun CityRow(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+        targetValue = if (isPressed) 0.93f else 1f,
         animationSpec = spring(
             dampingRatio = 0.74f,
             stiffness = 440f
@@ -916,9 +949,9 @@ private fun CityRow(
 
     val targetContainer =
         if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.86f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.78f)
+            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.74f)
         }
 
     val targetContent =
@@ -987,7 +1020,7 @@ private fun CityRow(
         if (isSelected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)
         }
 
     val hourValue = if (use24h) {
@@ -1038,8 +1071,8 @@ private fun CityRow(
             val m = totalMins % 60
             val dir = if (diffSeconds > 0) "Ahead" else "Behind"
 
-            val hStr = if (h > 0) "$h hr " else ""
-            val mStr = if (m > 0) "$m min " else ""
+            val hStr = if (h > 0) "$h hours " else ""
+            val mStr = if (m > 0) "$m Minutes " else ""
 
             "${hStr}${mStr}$dir".trim()
         }
@@ -1047,8 +1080,8 @@ private fun CityRow(
     val countryAndUtc = "${city.country.ifBlank { city.region }} | ${city.utcCode(nowUtcMillis)}"
 
     val compactRows = LocalConfiguration.current.screenHeightDp < 480
-    val rowVPad = if (compactRows) 10.dp else CITY_ROW_VERTICAL_PADDING
-    val minCardHeight = if (compactRows) 88.dp else CITY_CARD_MIN_HEIGHT
+    val rowVPad = if (compactRows) 12.dp else CITY_ROW_VERTICAL_PADDING
+    val minCardHeight = if (compactRows) 92.dp else CITY_CARD_MIN_HEIGHT
 
     Surface(
         color = containerColor,
@@ -1081,14 +1114,12 @@ private fun CityRow(
                     horizontal = CITY_ROW_HORIZONTAL_PADDING,
                     vertical = rowVPad
                 ),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 color = badgeBg,
                 shape = CircleShape,
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .size(44.dp),
+                modifier = Modifier.size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     AnimatedContent(
@@ -1121,17 +1152,17 @@ private fun CityRow(
                                 "daytime"
                             },
                             tint = badgeTint,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -1141,7 +1172,6 @@ private fun CityRow(
                         ),
                         color = contentColor,
                         maxLines = 1,
-                        softWrap = false,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
@@ -1157,15 +1187,14 @@ private fun CityRow(
                             } else {
                                 MaterialTheme.colorScheme.primary
                             },
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
 
                 Text(
                     text = countryAndUtc,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall.copy(
                         fontFeatureSettings = "tnum"
                     ),
                     color = if (isSelected) {
@@ -1174,23 +1203,18 @@ private fun CityRow(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
                     text = diffString,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        fontFeatureSettings = "tnum"
-                    ),
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (isSelected) {
                         contentColor.copy(alpha = 0.85f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -1205,9 +1229,9 @@ private fun CityRow(
                     text = displayTimeText,
                     style = (
                         if (showSeconds) {
-                            MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp)
-                        } else {
                             MaterialTheme.typography.headlineSmall
+                        } else {
+                            MaterialTheme.typography.headlineMedium
                         }
                     ).copy(
                         fontWeight = FontWeight.SemiBold,
@@ -1219,7 +1243,7 @@ private fun CityRow(
                 )
 
                 if (amPmString.isNotEmpty()) {
-                    Spacer(Modifier.height(1.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = amPmString,
                         style = MaterialTheme.typography.labelMedium.copy(
