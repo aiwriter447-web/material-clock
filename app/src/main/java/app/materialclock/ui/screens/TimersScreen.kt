@@ -93,9 +93,8 @@ import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
 
-// Matches Stopwatch button vertical thickness ("width" in 170851.jpg)[span_2](start_span)[span_2](end_span)
-private val BUTTON_VERTICAL_THICKNESS = 64.dp
-private val START_BUTTON_HORIZONTAL_INSET = 48.dp
+// Matches Stopwatch button vertical height ("width" in 170851.jpg)
+private val BUTTON_VERTICAL_HEIGHT = 64.dp
 
 private val EXCLUDED_PRESET_NAMES = setOf("study", "sport", "sports", "sleep")
 
@@ -366,28 +365,31 @@ private fun SetTimer(
             )
         }
 
-        val startBlock: @Composable (Dp) -> Unit = { horizontalInset ->
-            Box(
+        val startBlock: @Composable () -> Unit = {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalInset),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AnimatedStartButton(
-                    armed = armed && !isStarting,
-                    onClick = {
-                        if (isStarting) return@AnimatedStartButton
-                        isStarting = true
-                        scope.launch {
-                            repeat(6) { onBackspace() }
-                            val digits = "%02d%02d%02d".format(hours, mins, secs)
-                            digits.forEach { onDigit(it) }
-                            onStart()
-                            delay(600)
-                            isStarting = false
+                Box(modifier = Modifier.weight(1f)) {
+                    AnimatedStartButton(
+                        armed = armed && !isStarting,
+                        onClick = {
+                            if (isStarting) return@AnimatedStartButton
+                            isStarting = true
+                            scope.launch {
+                                repeat(6) { onBackspace() }
+                                val digits = "%02d%02d%02d".format(hours, mins, secs)
+                                digits.forEach { onDigit(it) }
+                                onStart()
+                                delay(600)
+                                isStarting = false
+                            }
                         }
-                    }
-                )
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
 
@@ -428,7 +430,7 @@ private fun SetTimer(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    startBlock(24.dp)
+                    startBlock()
                     Spacer(Modifier.height(6.dp))
                 }
             }
@@ -452,7 +454,7 @@ private fun SetTimer(
 
                 Spacer(Modifier.height(28.dp))
 
-                startBlock(START_BUTTON_HORIZONTAL_INSET)
+                startBlock()
 
                 Spacer(Modifier.height(14.dp))
             }
@@ -665,8 +667,8 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && armed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPressed && armed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = 0.44f, stiffness = 520f),
         label = "startScale"
     )
 
@@ -676,7 +678,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         } else {
             MaterialTheme.colorScheme.surfaceContainer
         },
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 220f),
         label = "startContainer"
     )
     val contentColor by animateColorAsState(
@@ -685,7 +687,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 220f),
         label = "startContent"
     )
 
@@ -698,7 +700,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
+            .requiredHeight(BUTTON_VERTICAL_HEIGHT)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -706,17 +708,20 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
     ) {
         Row(
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.Rounded.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "Start",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -871,21 +876,29 @@ private fun RunningTimer(
 
             Spacer(Modifier.height(12.dp))
 
-            RunningActionPillButton(
-                text = "Cancel",
-                icon = Icons.Rounded.Close,
-                onClick = {
-                    if (isCanceling) return@RunningActionPillButton
-                    isCanceling = true
-                    scope.launch {
-                        onCancel()
-                        delay(500)
-                        isCanceling = false
-                    }
-                },
-                container = MaterialTheme.colorScheme.surfaceContainer,
-                content = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(Modifier.weight(1f)) {
+                    RunningActionPillButton(
+                        text = "Cancel",
+                        icon = Icons.Rounded.Close,
+                        onClick = {
+                            if (isCanceling) return@RunningActionPillButton
+                            isCanceling = true
+                            scope.launch {
+                                onCancel()
+                                delay(500)
+                                isCanceling = false
+                            }
+                        },
+                        container = MaterialTheme.colorScheme.surfaceContainer,
+                        content = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+            }
         }
 
         if (wide) {
@@ -981,7 +994,7 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
         contentColor = contentColor,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
+            .requiredHeight(BUTTON_VERTICAL_HEIGHT)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1049,7 +1062,7 @@ private fun RunningActionPillButton(
         contentColor = content,
         modifier = Modifier
             .fillMaxWidth()
-            .requiredHeight(BUTTON_VERTICAL_THICKNESS)
+            .requiredHeight(BUTTON_VERTICAL_HEIGHT)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
