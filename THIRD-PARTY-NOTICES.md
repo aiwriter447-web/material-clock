@@ -1,8 +1,9 @@
 # Third-party notices
 
-This app bundles two font binaries and links a number of Apache-2.0 libraries. Their licences and
-copyright notices are reproduced here, which is what the SIL Open Font License requires of anyone
-redistributing the font software.
+This app bundles two font binaries, includes a world map vector asset, and links a number of
+Apache-2.0 libraries. Their licences and copyright notices are reproduced here, which is what the
+SIL Open Font License and Creative Commons attribution terms require of anyone redistributing or
+adapting these materials.
 
 ---
 
@@ -30,6 +31,21 @@ redistributing the font software.
 - **Modified: yes.** `tools/build_noto_digits.py` cuts a ten-glyph subset (U+0660–0669, the Eastern
   Arabic digits) for the clock widget. Google Sans Flex has no Arabic coverage at all, which is why
   a second font is bundled for ten glyphs.
+
+---
+
+## Map asset
+
+### World map blank (`World_map_blank_gmt.svg`)
+
+- **Authors / Credits:** Original map by San Jose (based on Generic Mapping Tools); SVG vector
+  conversion by Muellercrtp via Wikimedia Commons.
+- **Licence:** Creative Commons Attribution-Share Alike 3.0 Unported (CC BY-SA 3.0) / GNU Free
+  Documentation License (GFDL).
+- **Where it came from:** Wikimedia Commons (`File:World map blank gmt.svg`).
+- **Modified: yes.** Rendered and tinted dynamically in the app UI according to the active theme,
+  with a city highlight marker drawn on top. Derivative/adapted uses of this map asset are made
+  available under compatible terms as applicable.
 
 ---
 
