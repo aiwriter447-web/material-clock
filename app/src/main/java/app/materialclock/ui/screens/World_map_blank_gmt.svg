@@ -1,3 +1,5 @@
+package app.materialclock.ui.screens
+
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -12,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -25,9 +26,7 @@ import com.caverock.androidsvg.SVG
 fun ThemedWorldMap(
     modifier: Modifier = Modifier,
     height: Dp = 190.dp,
-    mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-    dotColor: Color = MaterialTheme.colorScheme.primary,
-    cityNormalizedPos: Offset? = null
+    mapColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
 ) {
     val context = LocalContext.current
 
@@ -61,23 +60,6 @@ fun ThemedWorldMap(
             tintedCanvas.drawBitmap(baseBitmap, 0f, 0f, paint)
 
             drawImage(image = tintedBitmap.asImageBitmap())
-
-            cityNormalizedPos?.let { pos ->
-                val center = Offset(
-                    x = size.width * pos.x.coerceIn(0f, 1f),
-                    y = size.height * pos.y.coerceIn(0f, 1f)
-                )
-                drawCircle(
-                    color = dotColor.copy(alpha = 0.25f),
-                    radius = 10.dp.toPx(),
-                    center = center
-                )
-                drawCircle(
-                    color = dotColor,
-                    radius = 4.5.dp.toPx(),
-                    center = center
-                )
-            }
         }
     }
 }
