@@ -93,8 +93,14 @@ import kotlinx.coroutines.launch
 
 private const val RING_SIZE_DP = 300
 
-// Matches Stopwatch button vertical height ("width" in 170851.jpg)
+// Matches Stopwatch button vertical thickness ("width" in 170851.jpg)
 private val BUTTON_VERTICAL_HEIGHT = 64.dp
+
+// Living Flow - Fluid Motion spring bounce matching StopwatchScreen
+private val TimerJellySpring = spring<Float>(
+    dampingRatio = 0.44f,
+    stiffness = 520f
+)
 
 private val EXCLUDED_PRESET_NAMES = setOf("study", "sport", "sports", "sleep")
 
@@ -366,30 +372,35 @@ private fun SetTimer(
         }
 
         val startBlock: @Composable () -> Unit = {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    AnimatedStartButton(
-                        armed = armed && !isStarting,
-                        onClick = {
-                            if (isStarting) return@AnimatedStartButton
-                            isStarting = true
-                            scope.launch {
-                                repeat(6) { onBackspace() }
-                                val digits = "%02d%02d%02d".format(hours, mins, secs)
-                                digits.forEach { onDigit(it) }
-                                onStart()
-                                delay(600)
-                                isStarting = false
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val halfLength = ((maxWidth - 12.dp) / 2f).coerceAtLeast(120.dp)
+                    Box(
+                        modifier = Modifier.width(halfLength),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedStartButton(
+                            armed = armed && !isStarting,
+                            onClick = {
+                                if (isStarting) return@AnimatedStartButton
+                                isStarting = true
+                                scope.launch {
+                                    repeat(6) { onBackspace() }
+                                    val digits = "%02d%02d%02d".format(hours, mins, secs)
+                                    digits.forEach { onDigit(it) }
+                                    onStart()
+                                    delay(600)
+                                    isStarting = false
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
 
@@ -607,8 +618,8 @@ private fun PresetChip(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = TimerJellySpring,
         label = "presetChipScale"
     )
 
@@ -668,7 +679,7 @@ private fun AnimatedStartButton(armed: Boolean, onClick: () -> Unit) {
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed && armed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = 0.44f, stiffness = 520f),
+        animationSpec = TimerJellySpring,
         label = "startScale"
     )
 
@@ -876,11 +887,12 @@ private fun RunningTimer(
 
             Spacer(Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(Modifier.weight(1f)) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val halfLength = ((maxWidth - 12.dp) / 2f).coerceAtLeast(120.dp)
+                Box(
+                    modifier = Modifier.width(halfLength),
+                    contentAlignment = Alignment.Center
+                ) {
                     RunningActionPillButton(
                         text = "Cancel",
                         icon = Icons.Rounded.Close,
@@ -897,7 +909,6 @@ private fun RunningTimer(
                         content = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.weight(1f))
             }
         }
 
@@ -963,8 +974,8 @@ private fun PauseResumeButton(running: Boolean, onClick: () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = TimerJellySpring,
         label = "pauseResumeScale"
     )
     val containerColor by animateColorAsState(
@@ -1049,8 +1060,8 @@ private fun RunningActionPillButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = TimerJellySpring,
         label = "pillButtonScale"
     )
 
