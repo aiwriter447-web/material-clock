@@ -10,6 +10,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -406,10 +407,11 @@ private var _stopwatchOutlinedCustom: ImageVector? = null
 
 @Composable
 fun rememberDockGlassBorder(): BorderStroke {
-    return BorderStroke(width = 0.dp, color = Color.Transparent)
+    val borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+    return BorderStroke(width = 1.dp, color = borderColor)
 }
 
-// Adaptive opacity surface for Dock Bar without system blur, shadow, or corner light
+// Adaptive opacity surface for Dock Bar with thin primary border
 @Composable
 fun Modifier.dockFrostedGlass(
     hazeState: Any? = null,
@@ -419,9 +421,11 @@ fun Modifier.dockFrostedGlass(
     val containerColor = MaterialTheme.colorScheme.primaryContainer.copy(
         alpha = if (isDark) 0.92f else 0.94f
     )
+    val borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
     return this
         .clip(shape)
         .background(containerColor)
+        .border(width = 1.dp, color = borderColor, shape = shape)
 }
 
 // Adaptive opacity surface for Title Pill without system blur or shadow
